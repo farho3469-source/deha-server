@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="tg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Деҳа</title>
+<style>
+  body{margin:0;font-family:sans-serif;background:#f3f1ea;color:#222}
+  header{background:#2f6b3a;color:#fff;padding:12px;font-size:20px}
+  nav{display:flex}
+  nav button{flex:1;padding:12px;border:0;background:#dfe8dc;font-size:16px}
+  nav button.on{background:#fff;font-weight:bold}
+  section{display:none;padding:10px}
+  section.on{display:block}
+  .box{background:#fff;border-radius:8px;padding:8px;margin-bottom:8px}
+  .t{font-size:12px;color:#777}
+  input,textarea{width:100%;box-sizing:border-box;padding:10px;margin:4px 0;font-size:16px}
+  .send{background:#2f6b3a;color:#fff;border:0;padding:10px 16px;font-size:16px;border-radius:6px}
+  #msgs{height:55vh;overflow-y:auto}
+</style>
+</head>
+<body>
+<header>🏡 Деҳа</header>
+<nav>
+  <button id="b1" class="on" onclick="tab(1)">Чат</button>
+  <button id="b2" onclick="tab(2)">Хабарҳо</button>
+  <button id="b3" onclick="tab(3)">Админ</button>
+</nav>
+
+<section id="s1" class="on">
+  <input id="name" placeholder="Номи шумо">
+  <div id="msgs"></div>
+  <input id="text" placeholder="Паём нависед...">
+  <button class="send" onclick="sendChat()">Фиристодан</button>
+</section>
+
+<section id="s2"><div id="news"></div></section>
+
+<section id="s3">
+  <input id="pw" type="password" placeholder="Пароли админ">
+  <input id="nt" placeholder="Сарлавҳа">
+  <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
+  <button class="send" onclick="sendNews()">Нашр кардан</button>
+</section>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+const $ = (id) => document.getElementById(id);
+$('name').value = localStorage.getItem('name') || '';
+
+function tab(n){
+  for(let i=1;i<=3;i++){
+    $('s'+i).classList.toggle('on', i===n);
+    $('b'+i).classList.toggle('on', i===n);
+  }
+}
+function card(a, b, time){
+  const d = document.createElement('div'); d.className = 'box';
+  const h = document.createElement('b'); h.textContent = a;
+  const p = document.createElement('div'); p.textContent = b;
+  const t = document.createElement('div'); t.className = 't';
+  t.textContent = new Date(time).toLocaleString();
+  d.append(h, p, t);
+  return d;
+}
+function addChat(m){
+  const box = $('msgs'); box.append(card(m.name, m.text, m.time));
+  box.scrollTop = box.scrollHeight;
+}
+function addNews(n, top){
+  const c = card(n.title, n.text, n.time);
+  top ? $('news').prepend(c) : $('news').append(c);
+}
+socket.on('init', (d) => {
+  $('msgs').innerHTML = ''; $('news').innerHTML = '';
+  d.chat.forEach(addChat);
+  d.news.forEach((n) => addNews(n, false));
+});
+socket.on('chat', addChat);
+socket.on('news', (n) => addNews(n, true));
+socket.on('err', (e) => alert(e));
+
+function sendChat(){
+  const name = $('name').value.trim(), text = $('text').value.trim();
+  if(!name || !text) return;
+  localStorage.setItem('name', name);
+  socket.emit('chat', { name, text });
+  $('text').value = '';
+}
+function sendNews(){
+  socket.emit('news', { password: $('pw').value, title: $('nt').value, text: $('nx').value });
+  $('nt').value = ''; $('nx').value = '';
+}
+</script>
+</body>
+</html>
