@@ -9,8 +9,10 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-const ADMIN = process.env.ADMIN_PASSWORD || 'admin123';
-const client = new MongoClient(process.env.MONGODB_URI);
+const ADMIN = String(process.env.ADMIN_PASSWORD || 'admin123').trim();
+const MONGO_URI = String(process.env.MONGODB_URI || '').replace(/[\s"'<>]/g, '');
+console.log('URI starts with:', MONGO_URI.slice(0, 14));
+const client = new MongoClient(MONGO_URI);
 let users, chat, news;
 
 app.use(express.json());
@@ -86,7 +88,7 @@ io.on('connection', async (s) => {
   });
 
   s.on('news', async (m) => {
-    if (!m || m.password !== ADMIN) return s.emit('err', 'Парол нодуруст');
+    if (!m || String(m.password || '').trim() !== ADMIN) return s.emit('err', 'Парол нодуруст');
     const n = {
       title: String(m.title || '').slice(0, 100),
       text: String(m.text || '').slice(0, 2000),
