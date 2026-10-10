@@ -2,29 +2,69 @@
 <html lang="tg">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f6b3a">
 <title>Деҳа</title>
 <style>
-  body{margin:0;font-family:sans-serif;background:#f3f1ea;color:#222}
-  header{background:#2f6b3a;color:#fff;padding:12px;font-size:20px;display:flex;justify-content:space-between;align-items:center}
-  header button{background:transparent;color:#fff;border:1px solid #fff;border-radius:6px;padding:4px 10px;font-size:13px;display:none}
-  nav{display:flex}
-  nav button{flex:1;padding:12px;border:0;background:#dfe8dc;font-size:16px}
-  nav button.on{background:#fff;font-weight:bold}
-  section{display:none;padding:10px}
-  section.on{display:block}
-  .box{background:#fff;border-radius:8px;padding:8px;margin-bottom:8px}
-  .t{font-size:12px;color:#777}
-  input,textarea{width:100%;box-sizing:border-box;padding:10px;margin:4px 0;font-size:16px}
-  .send{background:#2f6b3a;color:#fff;border:0;padding:10px 16px;font-size:16px;border-radius:6px}
-  #msgs{height:60vh;overflow-y:auto}
-  #auth{padding:16px}
-  #aerr{color:#b00020;font-size:14px;min-height:20px;margin:6px 0}
-  .link{color:#2f6b3a;text-decoration:underline;margin-top:14px}
+*{box-sizing:border-box}
+body{margin:0;height:100dvh;display:flex;flex-direction:column;font-family:system-ui,sans-serif;background:#efece3;color:#222}
+#hdr{position:relative;height:84px;background:#2f6b3a;flex:none;overflow:hidden}
+#hdr svg{position:absolute;left:0;top:0;width:100%;height:100%}
+#hdr .t{position:absolute;left:14px;top:10px;color:#fff;font-size:21px;font-weight:600}
+#hdr .s{position:absolute;left:14px;top:40px;color:#dfe8dc;font-size:12px}
+#out{position:absolute;right:10px;top:10px;display:none;background:rgba(0,0,0,.3);color:#fff;border:0;border-radius:14px;padding:5px 12px;font-size:13px}
+#auth{flex:1;overflow-y:auto;padding:20px}
+#auth h3{margin:0 0 12px;font-size:22px}
+input,textarea{width:100%;padding:12px;margin:5px 0;font-size:16px;border:1px solid #ccc;border-radius:10px;background:#fff}
+.btn{background:#2f6b3a;color:#fff;border:0;padding:12px 20px;font-size:16px;border-radius:10px}
+#aerr{color:#b00020;font-size:14px;min-height:20px;margin:6px 0}
+.link{color:#2f6b3a;text-decoration:underline;margin-top:16px}
+#app{display:none;flex:1;min-height:0;flex-direction:column}
+#views{flex:1;min-height:0;display:flex;flex-direction:column}
+.sec{display:none;flex:1;min-height:0;flex-direction:column}
+.sec.on{display:flex}
+.pad{overflow-y:auto;padding:12px}
+#msgs{flex:1;overflow-y:auto;padding:10px}
+.b{max-width:84%;width:fit-content;margin:6px 0;padding:7px 10px;border-radius:14px;font-size:15px;word-break:break-word}
+.ot{background:#fff;border-top-left-radius:4px}
+.me{background:#dcf0d2;margin-left:auto;border-top-right-radius:4px}
+.nm{font-size:12px;font-weight:600;color:#2f6b3a;margin-bottom:2px}
+.tm{font-size:11px;color:#777;text-align:right;margin-top:3px}
+.b img{display:block;max-width:100%;max-height:260px;border-radius:10px}
+.b audio{width:230px;max-width:100%}
+#comp{flex:none;display:flex;align-items:center;padding:8px;background:#fff;border-top:1px solid #ddd}
+#bar{display:flex;flex:1;gap:6px;align-items:center}
+#text{flex:1;border-radius:22px;padding:10px 14px;margin:0}
+.ic{width:44px;height:44px;border:0;border-radius:50%;background:#2f6b3a;color:#fff;font-size:20px;flex:none;padding:0}
+.ic.g{background:#e6e3d9;color:#222}
+#rec{display:none;flex:1;align-items:center;gap:10px;color:#b00020;font-weight:600}
+.card{background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.card b{display:block;font-size:16px;margin-bottom:4px}
+.card .d{font-size:12px;color:#777;margin-top:6px}
+nav{flex:none;display:flex;background:#fff;border-top:1px solid #ddd;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;padding:8px 0;font-size:11px;color:#777}
+nav button span{display:block;font-size:21px}
+nav button.on{color:#2f6b3a;font-weight:600}
+#lb{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.92);z-index:9;align-items:center;justify-content:center}
+#lb img{max-width:100%;max-height:100%}
 </style>
 </head>
 <body>
-<header><span>🏡 Деҳа</span><button id="out" onclick="logout()">Баромадан</button></header>
+<div id="hdr">
+  <svg viewBox="0 0 360 84" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <circle cx="300" cy="24" r="12" fill="#FAC775"/>
+    <path d="M0 84 L0 58 Q50 36 110 56 Q170 74 230 52 Q300 30 360 52 L360 84 Z" fill="#4c8f5a"/>
+    <path d="M0 84 L0 68 Q70 54 150 68 Q250 82 360 64 L360 84 Z" fill="#27500A"/>
+    <rect x="262" y="46" width="30" height="22" fill="#F5C4B3"/>
+    <path d="M256 47 L277 31 L298 47 Z" fill="#993C1D"/>
+    <rect x="272" y="55" width="8" height="13" fill="#712B13"/>
+    <rect x="228" y="54" width="4" height="14" fill="#712B13"/>
+    <circle cx="230" cy="50" r="9" fill="#27500A"/>
+  </svg>
+  <div class="t">Деҳа</div>
+  <div class="s">Чати аҳли деҳа</div>
+  <button id="out" onclick="logout()">Баромадан</button>
+</div>
 
 <div id="auth">
   <h3 id="atitle">Воридшавӣ</h3>
@@ -32,35 +72,53 @@
   <input id="phone" type="tel" placeholder="Рақами телефон (+992...)">
   <input id="pass" type="password" placeholder="Парол (камаш 6 аломат)">
   <div id="aerr"></div>
-  <button class="send" id="abtn" onclick="submitAuth()">Ворид шудан</button>
+  <button class="btn" id="abtn" onclick="submitAuth()">Ворид шудан</button>
   <p class="link" id="alink" onclick="toggleMode()">Сабти ном</p>
 </div>
 
-<div id="app" style="display:none">
+<div id="app">
+  <div id="views">
+    <div class="sec on" id="s1">
+      <div id="msgs"></div>
+      <div id="comp">
+        <div id="bar">
+          <button class="ic g" id="pbtn" aria-label="Расм">📷</button>
+          <input id="text" placeholder="Паём нависед...">
+          <button class="ic" id="sbtn" aria-label="Фиристодан">🎤</button>
+        </div>
+        <div id="rec">
+          <span id="rt">● 0:00</span>
+          <span style="flex:1"></span>
+          <button class="ic g" id="rcancel" aria-label="Бекор">✕</button>
+          <button class="ic" id="rsend" aria-label="Фиристодан">➤</button>
+        </div>
+      </div>
+    </div>
+    <div class="sec" id="s2"><div class="pad" id="news"></div></div>
+    <div class="sec" id="s3">
+      <div class="pad">
+        <input id="pw" type="password" placeholder="Пароли админ">
+        <input id="nt" placeholder="Сарлавҳа">
+        <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
+        <button class="btn" onclick="sendNews()">Нашр кардан</button>
+      </div>
+    </div>
+  </div>
   <nav>
-    <button id="b1" class="on" onclick="tab(1)">Чат</button>
-    <button id="b2" onclick="tab(2)">Хабарҳо</button>
-    <button id="b3" onclick="tab(3)">Админ</button>
+    <button id="b1" class="on" onclick="tab(1)"><span>💬</span>Чат</button>
+    <button id="b2" onclick="tab(2)"><span>📰</span>Хабарҳо</button>
+    <button id="b3" onclick="tab(3)"><span>🔐</span>Админ</button>
   </nav>
-  <section id="s1" class="on">
-    <div id="msgs"></div>
-    <input id="text" placeholder="Паём нависед...">
-    <button class="send" onclick="sendChat()">Фиристодан</button>
-  </section>
-  <section id="s2"><div id="news"></div></section>
-  <section id="s3">
-    <input id="pw" type="password" placeholder="Пароли админ">
-    <input id="nt" placeholder="Сарлавҳа">
-    <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
-    <button class="send" onclick="sendNews()">Нашр кардан</button>
-  </section>
 </div>
+
+<input type="file" id="pfile" accept="image/*" style="display:none">
+<div id="lb" onclick="this.style.display='none'"><img id="lbimg" alt=""></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
-let mode = 'login';
-let socket = null;
+let mode = 'login', socket = null, tok = '', myUid = '';
+let rec = null, chunks = [], recTimer = null, recStart = 0, recCancel = false, stream = null;
 
 function toggleMode(){
   mode = mode === 'login' ? 'register' : 'login';
@@ -78,11 +136,7 @@ async function submitAuth(){
     const r = await fetch('/api/' + mode, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: $('rname').value,
-        phone: $('phone').value,
-        password: $('pass').value
-      })
+      body: JSON.stringify({ name: $('rname').value, phone: $('phone').value, password: $('pass').value })
     });
     const d = await r.json();
     if (!r.ok) { $('aerr').textContent = d.error || 'Хато'; return; }
@@ -93,44 +147,62 @@ async function submitAuth(){
   }
 }
 
-function logout(){
-  localStorage.removeItem('token');
-  location.reload();
-}
+function logout(){ localStorage.removeItem('token'); location.reload(); }
 
 function tab(n){
-  for(let i=1;i<=3;i++){
-    $('s'+i).classList.toggle('on', i===n);
-    $('b'+i).classList.toggle('on', i===n);
+  for (let i = 1; i <= 3; i++){
+    $('s' + i).classList.toggle('on', i === n);
+    $('b' + i).classList.toggle('on', i === n);
   }
+  if (n === 1) scrollDown();
 }
 
-function card(a, b, time){
-  const d = document.createElement('div'); d.className = 'box';
-  const h = document.createElement('b'); h.textContent = a;
-  const p = document.createElement('div'); p.textContent = b;
-  const t = document.createElement('div'); t.className = 't';
-  t.textContent = new Date(time).toLocaleString();
-  d.append(h, p, t);
+function hhmm(t){ return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+function scrollDown(){ const b = $('msgs'); b.scrollTop = b.scrollHeight; }
+function mediaUrl(id){ return '/media/' + id + '?t=' + tok; }
+
+function msgEl(m){
+  const mine = m.uid && m.uid === myUid;
+  const d = document.createElement('div');
+  d.className = 'b ' + (mine ? 'me' : 'ot');
+  if (!mine){
+    const n = document.createElement('div'); n.className = 'nm'; n.textContent = m.name; d.append(n);
+  }
+  if (m.kind === 'image'){
+    const im = document.createElement('img');
+    im.loading = 'lazy'; im.src = mediaUrl(m.media);
+    im.onload = scrollDown;
+    im.onclick = () => { $('lbimg').src = im.src; $('lb').style.display = 'flex'; };
+    d.append(im);
+  } else if (m.kind === 'audio'){
+    const a = document.createElement('audio');
+    a.controls = true; a.preload = 'none'; a.src = mediaUrl(m.media);
+    d.append(a);
+  } else {
+    const p = document.createElement('div'); p.textContent = m.text || ''; d.append(p);
+  }
+  const t = document.createElement('div'); t.className = 'tm'; t.textContent = hhmm(m.time); d.append(t);
   return d;
 }
-function addChat(m){
-  const box = $('msgs'); box.append(card(m.name, m.text, m.time));
-  box.scrollTop = box.scrollHeight;
-}
+function addChat(m){ $('msgs').append(msgEl(m)); scrollDown(); }
+
 function addNews(n, top){
-  const c = card(n.title, n.text, n.time);
+  const c = document.createElement('div'); c.className = 'card';
+  const h = document.createElement('b'); h.textContent = n.title;
+  const p = document.createElement('div'); p.textContent = n.text;
+  const d = document.createElement('div'); d.className = 'd'; d.textContent = new Date(n.time).toLocaleDateString();
+  c.append(h, p, d);
   top ? $('news').prepend(c) : $('news').append(c);
 }
 
 function start(token){
+  tok = token;
   $('auth').style.display = 'none';
-  $('app').style.display = 'block';
+  $('app').style.display = 'flex';
   $('out').style.display = 'block';
   socket = io({ auth: { token } });
-  socket.on('connect_error', (e) => {
-    if (e && e.message === 'auth') logout();
-  });
+  socket.on('connect_error', (e) => { if (e && e.message === 'auth') logout(); });
+  socket.on('me', (id) => { myUid = id; });
   socket.on('init', (d) => {
     $('msgs').innerHTML = ''; $('news').innerHTML = '';
     d.chat.forEach(addChat);
@@ -143,12 +215,82 @@ function start(token){
 
 function sendChat(){
   const text = $('text').value.trim();
-  if(!text || !socket) return;
+  if (!text || !socket) return;
   socket.emit('chat', { text });
   $('text').value = '';
+  upd();
 }
+function upd(){ $('sbtn').textContent = $('text').value.trim() ? '➤' : '🎤'; }
+$('text').addEventListener('input', upd);
+$('text').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+$('sbtn').onclick = () => { if ($('text').value.trim()) sendChat(); else startRec(); };
+
+$('pbtn').onclick = () => $('pfile').click();
+$('pfile').onchange = () => { sendPhoto($('pfile').files[0]); $('pfile').value = ''; };
+
+async function sendPhoto(file){
+  if (!file || !socket) return;
+  try {
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, 1100 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.75));
+    const buf = await blob.arrayBuffer();
+    socket.emit('media', { kind: 'image', type: 'image/jpeg', data: buf });
+  } catch (e) {
+    alert('Расм кушода нашуд');
+  }
+}
+
+function fmt(s){ return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+
+async function startRec(){
+  if (!socket || (rec && rec.state === 'recording')) return;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    alert('Микрофон иҷозат надорад');
+    return;
+  }
+  const mt = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
+    .find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+  const opts = mt ? { mimeType: mt, audioBitsPerSecond: 24000 } : { audioBitsPerSecond: 24000 };
+  rec = new MediaRecorder(stream, opts);
+  chunks = []; recCancel = false;
+  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  rec.onstop = async () => {
+    clearInterval(recTimer);
+    stream.getTracks().forEach((t) => t.stop());
+    $('rec').style.display = 'none'; $('bar').style.display = 'flex';
+    if (recCancel) return;
+    const dur = Math.round((Date.now() - recStart) / 1000);
+    if (dur < 1) return;
+    const mime = rec.mimeType || 'audio/webm';
+    const buf = await new Blob(chunks, { type: mime }).arrayBuffer();
+    if (buf.byteLength > 1900000){ alert('Паём аз ҳад дароз аст'); return; }
+    socket.emit('media', { kind: 'audio', type: mime.split(';')[0], dur, data: buf });
+  };
+  rec.start();
+  recStart = Date.now();
+  $('bar').style.display = 'none'; $('rec').style.display = 'flex';
+  $('rt').textContent = '● 0:00';
+  recTimer = setInterval(() => {
+    const s = Math.floor((Date.now() - recStart) / 1000);
+    $('rt').textContent = '● ' + fmt(s);
+    if (s >= 60) stopRec(false);
+  }, 300);
+}
+function stopRec(cancel){
+  recCancel = cancel;
+  if (rec && rec.state !== 'inactive') rec.stop();
+}
+$('rsend').onclick = () => stopRec(false);
+$('rcancel').onclick = () => stopRec(true);
+
 function sendNews(){
-  if(!socket) return;
+  if (!socket) return;
   socket.emit('news', { password: $('pw').value, title: $('nt').value, text: $('nx').value });
   $('nt').value = ''; $('nx').value = '';
 }
