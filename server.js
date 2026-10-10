@@ -10,7 +10,8 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const ADMIN = String(process.env.ADMIN_PASSWORD || 'admin123').trim();
-const MONGO_URI = String(process.env.MONGODB_URI || '').replace(/[\s"'<>]/g, '');
+const MONGO_URI = String(process.env.MONGODB_URI || '').replace(/[^\x21-\x7E]/g, '').replace(/["'<>]/g, '');
+  
 console.log('URI starts with:', MONGO_URI.slice(0, 14));
 const client = new MongoClient(MONGO_URI);
 let users, chat, news;
