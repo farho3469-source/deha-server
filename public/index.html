@@ -6,7 +6,8 @@
 <title>Деҳа</title>
 <style>
   body{margin:0;font-family:sans-serif;background:#f3f1ea;color:#222}
-  header{background:#2f6b3a;color:#fff;padding:12px;font-size:20px}
+  header{background:#2f6b3a;color:#fff;padding:12px;font-size:20px;display:flex;justify-content:space-between;align-items:center}
+  header button{background:transparent;color:#fff;border:1px solid #fff;border-radius:6px;padding:4px 10px;font-size:13px;display:none}
   nav{display:flex}
   nav button{flex:1;padding:12px;border:0;background:#dfe8dc;font-size:16px}
   nav button.on{background:#fff;font-weight:bold}
@@ -16,38 +17,86 @@
   .t{font-size:12px;color:#777}
   input,textarea{width:100%;box-sizing:border-box;padding:10px;margin:4px 0;font-size:16px}
   .send{background:#2f6b3a;color:#fff;border:0;padding:10px 16px;font-size:16px;border-radius:6px}
-  #msgs{height:55vh;overflow-y:auto}
+  #msgs{height:60vh;overflow-y:auto}
+  #auth{padding:16px}
+  #aerr{color:#b00020;font-size:14px;min-height:20px;margin:6px 0}
+  .link{color:#2f6b3a;text-decoration:underline;margin-top:14px}
 </style>
 </head>
 <body>
-<header>🏡 Деҳа</header>
-<nav>
-  <button id="b1" class="on" onclick="tab(1)">Чат</button>
-  <button id="b2" onclick="tab(2)">Хабарҳо</button>
-  <button id="b3" onclick="tab(3)">Админ</button>
-</nav>
+<header><span>🏡 Деҳа</span><button id="out" onclick="logout()">Баромадан</button></header>
 
-<section id="s1" class="on">
-  <input id="name" placeholder="Номи шумо">
-  <div id="msgs"></div>
-  <input id="text" placeholder="Паём нависед...">
-  <button class="send" onclick="sendChat()">Фиристодан</button>
-</section>
+<div id="auth">
+  <h3 id="atitle">Воридшавӣ</h3>
+  <input id="rname" placeholder="Номи шумо" style="display:none">
+  <input id="phone" type="tel" placeholder="Рақами телефон (+992...)">
+  <input id="pass" type="password" placeholder="Парол (камаш 6 аломат)">
+  <div id="aerr"></div>
+  <button class="send" id="abtn" onclick="submitAuth()">Ворид шудан</button>
+  <p class="link" id="alink" onclick="toggleMode()">Сабти ном</p>
+</div>
 
-<section id="s2"><div id="news"></div></section>
-
-<section id="s3">
-  <input id="pw" type="password" placeholder="Пароли админ">
-  <input id="nt" placeholder="Сарлавҳа">
-  <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
-  <button class="send" onclick="sendNews()">Нашр кардан</button>
-</section>
+<div id="app" style="display:none">
+  <nav>
+    <button id="b1" class="on" onclick="tab(1)">Чат</button>
+    <button id="b2" onclick="tab(2)">Хабарҳо</button>
+    <button id="b3" onclick="tab(3)">Админ</button>
+  </nav>
+  <section id="s1" class="on">
+    <div id="msgs"></div>
+    <input id="text" placeholder="Паём нависед...">
+    <button class="send" onclick="sendChat()">Фиристодан</button>
+  </section>
+  <section id="s2"><div id="news"></div></section>
+  <section id="s3">
+    <input id="pw" type="password" placeholder="Пароли админ">
+    <input id="nt" placeholder="Сарлавҳа">
+    <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
+    <button class="send" onclick="sendNews()">Нашр кардан</button>
+  </section>
+</div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-const socket = io();
 const $ = (id) => document.getElementById(id);
-$('name').value = localStorage.getItem('name') || '';
+let mode = 'login';
+let socket = null;
+
+function toggleMode(){
+  mode = mode === 'login' ? 'register' : 'login';
+  const reg = mode === 'register';
+  $('rname').style.display = reg ? 'block' : 'none';
+  $('atitle').textContent = reg ? 'Сабти ном' : 'Воридшавӣ';
+  $('abtn').textContent = reg ? 'Сабти ном кардан' : 'Ворид шудан';
+  $('alink').textContent = reg ? 'Ман ҳисоб дорам' : 'Сабти ном';
+  $('aerr').textContent = '';
+}
+
+async function submitAuth(){
+  $('aerr').textContent = 'Интизор шавед...';
+  try {
+    const r = await fetch('/api/' + mode, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: $('rname').value,
+        phone: $('phone').value,
+        password: $('pass').value
+      })
+    });
+    const d = await r.json();
+    if (!r.ok) { $('aerr').textContent = d.error || 'Хато'; return; }
+    localStorage.setItem('token', d.token);
+    start(d.token);
+  } catch (e) {
+    $('aerr').textContent = 'Пайваст нашуд. Дубора кӯшиш кунед.';
+  }
+}
+
+function logout(){
+  localStorage.removeItem('token');
+  location.reload();
+}
 
 function tab(n){
   for(let i=1;i<=3;i++){
@@ -55,6 +104,7 @@ function tab(n){
     $('b'+i).classList.toggle('on', i===n);
   }
 }
+
 function card(a, b, time){
   const d = document.createElement('div'); d.className = 'box';
   const h = document.createElement('b'); h.textContent = a;
@@ -72,26 +122,39 @@ function addNews(n, top){
   const c = card(n.title, n.text, n.time);
   top ? $('news').prepend(c) : $('news').append(c);
 }
-socket.on('init', (d) => {
-  $('msgs').innerHTML = ''; $('news').innerHTML = '';
-  d.chat.forEach(addChat);
-  d.news.forEach((n) => addNews(n, false));
-});
-socket.on('chat', addChat);
-socket.on('news', (n) => addNews(n, true));
-socket.on('err', (e) => alert(e));
+
+function start(token){
+  $('auth').style.display = 'none';
+  $('app').style.display = 'block';
+  $('out').style.display = 'block';
+  socket = io({ auth: { token } });
+  socket.on('connect_error', (e) => {
+    if (e && e.message === 'auth') logout();
+  });
+  socket.on('init', (d) => {
+    $('msgs').innerHTML = ''; $('news').innerHTML = '';
+    d.chat.forEach(addChat);
+    d.news.forEach((n) => addNews(n, false));
+  });
+  socket.on('chat', addChat);
+  socket.on('news', (n) => addNews(n, true));
+  socket.on('err', (e) => alert(e));
+}
 
 function sendChat(){
-  const name = $('name').value.trim(), text = $('text').value.trim();
-  if(!name || !text) return;
-  localStorage.setItem('name', name);
-  socket.emit('chat', { name, text });
+  const text = $('text').value.trim();
+  if(!text || !socket) return;
+  socket.emit('chat', { text });
   $('text').value = '';
 }
 function sendNews(){
+  if(!socket) return;
   socket.emit('news', { password: $('pw').value, title: $('nt').value, text: $('nx').value });
   $('nt').value = ''; $('nx').value = '';
 }
+
+const saved = localStorage.getItem('token');
+if (saved) start(saved);
 </script>
 </body>
 </html>
