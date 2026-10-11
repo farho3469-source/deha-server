@@ -2,6 +2,7 @@
 <html lang="tg">
 <head>
 <meta charset="utf-8">
+<script>window.onerror=function(m,u,l){alert('Хато: '+m+' (сатр '+l+')');};</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2f6b3a">
 <title>Деҳа</title>
@@ -88,11 +89,6 @@ nav button.on{color:#2f6b3a;font-weight:600}
 <div id="auth">
   <h3 id="atitle">Воридшавӣ</h3>
   <input id="rname" placeholder="Номи шумо" style="display:none">
-  <select id="gender" style="display:none">
-    <option value="">Мард ё зан?</option>
-    <option value="m">Мард</option>
-    <option value="f">Зан</option>
-  </select>
   <input id="phone" type="tel" placeholder="Рақами телефон (+992...)">
   <input id="pass" type="password" placeholder="Парол (камаш 6 аломат)">
   <div id="aerr"></div>
@@ -139,3 +135,352 @@ nav button.on{color:#2f6b3a;font-weight:600}
   </div>
   <nav>
     <button id="b1" class="on" onclick="tab(1)"><span>💬</span>Чат</button>
+    <button id="b2" onclick="tab(2)"><span>🐄</span>Бозор</button>
+    <button id="b3" onclick="tab(3)"><span>📰</span>Хабарҳо</button>
+    <button id="b4" onclick="tab(4)"><span>🔐</span>Админ</button>
+  </nav>
+</div>
+
+<div id="adform">
+  <div class="top">Эълони нав</div>
+  <div class="body">
+    <select id="adc">
+      <option value="cow">Гов</option>
+      <option value="sheep">Гӯсфанд</option>
+      <option value="other">Дигар</option>
+    </select>
+    <input id="adt" placeholder="Сарлавҳа (масалан: Гови ширдеҳ)">
+    <input id="adp" placeholder="Нарх (масалан: 8000 сомонӣ)">
+    <textarea id="add" rows="4" placeholder="Тавсиф (синну сол, ҷой ва ғайра)"></textarea>
+    <button class="btn g" style="width:100%;margin:6px 0" onclick="$('adphoto').click()">📷 Расм интихоб кунед</button>
+    <div id="adpn" style="font-size:13px;color:#777;margin-bottom:10px">Расм интихоб нашудааст</div>
+    <div style="font-size:13px;color:#777;margin-bottom:10px">Рақами телефони шумо дар эълон намоён мешавад.</div>
+    <button class="btn" id="adsend" style="width:100%" onclick="submitAd()">Нашр кардан</button>
+    <button class="btn g" style="width:100%;margin-top:8px" onclick="closeAd()">Бекор кардан</button>
+  </div>
+</div>
+
+<div id="gform">
+  <div class="gbox">
+    <h3>Шумо кистед?</h3>
+    <p>Ин барои гурӯҳҳои «Занҳо» ва дигарон лозим аст. Баъдтар тағйир намеёбад.</p>
+    <button class="btn" onclick="setGender('m')">Мард</button>
+    <button class="btn" onclick="setGender('f')">Зан</button>
+  </div>
+</div>
+
+<input type="file" id="pfile" accept="image/*" style="display:none">
+<input type="file" id="adphoto" accept="image/*" style="display:none">
+<div id="lb" onclick="this.style.display='none'"><img id="lbimg" alt=""></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const CATS = { cow: 'Гов', sheep: 'Гӯсфанд', other: 'Дигар' };
+let mode = 'login', socket = null, tok = '', myUid = '', room = 'village';
+let adsData = [], adFilter = 'all', adFile = null, roomList = [];
+let rec = null, chunks = [], recTimer = null, recStart = 0, recCancel = false, stream = null;
+
+function toggleMode(){
+  mode = mode === 'login' ? 'register' : 'login';
+  const reg = mode === 'register';
+  $('rname').style.display = reg ? 'block' : 'none';
+  $('atitle').textContent = reg ? 'Сабти ном' : 'Воридшавӣ';
+  $('abtn').textContent = reg ? 'Сабти ном кардан' : 'Ворид шудан';
+  $('alink').textContent = reg ? 'Ман ҳисоб дорам' : 'Сабти ном';
+  $('aerr').textContent = '';
+}
+
+async function submitAuth(){
+  $('aerr').textContent = 'Интизор шавед...';
+  try {
+    const r = await fetch('/api/' + mode, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: $('rname').value, phone: $('phone').value, password: $('pass').value })
+    });
+    const d = await r.json();
+    if (!r.ok){ $('aerr').textContent = d.error || 'Хато'; return; }
+    localStorage.setItem('token', d.token);
+    start(d.token);
+  } catch (e) {
+    $('aerr').textContent = 'Пайваст нашуд. Дубора кӯшиш кунед.';
+  }
+}
+
+function logout(){ localStorage.removeItem('token'); location.reload(); }
+
+function tab(n){
+  for (let i = 1; i <= 4; i++){
+    $('s' + i).classList.toggle('on', i === n);
+    $('b' + i).classList.toggle('on', i === n);
+  }
+  if (n === 1) scrollDown();
+}
+
+function hhmm(t){ return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+function scrollDown(){ const b = $('msgs'); b.scrollTop = b.scrollHeight; }
+function mediaUrl(id){ return '/media/' + id + '?t=' + tok; }
+function openImg(src){ $('lbimg').src = src; $('lb').style.display = 'flex'; }
+
+function setGender(g){
+  if (socket) socket.emit('setgender', g);
+  $('gform').style.display = 'none';
+}
+
+/* ---------- чат ---------- */
+function msgEl(m){
+  const mine = m.uid && m.uid === myUid;
+  const d = document.createElement('div');
+  d.className = 'b ' + (mine ? 'me' : 'ot');
+  if (!mine){
+    const n = document.createElement('div'); n.className = 'nm'; n.textContent = m.name; d.append(n);
+  }
+  if (m.kind === 'image'){
+    const im = document.createElement('img');
+    im.loading = 'lazy'; im.src = mediaUrl(m.media); im.onload = scrollDown;
+    im.onclick = () => openImg(im.src);
+    d.append(im);
+  } else if (m.kind === 'audio'){
+    const a = document.createElement('audio');
+    a.controls = true; a.preload = 'none'; a.src = mediaUrl(m.media);
+    d.append(a);
+  } else {
+    const p = document.createElement('div'); p.textContent = m.text || ''; d.append(p);
+  }
+  const t = document.createElement('div'); t.className = 'tm'; t.textContent = hhmm(m.time); d.append(t);
+  return d;
+}
+function addChat(m){ $('msgs').append(msgEl(m)); scrollDown(); }
+
+function renderRooms(){
+  const box = $('rooms'); box.innerHTML = '';
+  roomList.forEach((r) => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (r.id === room ? ' on' : '');
+    b.textContent = r.title;
+    b.onclick = () => selectRoom(r.id);
+    box.append(b);
+  });
+}
+function selectRoom(id){
+  room = id; $('msgs').innerHTML = ''; renderRooms();
+  if (socket) socket.emit('join', id);
+}
+
+/* ---------- бозор ---------- */
+function renderAdChips(){
+  const box = $('adchips'); box.innerHTML = '';
+  [['all', 'Ҳама'], ['cow', 'Гов'], ['sheep', 'Гӯсфанд'], ['other', 'Дигар']].forEach(([k, t]) => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (adFilter === k ? ' on' : '');
+    b.textContent = t;
+    b.onclick = () => { adFilter = k; renderAdChips(); renderAds(); };
+    box.append(b);
+  });
+}
+function adEl(a){
+  const c = document.createElement('div'); c.className = 'card';
+  if (a.photo){
+    const im = document.createElement('img');
+    im.loading = 'lazy'; im.src = mediaUrl(a.photo); im.alt = a.title;
+    im.onclick = () => openImg(im.src);
+    c.append(im);
+  }
+  const h = document.createElement('b'); h.textContent = a.title; c.append(h);
+  if (a.price){ const p = document.createElement('div'); p.className = 'price'; p.textContent = a.price; c.append(p); }
+  if (a.desc){ const d = document.createElement('div'); d.textContent = a.desc; c.append(d); }
+  const w = document.createElement('div'); w.className = 'd';
+  w.textContent = (CATS[a.cat] || '') + ' · ' + a.name + ' · ' + new Date(a.time).toLocaleDateString();
+  c.append(w);
+  const acts = document.createElement('div'); acts.className = 'acts';
+  const tel = document.createElement('a'); tel.href = 'tel:+' + a.phone; tel.textContent = '📞 Занг задан';
+  acts.append(tel);
+  if (a.uid === myUid){
+    const del = document.createElement('button'); del.textContent = '🗑 Нест кардан';
+    del.onclick = () => { if (confirm('Эълон нест шавад?')) socket.emit('addel', a.id); };
+    acts.append(del);
+  }
+  c.append(acts);
+  return c;
+}
+function renderAds(){
+  const box = $('ads'); box.innerHTML = '';
+  const list = adsData.filter((a) => adFilter === 'all' || a.cat === adFilter);
+  if (!list.length){
+    const e = document.createElement('div'); e.className = 'card'; e.textContent = 'Ҳоло эълон нест. Аввалин шумо гузоред!';
+    box.append(e); return;
+  }
+  list.forEach((a) => box.append(adEl(a)));
+}
+function openAd(){ $('adform').style.display = 'flex'; }
+function closeAd(){ $('adform').style.display = 'none'; }
+$('adphoto').onchange = () => {
+  adFile = $('adphoto').files[0] || null;
+  $('adpn').textContent = adFile ? '✔ ' + adFile.name : 'Расм интихоб нашудааст';
+};
+async function submitAd(){
+  const title = $('adt').value.trim();
+  if (!title){ alert('Сарлавҳа нависед'); return; }
+  $('adsend').disabled = true; $('adsend').textContent = 'Интизор шавед...';
+  try {
+    let photo = '';
+    if (adFile) photo = await upload('image/jpeg', await shrink(adFile));
+    socket.emit('ad', { cat: $('adc').value, title, price: $('adp').value, desc: $('add').value, photo });
+    $('adt').value = ''; $('adp').value = ''; $('add').value = '';
+    adFile = null; $('adphoto').value = ''; $('adpn').textContent = 'Расм интихоб нашудааст';
+    closeAd();
+  } catch (e) {
+    alert('Фиристода нашуд. Дубора кӯшиш кунед.');
+  }
+  $('adsend').disabled = false; $('adsend').textContent = 'Нашр кардан';
+}
+
+/* ---------- хабарҳо ---------- */
+function addNews(n, top){
+  const c = document.createElement('div'); c.className = 'card';
+  const h = document.createElement('b'); h.textContent = n.title;
+  const p = document.createElement('div'); p.textContent = n.text;
+  const d = document.createElement('div'); d.className = 'd'; d.textContent = new Date(n.time).toLocaleDateString();
+  c.append(h, p, d);
+  top ? $('news').prepend(c) : $('news').append(c);
+}
+
+/* ---------- пайвастшавӣ ---------- */
+function start(token){
+  tok = token;
+  $('auth').style.display = 'none';
+  $('app').style.display = 'flex';
+  $('out').style.display = 'block';
+  renderAdChips();
+  socket = io({ auth: { token } });
+  socket.on('connect_error', (e) => { if (e && e.message === 'auth') logout(); });
+  socket.on('me', (id) => { myUid = id; });
+  socket.on('needgender', () => { $('gform').style.display = 'flex'; });
+  socket.on('rooms', (list) => {
+    roomList = list;
+    if (!list.some((r) => r.id === room)) room = 'village';
+    renderRooms();
+    if (room !== 'village') socket.emit('join', room);
+  });
+  socket.on('init', (d) => {
+    $('news').innerHTML = '';
+    d.news.forEach((n) => addNews(n, false));
+    adsData = d.ads; renderAds();
+  });
+  socket.on('history', (d) => {
+    if (d.room !== room) return;
+    $('msgs').innerHTML = '';
+    d.chat.forEach(addChat);
+  });
+  socket.on('chat', (m) => { if ((m.room || 'village') === room) addChat(m); });
+  socket.on('news', (n) => addNews(n, true));
+  socket.on('ad', (a) => { adsData.unshift(a); renderAds(); });
+  socket.on('addel', (id) => { adsData = adsData.filter((a) => a.id !== id); renderAds(); });
+  socket.on('err', (e) => alert(e));
+}
+
+function upload(type, buf){
+  return new Promise((resolve, reject) => {
+    socket.timeout(25000).emit('upload', { type, data: buf }, (err, r) => {
+      if (err || !r || r.error) reject(new Error((r && r.error) || 'timeout'));
+      else resolve(r.id);
+    });
+  });
+}
+
+function sendChat(){
+  const text = $('text').value.trim();
+  if (!text || !socket) return;
+  socket.emit('chat', { room, kind: 'text', text });
+  $('text').value = '';
+  upd();
+}
+function upd(){ $('sbtn').textContent = $('text').value.trim() ? '➤' : '🎤'; }
+$('text').addEventListener('input', upd);
+$('text').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+$('sbtn').onclick = () => { if ($('text').value.trim()) sendChat(); else startRec(); };
+
+$('pbtn').onclick = () => $('pfile').click();
+$('pfile').onchange = () => { sendPhoto($('pfile').files[0]); $('pfile').value = ''; };
+
+async function shrink(file){
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 1100 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.75));
+  return blob.arrayBuffer();
+}
+async function sendPhoto(file){
+  if (!file || !socket) return;
+  try {
+    const id = await upload('image/jpeg', await shrink(file));
+    socket.emit('chat', { room, kind: 'image', media: id });
+  } catch (e) {
+    alert('Расм фиристода нашуд');
+  }
+}
+
+function fmt(s){ return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+
+async function startRec(){
+  if (!socket || (rec && rec.state === 'recording')) return;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    alert('Микрофон иҷозат надорад');
+    return;
+  }
+  const mt = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
+    .find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+  const opts = mt ? { mimeType: mt, audioBitsPerSecond: 24000 } : { audioBitsPerSecond: 24000 };
+  rec = new MediaRecorder(stream, opts);
+  chunks = []; recCancel = false;
+  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  rec.onstop = async () => {
+    clearInterval(recTimer);
+    stream.getTracks().forEach((t) => t.stop());
+    $('rec').style.display = 'none'; $('bar').style.display = 'flex';
+    if (recCancel) return;
+    const dur = Math.round((Date.now() - recStart) / 1000);
+    if (dur < 1) return;
+    const mime = rec.mimeType || 'audio/webm';
+    const buf = await new Blob(chunks, { type: mime }).arrayBuffer();
+    if (buf.byteLength > 1900000){ alert('Паём аз ҳад дароз аст'); return; }
+    try {
+      const id = await upload(mime.split(';')[0], buf);
+      socket.emit('chat', { room, kind: 'audio', media: id, dur });
+    } catch (e) {
+      alert('Овоз фиристода нашуд');
+    }
+  };
+  rec.start();
+  recStart = Date.now();
+  $('bar').style.display = 'none'; $('rec').style.display = 'flex';
+  $('rt').textContent = '● 0:00';
+  recTimer = setInterval(() => {
+    const s = Math.floor((Date.now() - recStart) / 1000);
+    $('rt').textContent = '● ' + fmt(s);
+    if (s >= 60) stopRec(false);
+  }, 300);
+}
+function stopRec(cancel){
+  recCancel = cancel;
+  if (rec && rec.state !== 'inactive') rec.stop();
+}
+$('rsend').onclick = () => stopRec(false);
+$('rcancel').onclick = () => stopRec(true);
+
+function sendNews(){
+  if (!socket) return;
+  socket.emit('news', { password: $('pw').value, title: $('nt').value, text: $('nx').value });
+  $('nt').value = ''; $('nx').value = '';
+}
+
+const saved = localStorage.getItem('token');
+if (saved) start(saved);
+</script>
+</body>
+</html>
