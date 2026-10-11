@@ -155,6 +155,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
         <input id="nt" placeholder="Сарлавҳа">
         <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
         <button class="btn" onclick="sendNews()">Нашр кардан</button>
+        <button class="btn g" style="width:100%;margin-top:18px" onclick="testPush()">🔔 Санҷиши огоҳинома</button>
       </div>
     </div>
   </div>
@@ -258,18 +259,34 @@ function updNotif(){
 }
 async function subscribePush(){
   try {
-    if (!pushOK() || Notification.permission !== 'granted') return;
+    if (!pushOK()) return 'браузер дастгирӣ намекунад';
+    if (Notification.permission !== 'granted') return 'иҷозат нест: ' + Notification.permission;
     const reg = await navigator.serviceWorker.register('/sw.js');
     await navigator.serviceWorker.ready;
     if (!pushKey){
       const r = await fetch('/api/vapid');
       pushKey = (await r.json()).key;
     }
-    if (!pushKey) return;
+    if (!pushKey) return 'калид нест';
     let sub = await reg.pushManager.getSubscription();
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(pushKey) });
     if (socket) socket.emit('pushsub', sub.toJSON());
-  } catch (e) {}
+    return 'ok';
+  } catch (e) { return 'хато: ' + ((e && e.message) || e); }
+}
+async function testPush(){
+  const st = await subscribePush();
+  if (st !== 'ok'){ alert('Обуна нашуд: ' + st); return; }
+  await new Promise((r) => setTimeout(r, 1500));
+  try {
+    const r = await fetch('/api/pushtest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: tok })
+    });
+    const d = await r.json();
+    alert('Обунаҳо дар сервер: ' + d.subs + '\nДар 10 сонияи оянда огоҳинома меояд. Ҳозир барномаро пӯшед (ба экрани асосӣ равед).');
+  } catch (e) { alert('Хато: ' + e.message); }
 }
 async function enablePush(){
   if (!pushOK()){ alert('Браузери шумо огоҳиномаро дастгирӣ намекунад'); return; }
