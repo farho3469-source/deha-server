@@ -78,6 +78,32 @@ app.post('/api/unpush', async (req, res) => {
   }
 });
 
+app.post('/api/pushtest', async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.body.token || '') });
+    if (!u) return fail(res, 401, 'auth');
+    const list = await subs.find({ uid: String(u._id) }).toArray();
+    res.json({ subs: list.length });
+    setTimeout(() => {
+      list.forEach(async (x) => {
+        try {
+          await webpush.sendNotification(
+            { endpoint: x.endpoint, keys: x.keys },
+            JSON.stringify({ title: 'Деҳа', body: 'Санҷиши огоҳинома ✔', tag: 'test' }),
+            { TTL: 60, urgency: 'high' }
+          );
+          console.log('test push ok');
+        } catch (e) {
+          console.error('test push fail', e.statusCode, e.body);
+        }
+      });
+    }, 10000);
+  } catch (e) {
+    console.error(e);
+    fail(res, 500, 'Хатои сервер');
+  }
+});
+
 app.post('/api/register', async (req, res) => {
   try {
     const name = String(req.body.name || '').trim().slice(0, 30);
