@@ -29,6 +29,9 @@ input,textarea,select{width:100%;padding:12px;margin:5px 0;font-size:16px;border
 .chips{display:flex;gap:6px;overflow-x:auto;padding:8px 10px;flex:none;background:#fff;border-bottom:1px solid #ddd}
 .chip{flex:none;border:1px solid #2f6b3a;color:#2f6b3a;background:#fff;border-radius:16px;padding:6px 14px;font-size:14px}
 .chip.on{background:#2f6b3a;color:#fff}
+#notif{display:none;flex:none;align-items:center;gap:8px;background:#fff3cd;color:#664d03;padding:8px 12px;font-size:13px;border-bottom:1px solid #ddd}
+#notif span{flex:1}
+#notif .btn{padding:6px 12px;font-size:14px;flex:none}
 #msgs{flex:1;overflow-y:auto;padding:10px}
 .b{max-width:84%;width:fit-content;margin:6px 0;padding:7px 10px;border-radius:14px;font-size:15px;word-break:break-word}
 .ot{background:#fff;border-top-left-radius:4px}
@@ -37,6 +40,16 @@ input,textarea,select{width:100%;padding:12px;margin:5px 0;font-size:16px;border
 .tm{font-size:11px;color:#777;text-align:right;margin-top:3px}
 .b img{display:block;max-width:100%;max-height:260px;border-radius:10px}
 .b audio{width:230px;max-width:100%}
+.rq{border-left:3px solid #2f6b3a;background:rgba(0,0,0,.06);border-radius:6px;padding:4px 8px;margin-bottom:5px;font-size:13px;color:#444}
+.rq b{display:block;font-size:12px;color:#2f6b3a}
+.rq span{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:60vw}
+.hl{animation:hl 1.4s}
+@keyframes hl{0%,70%{box-shadow:0 0 0 3px #f5c542}100%{box-shadow:0 0 0 3px transparent}}
+#rpl{display:none;flex:none;align-items:center;gap:8px;background:#fff;border-top:1px solid #ddd;padding:6px 10px}
+#rpl .q{flex:1;min-width:0;border-left:3px solid #2f6b3a;padding-left:8px;font-size:13px;color:#444}
+#rpl .q b{display:block;color:#2f6b3a;font-size:12px}
+#rpl .q span{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#rpl .ic{width:34px;height:34px;font-size:15px}
 #comp{flex:none;display:flex;align-items:center;padding:8px;background:#fff;border-top:1px solid #ddd}
 #bar{display:flex;flex:1;gap:6px;align-items:center}
 #text{flex:1;border-radius:22px;padding:10px 14px;margin:0}
@@ -67,6 +80,10 @@ nav button.on{color:#2f6b3a;font-weight:600}
 #gform .gbox h3{margin:0 0 6px;font-size:20px}
 #gform .gbox p{margin:0 0 14px;color:#666;font-size:14px}
 #gform .gbox .btn{width:100%;margin:5px 0}
+#menu{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:11;align-items:flex-end;justify-content:center}
+#menu .mbox{background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom))}
+#menu .mbox .btn{width:100%;margin:5px 0}
+#mpv{font-size:14px;color:#555;border-left:3px solid #2f6b3a;padding-left:8px;margin-bottom:8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 </style>
 </head>
 <body>
@@ -100,7 +117,15 @@ nav button.on{color:#2f6b3a;font-weight:600}
   <div id="views">
     <div class="sec on" id="s1">
       <div class="chips" id="rooms"></div>
+      <div id="notif">
+        <span>🔔 Барои он ки вақти пӯшида будани барнома ҳам паём биёяд</span>
+        <button class="btn" onclick="enablePush()">Фаъол кардан</button>
+      </div>
       <div id="msgs"></div>
+      <div id="rpl">
+        <div class="q"><b id="rpln"></b><span id="rplt"></span></div>
+        <button class="ic g" onclick="setReply(null)" aria-label="Бекор">✕</button>
+      </div>
       <div id="comp">
         <div id="bar">
           <button class="ic g" id="pbtn" aria-label="Расм">📷</button>
@@ -126,7 +151,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
 
     <div class="sec" id="s4">
       <div class="pad">
-        <input id="pw" type="password" placeholder="Пароли админ">
+        <input id="pw" type="password" autocomplete="new-password" placeholder="Пароли админ">
         <input id="nt" placeholder="Сарлавҳа">
         <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
         <button class="btn" onclick="sendNews()">Нашр кардан</button>
@@ -169,6 +194,15 @@ nav button.on{color:#2f6b3a;font-weight:600}
   </div>
 </div>
 
+<div id="menu" onclick="closeMenu()">
+  <div class="mbox" onclick="event.stopPropagation()">
+    <div id="mpv"></div>
+    <button class="btn" id="mrep">↩ Ҷавоб додан</button>
+    <button class="btn" id="mdel" style="background:#b00020">🗑 Нест кардан</button>
+    <button class="btn g" onclick="closeMenu()">Бекор кардан</button>
+  </div>
+</div>
+
 <input type="file" id="pfile" accept="image/*" style="display:none">
 <input type="file" id="adphoto" accept="image/*" style="display:none">
 <div id="lb" onclick="this.style.display='none'"><img id="lbimg" alt=""></div>
@@ -180,6 +214,7 @@ const CATS = { cow: 'Гов', sheep: 'Гӯсфанд', other: 'Дигар' };
 let mode = 'login', socket = null, tok = '', myUid = '', room = 'village';
 let adsData = [], adFilter = 'all', adFile = null, roomList = [];
 let rec = null, chunks = [], recTimer = null, recStart = 0, recCancel = false, stream = null;
+let replyTo = null, menuMsg = null, pushKey = '';
 
 /* ---------- садои паёми нав ---------- */
 let actx = null;
@@ -211,6 +246,39 @@ function beep(){
   } catch (e) {}
 }
 
+/* ---------- огоҳинома (push), вақте барнома пӯшида аст ---------- */
+function pushOK(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function b64(s){
+  const p = '='.repeat((4 - s.length % 4) % 4);
+  const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(r, (c) => c.charCodeAt(0));
+}
+function updNotif(){
+  $('notif').style.display = (pushOK() && Notification.permission !== 'granted') ? 'flex' : 'none';
+}
+async function subscribePush(){
+  try {
+    if (!pushOK() || Notification.permission !== 'granted') return;
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    if (!pushKey){
+      const r = await fetch('/api/vapid');
+      pushKey = (await r.json()).key;
+    }
+    if (!pushKey) return;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(pushKey) });
+    if (socket) socket.emit('pushsub', sub.toJSON());
+  } catch (e) {}
+}
+async function enablePush(){
+  if (!pushOK()){ alert('Браузери шумо огоҳиномаро дастгирӣ намекунад'); return; }
+  const p = await Notification.requestPermission();
+  if (p === 'granted') await subscribePush();
+  else alert('Огоҳинома манъ шуд. Дар танзимоти браузер (Site settings → Notifications) иҷозат диҳед.');
+  updNotif();
+}
+
 function toggleMode(){
   mode = mode === 'login' ? 'register' : 'login';
   const reg = mode === 'register';
@@ -238,7 +306,23 @@ async function submitAuth(){
   }
 }
 
-function logout(){ localStorage.removeItem('token'); location.reload(); }
+async function logout(){
+  try {
+    if (pushOK()){
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg && await reg.pushManager.getSubscription();
+      if (sub){
+        await fetch('/api/unpush', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: tok, endpoint: sub.endpoint })
+        });
+      }
+    }
+  } catch (e) {}
+  localStorage.removeItem('token');
+  location.reload();
+}
 
 function tab(n){
   for (let i = 1; i <= 4; i++){
@@ -259,17 +343,67 @@ function setGender(g){
 }
 
 /* ---------- чат ---------- */
+function prevText(m){
+  return m.kind === 'image' ? '📷 Расм' : m.kind === 'audio' ? '🎤 Паёми овозӣ' : (m.text || '');
+}
+function setReply(m){
+  replyTo = m ? { id: m.id, name: m.uid === myUid ? 'Шумо' : m.name, text: prevText(m) } : null;
+  $('rpl').style.display = replyTo ? 'flex' : 'none';
+  if (replyTo){
+    $('rpln').textContent = replyTo.name;
+    $('rplt').textContent = replyTo.text;
+  }
+}
+function takeReply(){
+  const id = replyTo ? replyTo.id : '';
+  setReply(null);
+  return id;
+}
+function openMenu(m){
+  menuMsg = m;
+  $('mpv').textContent = (m.uid === myUid ? 'Шумо' : m.name) + ': ' + prevText(m);
+  $('mdel').style.display = (m.uid === myUid || $('pw').value.trim()) ? 'block' : 'none';
+  $('menu').style.display = 'flex';
+}
+function closeMenu(){ $('menu').style.display = 'none'; menuMsg = null; }
+$('mrep').onclick = () => {
+  const m = menuMsg; closeMenu();
+  if (!m) return;
+  setReply(m); $('text').focus();
+};
+$('mdel').onclick = () => {
+  const m = menuMsg; closeMenu();
+  if (!m || !socket) return;
+  if (confirm('Паём нест шавад?')) socket.emit('msgdel', { id: m.id, password: $('pw').value });
+};
+
 function msgEl(m){
   const mine = m.uid && m.uid === myUid;
   const d = document.createElement('div');
   d.className = 'b ' + (mine ? 'me' : 'ot');
+  d.dataset.id = m.id || '';
   if (!mine){
     const n = document.createElement('div'); n.className = 'nm'; n.textContent = m.name; d.append(n);
+  }
+  if (m.reply){
+    const q = document.createElement('div'); q.className = 'rq';
+    const qn = document.createElement('b'); qn.textContent = m.reply.uid === myUid ? 'Шумо' : m.reply.name;
+    const qt = document.createElement('span'); qt.textContent = m.reply.text;
+    q.append(qn, qt);
+    q.onclick = (e) => {
+      e.stopPropagation();
+      const t = document.querySelector('[data-id="' + m.reply.id + '"]');
+      if (t){
+        t.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        t.classList.remove('hl'); void t.offsetWidth; t.classList.add('hl');
+      }
+    };
+    d.append(q);
   }
   if (m.kind === 'image'){
     const im = document.createElement('img');
     im.loading = 'lazy'; im.src = mediaUrl(m.media); im.onload = scrollDown;
-    im.onclick = () => openImg(im.src);
+    im.onclick = (e) => { e.stopPropagation(); openImg(im.src); };
     d.append(im);
   } else if (m.kind === 'audio'){
     const a = document.createElement('audio');
@@ -279,6 +413,10 @@ function msgEl(m){
     const p = document.createElement('div'); p.textContent = m.text || ''; d.append(p);
   }
   const t = document.createElement('div'); t.className = 'tm'; t.textContent = hhmm(m.time); d.append(t);
+  d.onclick = (e) => {
+    if (!m.id || e.target.closest('audio,img,.rq')) return;
+    openMenu(m);
+  };
   return d;
 }
 function addChat(m){ $('msgs').append(msgEl(m)); scrollDown(); }
@@ -294,7 +432,7 @@ function renderRooms(){
   });
 }
 function selectRoom(id){
-  room = id; $('msgs').innerHTML = ''; renderRooms();
+  room = id; $('msgs').innerHTML = ''; renderRooms(); setReply(null);
   if (socket) socket.emit('join', id);
 }
 
@@ -384,6 +522,7 @@ function start(token){
   $('out').style.display = 'block';
   renderAdChips();
   socket = io({ auth: { token } });
+  socket.on('connect', () => socket.emit('vis', document.visibilityState === 'visible'));
   socket.on('connect_error', (e) => { if (e && e.message === 'auth') logout(); });
   socket.on('me', (id) => { myUid = id; });
   socket.on('needgender', () => { $('gform').style.display = 'flex'; });
@@ -407,11 +546,20 @@ function start(token){
     if (m.uid !== myUid) beep();
     if ((m.room || 'village') === room) addChat(m);
   });
+  socket.on('msgdel', (id) => {
+    const el = document.querySelector('[data-id="' + id + '"]');
+    if (el) el.remove();
+  });
   socket.on('news', (n) => addNews(n, true));
   socket.on('ad', (a) => { adsData.unshift(a); renderAds(); });
   socket.on('addel', (id) => { adsData = adsData.filter((a) => a.id !== id); renderAds(); });
   socket.on('err', (e) => alert(e));
+  updNotif();
+  subscribePush();
 }
+document.addEventListener('visibilitychange', () => {
+  if (socket) socket.emit('vis', document.visibilityState === 'visible');
+});
 
 function upload(type, buf){
   return new Promise((resolve, reject) => {
@@ -425,7 +573,7 @@ function upload(type, buf){
 function sendChat(){
   const text = $('text').value.trim();
   if (!text || !socket) return;
-  socket.emit('chat', { room, kind: 'text', text });
+  socket.emit('chat', { room, kind: 'text', text, reply: takeReply() });
   $('text').value = '';
   upd();
 }
@@ -450,7 +598,7 @@ async function sendPhoto(file){
   if (!file || !socket) return;
   try {
     const id = await upload('image/jpeg', await shrink(file));
-    socket.emit('chat', { room, kind: 'image', media: id });
+    socket.emit('chat', { room, kind: 'image', media: id, reply: takeReply() });
   } catch (e) {
     alert('Расм фиристода нашуд');
   }
@@ -484,7 +632,7 @@ async function startRec(){
     if (buf.byteLength > 1900000){ alert('Паём аз ҳад дароз аст'); return; }
     try {
       const id = await upload(mime.split(';')[0], buf);
-      socket.emit('chat', { room, kind: 'audio', media: id, dur });
+      socket.emit('chat', { room, kind: 'audio', media: id, dur, reply: takeReply() });
     } catch (e) {
       alert('Овоз фиристода нашуд');
     }
