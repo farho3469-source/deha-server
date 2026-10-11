@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const webpush = require('web-push');
 const { MongoClient, ObjectId } = require('mongodb');
 const { Server } = require('socket.io');
 
@@ -14,7 +15,8 @@ const MONGO_URI = String(process.env.MONGODB_URI || '')
   .replace(/[^\x21-\x7E]/g, '')
   .replace(/["'<>]/g, '');
 const client = new MongoClient(MONGO_URI);
-let users, chat, news, media, ads;
+let users, chat, news, media, ads, subs, config;
+let VAPID_PUBLIC = '';
 const AUDIO_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4'];
 const HEX24 = /^[0-9a-f]{24}$/;
 
@@ -42,18 +44,39 @@ const adOut = (a) => ({
   photo: a.photo || '',
   time: a.time,
 });
+const chatOut = (d) => {
+  const { _id, ...rest } = d;
+  return { ...rest, id: String(_id) };
+};
+const previewOf = (o) =>
+  o.kind === 'image' ? '📷 Расм' : o.kind === 'audio' ? '🎤 Паёми овозӣ' : String(o.text || '').slice(0, 80);
 
 app.use(express.json());
 app.use(
   express.static('public', {
     setHeaders: (res, p) => {
-      if (p.endsWith('.html')) res.set('Cache-Control', 'no-cache');
+      if (p.endsWith('.html') || p.endsWith('sw.js')) res.set('Cache-Control', 'no-cache');
     },
   })
 );
 
 const cleanPhone = (p) => String(p || '').replace(/[^\d]/g, '');
 const fail = (res, code, error) => res.status(code).json({ error });
+
+app.get('/api/vapid', (req, res) => res.json({ key: VAPID_PUBLIC }));
+
+app.post('/api/unpush', async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.body.token || '') });
+    if (u && typeof req.body.endpoint === 'string') {
+      await subs.deleteOne({ endpoint: req.body.endpoint, uid: String(u._id) });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.json({ ok: false });
+  }
+});
 
 app.post('/api/register', async (req, res) => {
   try {
@@ -112,6 +135,43 @@ app.get('/media/:id', async (req, res) => {
   }
 });
 
+/* ---------- огоҳиномаи push ---------- */
+async function pushMsg(msg, roomId) {
+  try {
+    if (!VAPID_PUBLIC) return;
+    const inRoom = await io.in('r:' + roomId).fetchSockets();
+    const skip = new Set(inRoom.filter((x) => x.data && x.data.vis !== false).map((x) => x.data.uid));
+    skip.add(msg.uid);
+    let list = await subs.find({ uid: { $nin: [...skip] } }).toArray();
+    const only = ROOMS[roomId].only;
+    if (only) {
+      const okIds = new Set(
+        (await users.find({ gender: only }, { projection: { _id: 1 } }).toArray()).map((x) => String(x._id))
+      );
+      list = list.filter((x) => okIds.has(x.uid));
+    }
+    if (!list.length) return;
+    const title = roomId === 'village' ? msg.name : msg.name + ' · ' + ROOMS[roomId].title;
+    const payload = JSON.stringify({ title, body: previewOf(msg), tag: 'room-' + roomId });
+    await Promise.all(
+      list.map(async (x) => {
+        try {
+          await webpush.sendNotification({ endpoint: x.endpoint, keys: x.keys }, payload, {
+            TTL: 3600,
+            urgency: 'high',
+          });
+        } catch (e) {
+          if (e.statusCode === 404 || e.statusCode === 410) {
+            await subs.deleteOne({ endpoint: x.endpoint });
+          }
+        }
+      })
+    );
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 io.use(async (socket, next) => {
   try {
     const token = String((socket.handshake.auth || {}).token || '');
@@ -119,6 +179,8 @@ io.use(async (socket, next) => {
     const u = await users.findOne({ token });
     if (!u) return next(new Error('auth'));
     socket.user = u;
+    socket.data.uid = String(u._id);
+    socket.data.vis = true;
     next();
   } catch (e) {
     next(new Error('auth'));
@@ -135,12 +197,8 @@ io.on('connection', (s) => {
     if (!canEnter(s.user, r)) return s.emit('err', 'Ба ин гурӯҳ дастрасӣ нест');
     Object.keys(ROOMS).forEach((x) => s.leave('r:' + x));
     s.join('r:' + r);
-    const list = await chat
-      .find(roomFilter(r), { projection: { _id: 0 } })
-      .sort({ time: -1 })
-      .limit(100)
-      .toArray();
-    s.emit('history', { room: r, chat: list.reverse() });
+    const list = await chat.find(roomFilter(r)).sort({ time: -1 }).limit(100).toArray();
+    s.emit('history', { room: r, chat: list.reverse().map(chatOut) });
   };
 
   (async () => {
@@ -157,6 +215,39 @@ io.on('connection', (s) => {
       console.error(e);
     }
   })();
+
+  s.on('vis', (v) => {
+    s.data.vis = !!v;
+  });
+
+  s.on('pushsub', async (sub) => {
+    try {
+      if (
+        !sub ||
+        typeof sub.endpoint !== 'string' ||
+        !sub.endpoint.startsWith('https://') ||
+        !sub.keys ||
+        typeof sub.keys.p256dh !== 'string' ||
+        typeof sub.keys.auth !== 'string'
+      ) {
+        return;
+      }
+      await subs.updateOne(
+        { endpoint: sub.endpoint },
+        {
+          $set: {
+            uid,
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth },
+            time: Date.now(),
+          },
+        },
+        { upsert: true }
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
   s.on('setgender', async (g) => {
     try {
@@ -205,8 +296,35 @@ io.on('connection', (s) => {
         if (!HEX24.test(msg.media)) return;
         msg.dur = Math.min(Number(m.dur) || 0, 120);
       }
-      await chat.insertOne({ ...msg });
+      const rid = String(m.reply || '');
+      if (HEX24.test(rid)) {
+        const o = await chat.findOne({ _id: new ObjectId(rid) });
+        if (o && (o.room || 'village') === room) {
+          msg.reply = { id: rid, uid: o.uid, name: o.name, text: previewOf(o) };
+        }
+      }
+      const r = await chat.insertOne({ ...msg });
+      msg.id = String(r.insertedId);
       io.to('r:' + room).emit('chat', msg);
+      pushMsg(msg, room);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('msgdel', async (m) => {
+    try {
+      const id = String((m && m.id) || '');
+      if (!HEX24.test(id)) return;
+      const admin = String((m && m.password) || '').trim() === ADMIN;
+      const _id = new ObjectId(id);
+      const doc = await chat.findOne(admin ? { _id } : { _id, uid });
+      if (!doc) return s.emit('err', 'Нест кардан мумкин нест');
+      await chat.deleteOne({ _id });
+      if (doc.media && HEX24.test(doc.media)) {
+        await media.deleteOne({ _id: new ObjectId(doc.media) }).catch(() => {});
+      }
+      io.emit('msgdel', id);
     } catch (e) {
       console.error(e);
     }
@@ -272,7 +390,21 @@ io.on('connection', (s) => {
     news = db.collection('news');
     media = db.collection('media');
     ads = db.collection('ads');
+    subs = db.collection('subs');
+    config = db.collection('config');
     await users.createIndex({ phone: 1 }, { unique: true });
+    await subs.createIndex({ endpoint: 1 }, { unique: true });
+    await subs.createIndex({ uid: 1 });
+
+    let v = await config.findOne({ _id: 'vapid' });
+    if (!v) {
+      const k = webpush.generateVAPIDKeys();
+      v = { _id: 'vapid', publicKey: k.publicKey, privateKey: k.privateKey };
+      await config.insertOne(v);
+    }
+    webpush.setVapidDetails('mailto:admin@example.com', v.publicKey, v.privateKey);
+    VAPID_PUBLIC = v.publicKey;
+
     server.listen(process.env.PORT || 3000, () => console.log('Деҳа кор мекунад'));
   } catch (e) {
     console.error('Хатои база:', e);
