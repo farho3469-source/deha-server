@@ -44,7 +44,13 @@ const adOut = (a) => ({
 });
 
 app.use(express.json());
-app.use(express.static('public'));
+app.use(
+  express.static('public', {
+    setHeaders: (res, p) => {
+      if (p.endsWith('.html')) res.set('Cache-Control', 'no-cache');
+    },
+  })
+);
 
 const cleanPhone = (p) => String(p || '').replace(/[^\d]/g, '');
 const fail = (res, code, error) => res.status(code).json({ error });
@@ -58,7 +64,6 @@ app.post('/api/register', async (req, res) => {
     if (!name || phone.length < 9 || phone.length > 15 || password.length < 6) {
       return fail(res, 400, 'Маълумот нодуруст аст');
     }
-    if (!gender) return fail(res, 400, 'Мард ё зан интихоб кунед');
     if (await users.findOne({ phone })) {
       return fail(res, 409, 'Ин рақам аллакай сабт шудааст');
     }
