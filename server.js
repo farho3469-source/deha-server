@@ -124,7 +124,8 @@ io.on('connection', (s) => {
   const uid = String(s.user._id);
   s.emit('me', uid);
   s.emit('rooms', myRooms(s.user));
-if (!s.user.gender) s.emit('needgender');
+  if (!s.user.gender) s.emit('needgender');
+
   const enter = async (r) => {
     if (!canEnter(s.user, r)) return s.emit('err', 'Ба ин гурӯҳ дастрасӣ нест');
     Object.keys(ROOMS).forEach((x) => s.leave('r:' + x));
@@ -151,17 +152,18 @@ if (!s.user.gender) s.emit('needgender');
       console.error(e);
     }
   })();
+
   s.on('setgender', async (g) => {
-  try {
-    if (s.user.gender) return;
-    if (g !== 'm' && g !== 'f') return;
-    await users.updateOne({ _id: s.user._id }, { $set: { gender: g } });
-    s.user.gender = g;
-    s.emit('rooms', myRooms(s.user));
-  } catch (e) {
-    console.error(e);
-  }
-});
+    try {
+      if (s.user.gender) return;
+      if (g !== 'm' && g !== 'f') return;
+      await users.updateOne({ _id: s.user._id }, { $set: { gender: g } });
+      s.user.gender = g;
+      s.emit('rooms', myRooms(s.user));
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
   s.on('join', (r) => {
     enter(String(r)).catch(console.error);
