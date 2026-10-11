@@ -181,6 +181,36 @@ let mode = 'login', socket = null, tok = '', myUid = '', room = 'village';
 let adsData = [], adFilter = 'all', adFile = null, roomList = [];
 let rec = null, chunks = [], recTimer = null, recStart = 0, recCancel = false, stream = null;
 
+/* ---------- садои паёми нав ---------- */
+let actx = null;
+function unlockSound(){
+  try {
+    if (!actx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    if (actx && actx.state === 'suspended') actx.resume();
+  } catch (e) {}
+}
+['click', 'touchstart', 'keydown'].forEach((ev) => document.addEventListener(ev, unlockSound, { passive: true }));
+
+function beep(){
+  try {
+    if (!actx || actx.state !== 'running') return;
+    const t = actx.currentTime;
+    [[880, 0], [1175, 0.15]].forEach(([f, d]) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + d);
+      g.gain.exponentialRampToValueAtTime(0.4, t + d + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.25);
+      o.connect(g); g.connect(actx.destination);
+      o.start(t + d); o.stop(t + d + 0.3);
+    });
+    if (navigator.vibrate) navigator.vibrate(120);
+  } catch (e) {}
+}
+
 function toggleMode(){
   mode = mode === 'login' ? 'register' : 'login';
   const reg = mode === 'register';
@@ -373,7 +403,10 @@ function start(token){
     $('msgs').innerHTML = '';
     d.chat.forEach(addChat);
   });
-  socket.on('chat', (m) => { if ((m.room || 'village') === room) addChat(m); });
+  socket.on('chat', (m) => {
+    if (m.uid !== myUid) beep();
+    if ((m.room || 'village') === room) addChat(m);
+  });
   socket.on('news', (n) => addNews(n, true));
   socket.on('ad', (a) => { adsData.unshift(a); renderAds(); });
   socket.on('addel', (id) => { adsData = adsData.filter((a) => a.id !== id); renderAds(); });
