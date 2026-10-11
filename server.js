@@ -14,8 +14,34 @@ const MONGO_URI = String(process.env.MONGODB_URI || '')
   .replace(/[^\x21-\x7E]/g, '')
   .replace(/["'<>]/g, '');
 const client = new MongoClient(MONGO_URI);
-let users, chat, news, media;
+let users, chat, news, media, ads;
 const AUDIO_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4'];
+const HEX24 = /^[0-9a-f]{24}$/;
+
+const ROOMS = {
+  village: { title: 'Деҳа', only: null },
+  women: { title: 'Занҳо', only: 'f' },
+  football: { title: 'Футболистон', only: null },
+};
+const canEnter = (u, r) => ROOMS[r] && (!ROOMS[r].only || u.gender === ROOMS[r].only);
+const myRooms = (u) =>
+  Object.keys(ROOMS)
+    .filter((r) => canEnter(u, r))
+    .map((r) => ({ id: r, title: ROOMS[r].title }));
+const roomFilter = (r) =>
+  r === 'village' ? { $or: [{ room: 'village' }, { room: { $exists: false } }] } : { room: r };
+const adOut = (a) => ({
+  id: String(a._id),
+  uid: a.uid,
+  name: a.name,
+  phone: a.phone,
+  title: a.title,
+  price: a.price,
+  desc: a.desc,
+  cat: a.cat,
+  photo: a.photo || '',
+  time: a.time,
+});
 
 app.use(express.json());
 app.use(express.static('public'));
@@ -28,9 +54,11 @@ app.post('/api/register', async (req, res) => {
     const name = String(req.body.name || '').trim().slice(0, 30);
     const phone = cleanPhone(req.body.phone);
     const password = String(req.body.password || '');
+    const gender = req.body.gender === 'f' ? 'f' : req.body.gender === 'm' ? 'm' : '';
     if (!name || phone.length < 9 || phone.length > 15 || password.length < 6) {
       return fail(res, 400, 'Маълумот нодуруст аст');
     }
+    if (!gender) return fail(res, 400, 'Мард ё зан интихоб кунед');
     if (await users.findOne({ phone })) {
       return fail(res, 409, 'Ин рақам аллакай сабт шудааст');
     }
@@ -38,6 +66,7 @@ app.post('/api/register', async (req, res) => {
     await users.insertOne({
       name,
       phone,
+      gender,
       hash: await bcrypt.hash(password, 10),
       token,
       created: Date.now(),
@@ -66,13 +95,8 @@ app.get('/media/:id', async (req, res) => {
   try {
     const u = await users.findOne({ token: String(req.query.t || '') });
     if (!u) return res.status(401).end();
-    let oid;
-    try {
-      oid = new ObjectId(req.params.id);
-    } catch (e) {
-      return res.status(404).end();
-    }
-    const m = await media.findOne({ _id: oid });
+    if (!HEX24.test(req.params.id)) return res.status(404).end();
+    const m = await media.findOne({ _id: new ObjectId(req.params.id) });
     if (!m) return res.status(404).end();
     res.set('Content-Type', m.type);
     res.set('Cache-Control', 'private, max-age=31536000');
@@ -97,61 +121,111 @@ io.use(async (socket, next) => {
 });
 
 io.on('connection', (s) => {
-  s.emit('me', String(s.user._id));
+  const uid = String(s.user._id);
+  s.emit('me', uid);
+  s.emit('rooms', myRooms(s.user));
+
+  const enter = async (r) => {
+    if (!canEnter(s.user, r)) return s.emit('err', 'Ба ин гурӯҳ дастрасӣ нест');
+    Object.keys(ROOMS).forEach((x) => s.leave('r:' + x));
+    s.join('r:' + r);
+    const list = await chat
+      .find(roomFilter(r), { projection: { _id: 0 } })
+      .sort({ time: -1 })
+      .limit(100)
+      .toArray();
+    s.emit('history', { room: r, chat: list.reverse() });
+  };
 
   (async () => {
     try {
-      const opts = { projection: { _id: 0 } };
-      const lastChat = await chat.find({}, opts).sort({ time: -1 }).limit(100).toArray();
-      const allNews = await news.find({}, opts).sort({ time: -1 }).limit(100).toArray();
-      s.emit('init', { chat: lastChat.reverse(), news: allNews });
+      const allNews = await news
+        .find({}, { projection: { _id: 0 } })
+        .sort({ time: -1 })
+        .limit(100)
+        .toArray();
+      const adList = await ads.find({}).sort({ time: -1 }).limit(100).toArray();
+      s.emit('init', { news: allNews, ads: adList.map(adOut) });
+      await enter('village');
     } catch (e) {
       console.error(e);
     }
   })();
 
+  s.on('join', (r) => {
+    enter(String(r)).catch(console.error);
+  });
+
+  s.on('upload', async (m, cb) => {
+    if (typeof cb !== 'function') return;
+    try {
+      const type = String((m && m.type) || '').split(';')[0];
+      const ok = type === 'image/jpeg' || AUDIO_TYPES.includes(type);
+      if (!ok || !m.data || !m.data.length || m.data.length > 2000000) {
+        return cb({ error: 'Файл нодуруст аст' });
+      }
+      const r = await media.insertOne({ type, data: Buffer.from(m.data), time: Date.now() });
+      cb({ id: String(r.insertedId) });
+    } catch (e) {
+      console.error(e);
+      cb({ error: 'Хатои сервер' });
+    }
+  });
+
   s.on('chat', async (m) => {
     try {
-      const text = String((m && m.text) || '').trim().slice(0, 500);
-      if (!text) return;
-      const msg = {
-        uid: String(s.user._id),
-        name: s.user.name,
-        kind: 'text',
-        text,
-        time: Date.now(),
-      };
+      if (!m) return;
+      const room = String(m.room || 'village');
+      if (!canEnter(s.user, room)) return;
+      const kind = ['text', 'image', 'audio'].includes(m.kind) ? m.kind : 'text';
+      const msg = { uid, name: s.user.name, room, kind, time: Date.now() };
+      if (kind === 'text') {
+        msg.text = String(m.text || '').trim().slice(0, 500);
+        if (!msg.text) return;
+      } else {
+        msg.media = String(m.media || '');
+        if (!HEX24.test(msg.media)) return;
+        msg.dur = Math.min(Number(m.dur) || 0, 120);
+      }
       await chat.insertOne({ ...msg });
-      io.emit('chat', msg);
+      io.to('r:' + room).emit('chat', msg);
     } catch (e) {
       console.error(e);
     }
   });
 
-  s.on('media', async (m) => {
+  s.on('ad', async (m) => {
     try {
-      const kind = m && m.kind;
-      const type = String((m && m.type) || '').split(';')[0];
-      const okType =
-        (kind === 'image' && type === 'image/jpeg') ||
-        (kind === 'audio' && AUDIO_TYPES.includes(type));
-      if (!okType || !m.data || !m.data.length || m.data.length > 2000000) {
-        return s.emit('err', 'Файл нодуруст аст');
-      }
-      const r = await media.insertOne({ type, data: Buffer.from(m.data), time: Date.now() });
-      const msg = {
-        uid: String(s.user._id),
+      if (!m) return;
+      const title = String(m.title || '').trim().slice(0, 100);
+      if (!title) return s.emit('err', 'Сарлавҳа нависед');
+      const a = {
+        uid,
         name: s.user.name,
-        kind,
-        media: String(r.insertedId),
-        dur: Math.min(Number(m.dur) || 0, 120),
+        phone: s.user.phone,
+        title,
+        price: String(m.price || '').trim().slice(0, 40),
+        desc: String(m.desc || '').trim().slice(0, 500),
+        cat: ['cow', 'sheep', 'other'].includes(m.cat) ? m.cat : 'other',
+        photo: HEX24.test(String(m.photo || '')) ? String(m.photo) : '',
         time: Date.now(),
       };
-      await chat.insertOne({ ...msg });
-      io.emit('chat', msg);
+      const r = await ads.insertOne({ ...a });
+      io.emit('ad', adOut({ ...a, _id: r.insertedId }));
     } catch (e) {
       console.error(e);
-      s.emit('err', 'Фиристода нашуд');
+      s.emit('err', 'Эълон нашр нашуд');
+    }
+  });
+
+  s.on('addel', async (id) => {
+    try {
+      id = String(id);
+      if (!HEX24.test(id)) return;
+      const r = await ads.deleteOne({ _id: new ObjectId(id), uid });
+      if (r.deletedCount) io.emit('addel', id);
+    } catch (e) {
+      console.error(e);
     }
   });
 
@@ -179,6 +253,7 @@ io.on('connection', (s) => {
     chat = db.collection('chat');
     news = db.collection('news');
     media = db.collection('media');
+    ads = db.collection('ads');
     await users.createIndex({ phone: 1 }, { unique: true });
     server.listen(process.env.PORT || 3000, () => console.log('Деҳа кор мекунад'));
   } catch (e) {
