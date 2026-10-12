@@ -218,32 +218,60 @@ let rec = null, chunks = [], recTimer = null, recStart = 0, recCancel = false, s
 let replyTo = null, menuMsg = null, pushKey = '';
 
 /* ---------- садои паёми нав ---------- */
-let actx = null;
+let actx = null, fbAudio = null;
+function makeWav(){
+  const sr = 22050, n = Math.floor(sr * 0.4);
+  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  w(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++){
+    const t = i / sr, f = t < 0.2 ? 880 : 1175, t0 = t < 0.2 ? t : t - 0.2;
+    const env = Math.min(1, t0 * 80) * (1 - t0 / 0.2);
+    v.setInt16(44 + i * 2, Math.sin(2 * Math.PI * f * t) * env * 0.5 * 32767, true);
+  }
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
 function unlockSound(){
   try {
     if (!actx){
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) actx = new AC();
     }
-    if (actx && actx.state === 'suspended') actx.resume();
+    if (actx && actx.state !== 'running') actx.resume().catch(() => {});
+    if (!fbAudio){ fbAudio = new Audio(makeWav()); fbAudio.preload = 'auto'; }
   } catch (e) {}
 }
-['click', 'touchstart', 'keydown'].forEach((ev) => document.addEventListener(ev, unlockSound, { passive: true }));
+['click', 'touchend', 'pointerup', 'keydown'].forEach((ev) => document.addEventListener(ev, unlockSound, { passive: true }));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') unlockSound(); });
 
-function beep(){
+function tones(){
+  const t = actx.currentTime;
+  [[880, 0], [1175, 0.15]].forEach(([f, d]) => {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t + d);
+    g.gain.exponentialRampToValueAtTime(0.4, t + d + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.25);
+    o.connect(g); g.connect(actx.destination);
+    o.start(t + d); o.stop(t + d + 0.3);
+  });
+}
+async function beep(){
+  try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) {}
+  let ok = false;
   try {
-    if (!actx || actx.state !== 'running') return;
-    const t = actx.currentTime;
-    [[880, 0], [1175, 0.15]].forEach(([f, d]) => {
-      const o = actx.createOscillator(), g = actx.createGain();
-      o.type = 'sine'; o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, t + d);
-      g.gain.exponentialRampToValueAtTime(0.4, t + d + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.25);
-      o.connect(g); g.connect(actx.destination);
-      o.start(t + d); o.stop(t + d + 0.3);
-    });
-    if (navigator.vibrate) navigator.vibrate(120);
+    if (!actx) unlockSound();
+    if (actx && actx.state !== 'running') await actx.resume();
+    if (actx && actx.state === 'running'){ tones(); ok = true; }
+  } catch (e) {}
+  if (ok) return;
+  try {
+    if (!fbAudio) fbAudio = new Audio(makeWav());
+    fbAudio.currentTime = 0;
+    await fbAudio.play();
   } catch (e) {}
 }
 
