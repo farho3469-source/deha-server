@@ -99,6 +99,13 @@ nav button.on{color:#2f6b3a;font-weight:600}
 #pform .gbox{background:#fff;border-radius:14px;padding:20px;width:84%;max-width:360px;text-align:center}
 #pform .gbox h3{margin:0 0 10px;font-size:20px}
 #pform .gbox .btn{width:100%;margin:5px 0}
+.hb{position:absolute;top:46px;display:none;background:rgba(0,0,0,.3);color:#fff;border:0;border-radius:14px;padding:5px 12px;font-size:13px}
+#dbtn{right:56px}
+#stbtn{right:10px}
+#sform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:10;align-items:center;justify-content:center}
+#sform .gbox{background:#fff;border-radius:14px;padding:20px;width:88%;max-width:360px;text-align:center;max-height:90vh;overflow-y:auto}
+#sform .gbox h3{margin:0 0 10px;font-size:20px}
+#sform .gbox .btn{width:100%;margin:5px 0}
 </style>
 </head>
 <body>
@@ -116,6 +123,8 @@ nav button.on{color:#2f6b3a;font-weight:600}
   <div class="t">Деҳа</div>
   <div class="s">Чат, бозор ва хабарҳои деҳа</div>
   <button id="out" onclick="logout()">Баромадан</button>
+  <button id="dbtn" class="hb" onclick="openDistricts()">🗺 Ноҳияҳо</button>
+  <button id="stbtn" class="hb" onclick="openSettings()" aria-label="Танзимот">⚙</button>
 </div>
 
 <div id="auth">
@@ -214,7 +223,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
 <div id="gform">
   <div class="gbox">
     <h3>Шумо кистед?</h3>
-    <p>Ин барои гурӯҳҳои «Занҳо» ва дигарон лозим аст. Баъдтар тағйир намеёбад.</p>
+    <p>Ин барои гурӯҳҳои «Занҳо» ва дигарон лозим аст. Баъдтар дар ⚙ тағйир додан мумкин аст.</p>
     <button class="btn" onclick="setGender('m')">Мард</button>
     <button class="btn" onclick="setGender('f')">Зан</button>
   </div>
@@ -229,6 +238,19 @@ nav button.on{color:#2f6b3a;font-weight:600}
     <input id="pviln" placeholder="Номи деҳаи шумо" style="display:none">
     <button class="btn" onclick="savePlace()">Сабт кардан</button>
     <button class="btn g" onclick="$('pform').style.display='none'">Баъдтар</button>
+  </div>
+</div>
+
+<div id="sform">
+  <div class="gbox">
+    <h3>⚙ Танзимот</h3>
+    <input id="sname" placeholder="Номи шумо">
+    <select id="sgen"><option value="">Ҷинс (интихоб нашудааст)</option><option value="m">Мард</option><option value="f">Зан</option></select>
+    <select id="sdist"></select>
+    <select id="svil"></select>
+    <input id="sviln" placeholder="Номи деҳаи шумо" style="display:none">
+    <button class="btn" onclick="saveSettings()">Сабт кардан</button>
+    <button class="btn g" onclick="$('sform').style.display='none'">Бекор кардан</button>
   </div>
 </div>
 
@@ -598,11 +620,14 @@ function renderHome(){
       box.append(hd('Сӯҳбатҳои шахсӣ'));
       social.contacts.forEach((c) => box.append(item('💬 ' + c.name, vname(c.village), () => showChat(c.room, c.name))));
     }
+    box.append(item('🗺 Ҳамаи ноҳияҳо', 'Одамони деҳаҳои дигарро ёбед', () => { nav = { v: 'districts' }; renderHome(); }));
+  } else if (nav.v === 'districts'){
+    box.append(item('← Бозгашт', '', () => { nav = { v: 'home' }; renderHome(); }));
     box.append(hd('Ноҳияҳо'));
     if (!places.districts.length) box.append(item('Ҳоло ноҳия нест', ''));
     places.districts.forEach((d) => box.append(item('📍 ' + d.name, d.region || '', () => { nav = { v: 'district', id: d.id }; renderHome(); })));
   } else if (nav.v === 'district'){
-    box.append(item('← Ба ноҳияҳо', '', () => { nav = { v: 'home' }; renderHome(); }));
+    box.append(item('← Ба ноҳияҳо', '', () => { nav = { v: 'districts' }; renderHome(); }));
     box.append(hd(dname(nav.id)));
     const vl = places.villages.filter((x) => x.district === nav.id);
     if (!vl.length) box.append(item('Ҳоло деҳа нест', ''));
@@ -631,6 +656,30 @@ function renderHome(){
       box.append(r);
     });
   }
+}
+function openDistricts(){
+  tab(1);
+  if ($('chatv').style.display === 'flex') goHome();
+  nav = { v: 'districts' }; renderHome();
+}
+function openSettings(){
+  $('sname').value = prof.name || '';
+  $('sgen').value = prof.gender || '';
+  fillPlace('sdist', 'svil');
+  if (prof.district){ $('sdist').value = prof.district; $('sdist').onchange(); }
+  if (prof.village) $('svil').value = prof.village;
+  $('svil').onchange();
+  $('sform').style.display = 'flex';
+}
+function saveSettings(){
+  const v = $('svil').value;
+  const m = { name: $('sname').value.trim(), gender: $('sgen').value };
+  if (v === '__new'){
+    m.district = $('sdist').value; m.vname = $('sviln').value.trim();
+    if (!m.vname){ alert('Номи деҳаро нависед'); return; }
+  } else if (v) m.village = v;
+  socket.emit('settings', m);
+  $('sform').style.display = 'none';
 }
 function openVillage(){ if (prof.village) showChat('v:' + prof.village, vname(prof.village)); }
 function showChat(r, title){
@@ -735,7 +784,7 @@ function start(token){
   tok = token;
   $('auth').style.display = 'none';
   $('app').style.display = 'flex';
-  $('out').style.display = 'block';
+  $('out').style.display = $('dbtn').style.display = $('stbtn').style.display = 'block';
   renderAdChips();
   socket = io({ auth: { token } });
   socket.on('connect', () => socket.emit('vis', document.visibilityState === 'visible'));
@@ -758,6 +807,7 @@ function start(token){
     if (m.room !== room){ beep(); toast('💬 ' + m.name + ': паёми нав'); }
   });
   socket.on('wiped', () => { $('msgs').innerHTML = ''; });
+  socket.on('settingsok', () => { toast('✔ Сабт шуд'); nav = { v: 'home' }; goHome(); });
   socket.on('init', (d) => {
     $('news').innerHTML = '';
     d.news.forEach((n) => addNews(n, false));
