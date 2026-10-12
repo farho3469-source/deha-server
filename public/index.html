@@ -123,6 +123,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
   <input id="rname" placeholder="Номи шумо" style="display:none">
   <select id="rdist" style="display:none"></select>
   <select id="rvil" style="display:none"></select>
+  <input id="rviln" placeholder="Номи деҳаи шумо" style="display:none">
   <input id="phone" type="tel" placeholder="Рақами телефон (+992...)">
   <input id="pass" type="password" placeholder="Парол (камаш 6 аломат)">
   <div id="aerr"></div>
@@ -178,12 +179,6 @@ nav button.on{color:#2f6b3a;font-weight:600}
         <input id="nt" placeholder="Сарлавҳа">
         <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
         <button class="btn" onclick="sendNews()">Нашр кардан</button>
-        <div class="sh">Ноҳия ва деҳа (пароли админ дар боло)</div>
-        <input id="dn" placeholder="Номи ноҳия">
-        <button class="btn g" style="width:100%" onclick="addPlace('d')">+ Ноҳия илова кардан</button>
-        <select id="av"></select>
-        <input id="vn" placeholder="Номи деҳа">
-        <button class="btn g" style="width:100%" onclick="addPlace('v')">+ Деҳа илова кардан</button>
         <button class="btn" style="width:100%;margin-top:18px;background:#b00020" onclick="wipeChat()">🗑 Ҳамаи паёмҳоро нест кардан</button>
         <button class="btn g" style="width:100%;margin-top:18px" onclick="testPush()">🔔 Санҷиши огоҳинома</button>
       </div>
@@ -231,6 +226,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
     <h3>Деҳаатонро интихоб кунед</h3>
     <select id="pdist"></select>
     <select id="pvil"></select>
+    <input id="pviln" placeholder="Номи деҳаи шумо" style="display:none">
     <button class="btn" onclick="savePlace()">Сабт кардан</button>
     <button class="btn g" onclick="$('pform').style.display='none'">Баъдтар</button>
   </div>
@@ -372,6 +368,7 @@ function toggleMode(){
   const reg = mode === 'register';
   $('rname').style.display = reg ? 'block' : 'none';
   $('rdist').style.display = $('rvil').style.display = reg ? 'block' : 'none';
+  if (reg && $('rvil').onchange) $('rvil').onchange(); else $('rviln').style.display = 'none';
   $('atitle').textContent = reg ? 'Сабти ном' : 'Воридшавӣ';
   $('abtn').textContent = reg ? 'Сабти ном кардан' : 'Ворид шудан';
   $('alink').textContent = reg ? 'Ман ҳисоб дорам' : 'Сабти ном';
@@ -384,7 +381,7 @@ async function submitAuth(){
     const r = await fetch('/api/' + mode, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: $('rname').value, phone: $('phone').value, password: $('pass').value, village: $('rvil').value })
+      body: JSON.stringify({ name: $('rname').value, phone: $('phone').value, password: $('pass').value, village: $('rvil').value === '__new' ? '' : $('rvil').value, district: $('rdist').value, vname: $('rviln').value })
     });
     const d = await r.json();
     if (!r.ok){ $('aerr').textContent = d.error || 'Хато'; return; }
@@ -533,23 +530,26 @@ function toast(t){
 function vname(id){ const v = places.villages.find((x) => x.id === id); return v ? v.name : ''; }
 function dname(id){ const d = places.districts.find((x) => x.id === id); return d ? d.name : ''; }
 function fillPlace(dId, vId){
-  const d = $(dId), v = $(vId), cur = d.value;
+  const d = $(dId), v = $(vId), n = $(vId + 'n'), cur = d.value, curv = v.value;
   d.innerHTML = '';
-  places.districts.forEach((x) => d.add(new Option(x.name, x.id)));
+  places.districts.forEach((x) => d.add(new Option(x.name + (x.region ? ' (' + x.region + ')' : ''), x.id)));
   if (cur) d.value = cur;
+  const sn = () => { n.style.display = (v.value === '__new' && v.style.display !== 'none') ? 'block' : 'none'; };
   const fv = () => {
     v.innerHTML = '';
     places.villages.filter((x) => x.district === d.value).forEach((x) => v.add(new Option(x.name, x.id)));
+    v.add(new Option('➕ Деҳаи дигар (худам менависам)', '__new'));
+    sn();
   };
-  d.onchange = fv; fv();
+  d.onchange = fv; v.onchange = sn; fv();
+  if (curv && [...v.options].some((o) => o.value === curv)){ v.value = curv; sn(); }
 }
-function fillAdminPlaces(){
-  const s = $('av'); s.innerHTML = '';
-  places.districts.forEach((x) => s.add(new Option(x.name, x.id)));
-}
+function fillAdminPlaces(){}
 function savePlace(){
-  if (!$('pvil').value) return;
-  socket.emit('setplace', $('pvil').value);
+  const v = $('pvil').value;
+  const m = v === '__new' ? { district: $('pdist').value, vname: $('pviln').value.trim() } : { village: v };
+  if (!v || (v === '__new' && !m.vname)){ alert('Деҳаро интихоб кунед ё номашро нависед'); return; }
+  socket.emit('setplace', m);
   $('pform').style.display = 'none';
 }
 function addPlace(t){
@@ -600,11 +600,13 @@ function renderHome(){
     }
     box.append(hd('Ноҳияҳо'));
     if (!places.districts.length) box.append(item('Ҳоло ноҳия нест', ''));
-    places.districts.forEach((d) => box.append(item('📍 ' + d.name, '', () => { nav = { v: 'district', id: d.id }; renderHome(); })));
+    places.districts.forEach((d) => box.append(item('📍 ' + d.name, d.region || '', () => { nav = { v: 'district', id: d.id }; renderHome(); })));
   } else if (nav.v === 'district'){
     box.append(item('← Ба ноҳияҳо', '', () => { nav = { v: 'home' }; renderHome(); }));
     box.append(hd(dname(nav.id)));
-    places.villages.filter((x) => x.district === nav.id).forEach((v) => {
+    const vl = places.villages.filter((x) => x.district === nav.id);
+    if (!vl.length) box.append(item('Ҳоло деҳа нест', ''));
+    vl.forEach((v) => {
       const mine = v.id === prof.village;
       box.append(item('🏘 ' + v.name, mine ? 'Деҳаи шумо' : '', () => {
         if (mine) openVillage();
@@ -743,9 +745,9 @@ function start(token){
   socket.on('rooms', (list) => { roomList = list; renderRooms(); });
   socket.on('profile', (p) => { prof = p; renderHome(); });
   socket.on('places', (p) => {
-    places = p; fillPlace('pdist', 'pvil'); fillPlace('rdist', 'rvil'); fillAdminPlaces(); renderHome();
+    places = p; fillPlace('pdist', 'pvil'); fillPlace('rdist', 'rvil'); renderHome();
   });
-  socket.on('needplace', () => { if (places.villages.length) $('pform').style.display = 'flex'; });
+  socket.on('needplace', () => { if (places.districts.length) $('pform').style.display = 'flex'; });
   socket.on('social', (s) => {
     social = s;
     if (nav.v === 'members') socket.emit('members', nav.id);
