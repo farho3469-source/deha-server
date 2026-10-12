@@ -15,28 +15,59 @@ const MONGO_URI = String(process.env.MONGODB_URI || '')
   .replace(/[^\x21-\x7E]/g, '')
   .replace(/["'<>]/g, '');
 const client = new MongoClient(MONGO_URI);
-let users, chat, news, media, ads, subs, config;
+let users, chat, news, media, ads, subs, config, places, reqs;
 let VAPID_PUBLIC = '';
 const AUDIO_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4'];
 const HEX24 = /^[0-9a-f]{24}$/;
+const isAdmin = (m) => !!m && String(m.password || '').trim() === ADMIN;
 
-const ROOMS = {
-  village: { title: 'Деҳа', only: null },
-  women: { title: 'Занҳо', only: 'f' },
-  football: { title: 'Футболистон', only: null },
+/* ---------- ҷойҳо (ноҳия ва деҳа) ва ҳуқуқи дастрасӣ ---------- */
+const vOf = (r) => {
+  const p = String(r).split(':');
+  return p[0] === 'v' ? { vid: p[1] || '', sub: p[2] || '' } : null;
 };
-const canEnter = (u, r) => ROOMS[r] && (!ROOMS[r].only || u.gender === ROOMS[r].only);
-const myRooms = (u) =>
-  Object.keys(ROOMS)
-    .filter((r) => canEnter(u, r))
-    .map((r) => ({ id: r, title: ROOMS[r].title }));
-const roomFilter = (r) =>
-  r === 'village' ? { $or: [{ room: 'village' }, { room: { $exists: false } }] } : { room: r };
-const adOut = (a) => ({
+const dmPair = (a, b) => 'dm:' + [a, b].sort().join(':');
+async function canEnter(u, r) {
+  r = String(r);
+  const v = vOf(r);
+  if (v) {
+    if (!v.vid || u.village !== v.vid) return false;
+    return !v.sub || v.sub === 'football' || (v.sub === 'women' && u.gender === 'f');
+  }
+  const p = r.split(':');
+  if (p[0] === 'dm' && HEX24.test(p[1] || '') && HEX24.test(p[2] || '')) {
+    const me = String(u._id);
+    if (me !== p[1] && me !== p[2]) return false;
+    return !!(await reqs.findOne({
+      status: 'accepted',
+      $or: [{ from: p[1], to: p[2] }, { from: p[2], to: p[1] }],
+    }));
+  }
+  return false;
+}
+const myRooms = (u) => {
+  if (!u.village) return [];
+  const b = 'v:' + u.village;
+  const l = [{ id: b, title: 'Деҳа' }];
+  if (u.gender === 'f') l.push({ id: b + ':women', title: 'Занҳо' });
+  l.push({ id: b + ':football', title: 'Футболистон' });
+  return l;
+};
+const profOf = (u) => ({ village: u.village || '', district: u.district || '', gender: u.gender || '' });
+const placesOut = async () => {
+  const all = await places.find({}).sort({ name: 1 }).toArray();
+  return {
+    districts: all.filter((x) => x.type === 'd').map((x) => ({ id: String(x._id), name: x.name })),
+    villages: all
+      .filter((x) => x.type === 'v')
+      .map((x) => ({ id: String(x._id), name: x.name, district: x.parent })),
+  };
+};
+const adOut = (a, u) => ({
   id: String(a._id),
   uid: a.uid,
   name: a.name,
-  phone: a.phone,
+  phone: u && (a.uid === String(u._id) || (a.village && a.village === u.village)) ? a.phone : '',
   title: a.title,
   price: a.price,
   desc: a.desc,
@@ -64,6 +95,13 @@ const cleanPhone = (p) => String(p || '').replace(/[^\d]/g, '');
 const fail = (res, code, error) => res.status(code).json({ error });
 
 app.get('/api/vapid', (req, res) => res.json({ key: VAPID_PUBLIC }));
+app.get('/api/places', async (req, res) => {
+  try {
+    res.json(await placesOut());
+  } catch (e) {
+    res.json({ districts: [], villages: [] });
+  }
+});
 
 app.post('/api/unpush', async (req, res) => {
   try {
@@ -113,6 +151,9 @@ app.post('/api/register', async (req, res) => {
     if (!name || phone.length < 9 || phone.length > 15 || password.length < 6) {
       return fail(res, 400, 'Маълумот нодуруст аст');
     }
+    const vid = String(req.body.village || '');
+    const vil = HEX24.test(vid) ? await places.findOne({ _id: new ObjectId(vid), type: 'v' }) : null;
+    if (!vil) return fail(res, 400, 'Ноҳия ва деҳаро интихоб кунед');
     if (await users.findOne({ phone })) {
       return fail(res, 409, 'Ин рақам аллакай сабт шудааст');
     }
@@ -121,6 +162,8 @@ app.post('/api/register', async (req, res) => {
       name,
       phone,
       gender,
+      village: String(vil._id),
+      district: vil.parent,
       hash: await bcrypt.hash(password, 10),
       token,
       created: Date.now(),
@@ -162,37 +205,68 @@ app.get('/media/:id', async (req, res) => {
 });
 
 /* ---------- огоҳиномаи push ---------- */
+async function pushTo(uids, data) {
+  if (!VAPID_PUBLIC || !uids.length) return;
+  const list = await subs.find({ uid: { $in: uids } }).toArray();
+  const payload = JSON.stringify(data);
+  await Promise.all(
+    list.map(async (x) => {
+      try {
+        await webpush.sendNotification({ endpoint: x.endpoint, keys: x.keys }, payload, {
+          TTL: 3600,
+          urgency: 'high',
+        });
+      } catch (e) {
+        if (e.statusCode === 404 || e.statusCode === 410) await subs.deleteOne({ endpoint: x.endpoint });
+      }
+    })
+  );
+}
 async function pushMsg(msg, roomId) {
   try {
-    if (!VAPID_PUBLIC) return;
+    let targets = [];
+    const v = vOf(roomId);
+    if (v) {
+      const q = { village: v.vid };
+      if (v.sub === 'women') q.gender = 'f';
+      targets = (await users.find(q, { projection: { _id: 1 } }).toArray()).map((x) => String(x._id));
+    } else {
+      const p = roomId.split(':');
+      targets = [p[1] === msg.uid ? p[2] : p[1]];
+    }
     const inRoom = await io.in('r:' + roomId).fetchSockets();
     const skip = new Set(inRoom.filter((x) => x.data && x.data.vis !== false).map((x) => x.data.uid));
     skip.add(msg.uid);
-    let list = await subs.find({ uid: { $nin: [...skip] } }).toArray();
-    const only = ROOMS[roomId].only;
-    if (only) {
-      const okIds = new Set(
-        (await users.find({ gender: only }, { projection: { _id: 1 } }).toArray()).map((x) => String(x._id))
-      );
-      list = list.filter((x) => okIds.has(x.uid));
-    }
-    if (!list.length) return;
-    const title = roomId === 'village' ? msg.name : msg.name + ' · ' + ROOMS[roomId].title;
-    const payload = JSON.stringify({ title, body: previewOf(msg), tag: 'room-' + roomId });
-    await Promise.all(
-      list.map(async (x) => {
-        try {
-          await webpush.sendNotification({ endpoint: x.endpoint, keys: x.keys }, payload, {
-            TTL: 3600,
-            urgency: 'high',
-          });
-        } catch (e) {
-          if (e.statusCode === 404 || e.statusCode === 410) {
-            await subs.deleteOne({ endpoint: x.endpoint });
-          }
-        }
-      })
+    const sub = v && v.sub ? (v.sub === 'women' ? ' · Занҳо' : ' · Футболистон') : '';
+    await pushTo(
+      targets.filter((t) => !skip.has(t)),
+      { title: msg.name + sub, body: previewOf(msg), tag: 'room-' + roomId }
     );
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+/* ---------- дархостҳо ва сӯҳбатҳои шахсӣ ---------- */
+async function sendSocial(uid) {
+  try {
+    const rq = await reqs.find({ $or: [{ from: uid }, { to: uid }] }).toArray();
+    const ids = [...new Set(rq.map((q) => (q.from === uid ? q.to : q.from)))];
+    const us = await users
+      .find({ _id: { $in: ids.map((i) => new ObjectId(i)) } }, { projection: { name: 1, village: 1 } })
+      .toArray();
+    const info = {};
+    us.forEach((x) => (info[String(x._id)] = { name: x.name, village: x.village || '' }));
+    const out = { incoming: [], contacts: [] };
+    rq.forEach((q) => {
+      const o = q.from === uid ? q.to : q.from;
+      const i = info[o];
+      if (!i) return;
+      if (q.status === 'accepted') out.contacts.push({ uid: o, name: i.name, village: i.village, room: dmPair(uid, o) });
+      else if (q.status === 'pending' && q.to === uid)
+        out.incoming.push({ id: String(q._id), uid: o, name: i.name, village: i.village });
+    });
+    io.to('u:' + uid).emit('social', out);
   } catch (e) {
     console.error(e);
   }
@@ -215,15 +289,19 @@ io.use(async (socket, next) => {
 
 io.on('connection', (s) => {
   const uid = String(s.user._id);
+  s.join('u:' + uid);
+  if (s.user.village) s.join('vil:' + s.user.village);
   s.emit('me', uid);
+  s.emit('profile', profOf(s.user));
   s.emit('rooms', myRooms(s.user));
   if (!s.user.gender) s.emit('needgender');
 
   const enter = async (r) => {
-    if (!canEnter(s.user, r)) return s.emit('err', 'Ба ин гурӯҳ дастрасӣ нест');
-    Object.keys(ROOMS).forEach((x) => s.leave('r:' + x));
+    r = String(r);
+    if (!(await canEnter(s.user, r))) return s.emit('err', 'Ба ин гурӯҳ дастрасӣ нест');
+    [...s.rooms].filter((x) => x.startsWith('r:')).forEach((x) => s.leave(x));
     s.join('r:' + r);
-    const list = await chat.find(roomFilter(r)).sort({ time: -1 }).limit(100).toArray();
+    const list = await chat.find({ room: r }).sort({ time: -1 }).limit(100).toArray();
     s.emit('history', { room: r, chat: list.reverse().map(chatOut) });
   };
 
@@ -235,8 +313,10 @@ io.on('connection', (s) => {
         .limit(100)
         .toArray();
       const adList = await ads.find({}).sort({ time: -1 }).limit(100).toArray();
-      s.emit('init', { news: allNews, ads: adList.map(adOut) });
-      await enter('village');
+      s.emit('init', { news: allNews, ads: adList.map((a) => adOut(a, s.user)) });
+      s.emit('places', await placesOut());
+      if (!s.user.village) s.emit('needplace');
+      sendSocial(uid);
     } catch (e) {
       console.error(e);
     }
@@ -281,14 +361,144 @@ io.on('connection', (s) => {
       if (g !== 'm' && g !== 'f') return;
       await users.updateOne({ _id: s.user._id }, { $set: { gender: g } });
       s.user.gender = g;
+      s.emit('profile', profOf(s.user));
       s.emit('rooms', myRooms(s.user));
     } catch (e) {
       console.error(e);
     }
   });
 
+  s.on('setplace', async (vid) => {
+    try {
+      if (s.user.village) return;
+      vid = String(vid);
+      if (!HEX24.test(vid)) return;
+      const v = await places.findOne({ _id: new ObjectId(vid), type: 'v' });
+      if (!v) return;
+      await users.updateOne({ _id: s.user._id }, { $set: { village: vid, district: v.parent } });
+      s.user.village = vid;
+      s.user.district = v.parent;
+      s.join('vil:' + vid);
+      s.emit('profile', profOf(s.user));
+      s.emit('rooms', myRooms(s.user));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('placeadd', async (m) => {
+    try {
+      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      const name = String(m.name || '').trim().slice(0, 40);
+      if (!name) return;
+      const type = m.type === 'v' ? 'v' : 'd';
+      let parent = '';
+      if (type === 'v') {
+        parent = String(m.parent || '');
+        if (!HEX24.test(parent) || !(await places.findOne({ _id: new ObjectId(parent), type: 'd' }))) {
+          return s.emit('err', 'Ноҳияро интихоб кунед');
+        }
+      }
+      await places.insertOne({ type, name, parent });
+      io.emit('places', await placesOut());
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('wipechat', async (m) => {
+    try {
+      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      const docs = await chat.find({ media: { $exists: true } }, { projection: { media: 1 } }).toArray();
+      const ids = docs
+        .map((d) => d.media)
+        .filter((x) => HEX24.test(String(x)))
+        .map((x) => new ObjectId(x));
+      if (ids.length) await media.deleteMany({ _id: { $in: ids } });
+      await chat.deleteMany({});
+      io.emit('wiped');
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('members', async (vid) => {
+    try {
+      vid = String(vid);
+      if (!HEX24.test(vid)) return;
+      const list = await users
+        .find({ village: vid, _id: { $ne: s.user._id } }, { projection: { name: 1 } })
+        .limit(300)
+        .toArray();
+      const rq = await reqs.find({ $or: [{ from: uid }, { to: uid }] }).toArray();
+      const st = (id) => {
+        const x = rq.find((q) => q.from === id || q.to === id);
+        if (!x) return 'none';
+        if (x.status === 'accepted') return 'accepted';
+        if (x.status === 'pending') return x.from === uid ? 'sent' : 'incoming';
+        return x.from === uid ? 'declined' : 'none';
+      };
+      s.emit('members', {
+        village: vid,
+        list: list.map((x) => ({ uid: String(x._id), name: x.name, state: st(String(x._id)) })),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('reqsend', async (to) => {
+    try {
+      to = String(to);
+      if (!HEX24.test(to) || to === uid) return;
+      const other = await users.findOne({ _id: new ObjectId(to) });
+      if (!other) return;
+      const ex = await reqs.findOne({ $or: [{ from: uid, to }, { from: to, to: uid }] });
+      if (ex) {
+        if (ex.status === 'pending' && ex.from === to) {
+          await reqs.updateOne({ _id: ex._id }, { $set: { status: 'accepted' } });
+        } else if (ex.status === 'declined' && ex.from === to) {
+          await reqs.updateOne({ _id: ex._id }, { $set: { from: uid, to, status: 'pending', time: Date.now() } });
+          pushTo([to], { title: 'Деҳа', body: s.user.name + ' мехоҳад бо шумо гап занад', tag: 'req' });
+        } else {
+          return s.emit(
+            'err',
+            ex.status === 'accepted'
+              ? 'Шумо аллакай гап зада метавонед'
+              : ex.status === 'pending'
+              ? 'Дархост аллакай фиристода шудааст'
+              : 'Дархост рад шудааст'
+          );
+        }
+      } else {
+        await reqs.insertOne({ from: uid, to, status: 'pending', time: Date.now() });
+        pushTo([to], { title: 'Деҳа', body: s.user.name + ' мехоҳад бо шумо гап занад', tag: 'req' });
+      }
+      sendSocial(uid);
+      sendSocial(to);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('reqans', async (m) => {
+    try {
+      if (!m || !HEX24.test(String(m.id))) return;
+      const q = await reqs.findOne({ _id: new ObjectId(String(m.id)), to: uid, status: 'pending' });
+      if (!q) return;
+      await reqs.updateOne({ _id: q._id }, { $set: { status: m.accept ? 'accepted' : 'declined' } });
+      sendSocial(uid);
+      sendSocial(q.from);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   s.on('join', (r) => {
-    enter(String(r)).catch(console.error);
+    enter(r).catch(console.error);
+  });
+  s.on('leave', () => {
+    [...s.rooms].filter((x) => x.startsWith('r:')).forEach((x) => s.leave(x));
   });
 
   s.on('upload', async (m, cb) => {
@@ -310,8 +520,8 @@ io.on('connection', (s) => {
   s.on('chat', async (m) => {
     try {
       if (!m) return;
-      const room = String(m.room || 'village');
-      if (!canEnter(s.user, room)) return;
+      const room = String(m.room || '');
+      if (!(await canEnter(s.user, room))) return;
       const kind = ['text', 'image', 'audio'].includes(m.kind) ? m.kind : 'text';
       const msg = { uid, name: s.user.name, room, kind, time: Date.now() };
       if (kind === 'text') {
@@ -325,13 +535,20 @@ io.on('connection', (s) => {
       const rid = String(m.reply || '');
       if (HEX24.test(rid)) {
         const o = await chat.findOne({ _id: new ObjectId(rid) });
-        if (o && (o.room || 'village') === room) {
+        if (o && o.room === room) {
           msg.reply = { id: rid, uid: o.uid, name: o.name, text: previewOf(o) };
         }
       }
       const r = await chat.insertOne({ ...msg });
       msg.id = String(r.insertedId);
       io.to('r:' + room).emit('chat', msg);
+      const v = vOf(room);
+      if (v && !v.sub) {
+        s.to('vil:' + v.vid).emit('newmsg', { room, name: msg.name });
+      } else if (!v) {
+        const p = room.split(':');
+        io.to('u:' + (p[1] === uid ? p[2] : p[1])).emit('newmsg', { room, name: msg.name });
+      }
       pushMsg(msg, room);
     } catch (e) {
       console.error(e);
@@ -342,7 +559,7 @@ io.on('connection', (s) => {
     try {
       const id = String((m && m.id) || '');
       if (!HEX24.test(id)) return;
-      const admin = String((m && m.password) || '').trim() === ADMIN;
+      const admin = isAdmin(m);
       const _id = new ObjectId(id);
       const doc = await chat.findOne(admin ? { _id } : { _id, uid });
       if (!doc) return s.emit('err', 'Нест кардан мумкин нест');
@@ -365,6 +582,7 @@ io.on('connection', (s) => {
         uid,
         name: s.user.name,
         phone: s.user.phone,
+        village: s.user.village || '',
         title,
         price: String(m.price || '').trim().slice(0, 40),
         desc: String(m.desc || '').trim().slice(0, 500),
@@ -373,7 +591,10 @@ io.on('connection', (s) => {
         time: Date.now(),
       };
       const r = await ads.insertOne({ ...a });
-      io.emit('ad', adOut({ ...a, _id: r.insertedId }));
+      const full = { ...a, _id: r.insertedId };
+      for (const sk of io.sockets.sockets.values()) {
+        if (sk.user) sk.emit('ad', adOut(full, sk.user));
+      }
     } catch (e) {
       console.error(e);
       s.emit('err', 'Эълон нашр нашуд');
@@ -393,7 +614,7 @@ io.on('connection', (s) => {
 
   s.on('news', async (m) => {
     try {
-      if (!m || String(m.password || '').trim() !== ADMIN) return s.emit('err', 'Парол нодуруст');
+      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
       const n = {
         title: String(m.title || '').slice(0, 100),
         text: String(m.text || '').slice(0, 2000),
@@ -418,9 +639,14 @@ io.on('connection', (s) => {
     ads = db.collection('ads');
     subs = db.collection('subs');
     config = db.collection('config');
+    places = db.collection('places');
+    reqs = db.collection('reqs');
     await users.createIndex({ phone: 1 }, { unique: true });
     await subs.createIndex({ endpoint: 1 }, { unique: true });
     await subs.createIndex({ uid: 1 });
+    await chat.createIndex({ room: 1, time: -1 });
+    await reqs.createIndex({ from: 1 });
+    await reqs.createIndex({ to: 1 });
 
     let v = await config.findOne({ _id: 'vapid' });
     if (!v) {
