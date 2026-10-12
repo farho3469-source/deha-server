@@ -84,6 +84,21 @@ nav button.on{color:#2f6b3a;font-weight:600}
 #menu .mbox{background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom))}
 #menu .mbox .btn{width:100%;margin:5px 0}
 #mpv{font-size:14px;color:#555;border-left:3px solid #2f6b3a;padding-left:8px;margin-bottom:8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#home{flex:1;min-height:0;overflow-y:auto;padding:12px}
+#chatv{display:none;flex:1;min-height:0;flex-direction:column}
+#chead{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border-bottom:1px solid #ddd;flex:none}
+#chead b{font-size:17px}
+.item{display:flex;align-items:center;gap:6px;background:#fff;border-radius:12px;padding:14px;margin-bottom:8px;font-size:16px;width:100%;border:0;text-align:left;color:#222;font-family:inherit}
+.item span{flex:1}
+.item small{color:#777;font-size:12px}
+.sh{font-size:13px;color:#777;margin:14px 2px 6px;font-weight:600}
+.mini{border:0;border-radius:10px;padding:8px 12px;font-size:14px;background:#2f6b3a;color:#fff}
+.mini.r{background:#f3d6d6;color:#8a1c1c}
+#toast{display:none;position:fixed;left:12px;right:12px;top:12px;z-index:12;background:#2f6b3a;color:#fff;border-radius:12px;padding:12px;font-size:15px}
+#pform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:10;align-items:center;justify-content:center}
+#pform .gbox{background:#fff;border-radius:14px;padding:20px;width:84%;max-width:360px;text-align:center}
+#pform .gbox h3{margin:0 0 10px;font-size:20px}
+#pform .gbox .btn{width:100%;margin:5px 0}
 </style>
 </head>
 <body>
@@ -106,6 +121,8 @@ nav button.on{color:#2f6b3a;font-weight:600}
 <div id="auth">
   <h3 id="atitle">Воридшавӣ</h3>
   <input id="rname" placeholder="Номи шумо" style="display:none">
+  <select id="rdist" style="display:none"></select>
+  <select id="rvil" style="display:none"></select>
   <input id="phone" type="tel" placeholder="Рақами телефон (+992...)">
   <input id="pass" type="password" placeholder="Парол (камаш 6 аломат)">
   <div id="aerr"></div>
@@ -116,11 +133,16 @@ nav button.on{color:#2f6b3a;font-weight:600}
 <div id="app">
   <div id="views">
     <div class="sec on" id="s1">
-      <div class="chips" id="rooms"></div>
-      <div id="notif">
-        <span>🔔 Барои он ки вақти пӯшида будани барнома ҳам паём биёяд</span>
-        <button class="btn" onclick="enablePush()">Фаъол кардан</button>
+      <div id="home">
+        <div id="notif">
+          <span>🔔 Барои он ки вақти пӯшида будани барнома ҳам паём биёяд</span>
+          <button class="btn" onclick="enablePush()">Фаъол кардан</button>
+        </div>
+        <div id="hbody"></div>
       </div>
+      <div id="chatv">
+      <div id="chead"><button class="ic g" style="width:36px;height:36px;font-size:16px" onclick="goHome()">←</button><b id="ctitle"></b></div>
+      <div class="chips" id="rooms"></div>
       <div id="msgs"></div>
       <div id="rpl">
         <div class="q"><b id="rpln"></b><span id="rplt"></span></div>
@@ -139,6 +161,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
           <button class="ic" id="rsend" aria-label="Фиристодан">➤</button>
         </div>
       </div>
+      </div>
     </div>
 
     <div class="sec" id="s2">
@@ -155,6 +178,13 @@ nav button.on{color:#2f6b3a;font-weight:600}
         <input id="nt" placeholder="Сарлавҳа">
         <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
         <button class="btn" onclick="sendNews()">Нашр кардан</button>
+        <div class="sh">Ноҳия ва деҳа (пароли админ дар боло)</div>
+        <input id="dn" placeholder="Номи ноҳия">
+        <button class="btn g" style="width:100%" onclick="addPlace('d')">+ Ноҳия илова кардан</button>
+        <select id="av"></select>
+        <input id="vn" placeholder="Номи деҳа">
+        <button class="btn g" style="width:100%" onclick="addPlace('v')">+ Деҳа илова кардан</button>
+        <button class="btn" style="width:100%;margin-top:18px;background:#b00020" onclick="wipeChat()">🗑 Ҳамаи паёмҳоро нест кардан</button>
         <button class="btn g" style="width:100%;margin-top:18px" onclick="testPush()">🔔 Санҷиши огоҳинома</button>
       </div>
     </div>
@@ -180,7 +210,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
     <textarea id="add" rows="4" placeholder="Тавсиф (синну сол, ҷой ва ғайра)"></textarea>
     <button class="btn g" style="width:100%;margin:6px 0" onclick="$('adphoto').click()">📷 Расм интихоб кунед</button>
     <div id="adpn" style="font-size:13px;color:#777;margin-bottom:10px">Расм интихоб нашудааст</div>
-    <div style="font-size:13px;color:#777;margin-bottom:10px">Рақами телефони шумо дар эълон намоён мешавад.</div>
+    <div style="font-size:13px;color:#777;margin-bottom:10px">Рақами шумо танҳо барои ҳамдеҳагонатон намоён аст.</div>
     <button class="btn" id="adsend" style="width:100%" onclick="submitAd()">Нашр кардан</button>
     <button class="btn g" style="width:100%;margin-top:8px" onclick="closeAd()">Бекор кардан</button>
   </div>
@@ -192,6 +222,17 @@ nav button.on{color:#2f6b3a;font-weight:600}
     <p>Ин барои гурӯҳҳои «Занҳо» ва дигарон лозим аст. Баъдтар тағйир намеёбад.</p>
     <button class="btn" onclick="setGender('m')">Мард</button>
     <button class="btn" onclick="setGender('f')">Зан</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="pform">
+  <div class="gbox">
+    <h3>Деҳаатонро интихоб кунед</h3>
+    <select id="pdist"></select>
+    <select id="pvil"></select>
+    <button class="btn" onclick="savePlace()">Сабт кардан</button>
+    <button class="btn g" onclick="$('pform').style.display='none'">Баъдтар</button>
   </div>
 </div>
 
@@ -212,7 +253,9 @@ nav button.on{color:#2f6b3a;font-weight:600}
 <script>
 const $ = (id) => document.getElementById(id);
 const CATS = { cow: 'Гов', sheep: 'Гӯсфанд', other: 'Дигар' };
-let mode = 'login', socket = null, tok = '', myUid = '', room = 'village';
+let mode = 'login', socket = null, tok = '', myUid = '', room = '';
+let places = { districts: [], villages: [] }, prof = {}, social = { incoming: [], contacts: [] };
+let nav = { v: 'home' }, members = { village: '', list: [] };
 let adsData = [], adFilter = 'all', adFile = null, roomList = [];
 let rec = null, chunks = [], recTimer = null, recStart = 0, recCancel = false, stream = null;
 let replyTo = null, menuMsg = null, pushKey = '';
@@ -328,6 +371,7 @@ function toggleMode(){
   mode = mode === 'login' ? 'register' : 'login';
   const reg = mode === 'register';
   $('rname').style.display = reg ? 'block' : 'none';
+  $('rdist').style.display = $('rvil').style.display = reg ? 'block' : 'none';
   $('atitle').textContent = reg ? 'Сабти ном' : 'Воридшавӣ';
   $('abtn').textContent = reg ? 'Сабти ном кардан' : 'Ворид шудан';
   $('alink').textContent = reg ? 'Ман ҳисоб дорам' : 'Сабти ном';
@@ -340,7 +384,7 @@ async function submitAuth(){
     const r = await fetch('/api/' + mode, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: $('rname').value, phone: $('phone').value, password: $('pass').value })
+      body: JSON.stringify({ name: $('rname').value, phone: $('phone').value, password: $('pass').value, village: $('rvil').value })
     });
     const d = await r.json();
     if (!r.ok){ $('aerr').textContent = d.error || 'Хато'; return; }
@@ -467,7 +511,7 @@ function msgEl(m){
 function addChat(m){ $('msgs').append(msgEl(m)); scrollDown(); }
 
 function renderRooms(){
-  const box = $('rooms'); box.innerHTML = '';
+  const box = $('rooms'); box.innerHTML = ''; box.style.display = room.startsWith('dm:') ? 'none' : 'flex';
   roomList.forEach((r) => {
     const b = document.createElement('button');
     b.className = 'chip' + (r.id === room ? ' on' : '');
@@ -479,6 +523,124 @@ function renderRooms(){
 function selectRoom(id){
   room = id; $('msgs').innerHTML = ''; renderRooms(); setReply(null);
   if (socket) socket.emit('join', id);
+}
+
+/* ---------- ноҳия, деҳа, дархостҳо ---------- */
+function toast(t){
+  const e = $('toast'); e.textContent = t; e.style.display = 'block';
+  clearTimeout(toast.t); toast.t = setTimeout(() => { e.style.display = 'none'; }, 3500);
+}
+function vname(id){ const v = places.villages.find((x) => x.id === id); return v ? v.name : ''; }
+function dname(id){ const d = places.districts.find((x) => x.id === id); return d ? d.name : ''; }
+function fillPlace(dId, vId){
+  const d = $(dId), v = $(vId), cur = d.value;
+  d.innerHTML = '';
+  places.districts.forEach((x) => d.add(new Option(x.name, x.id)));
+  if (cur) d.value = cur;
+  const fv = () => {
+    v.innerHTML = '';
+    places.villages.filter((x) => x.district === d.value).forEach((x) => v.add(new Option(x.name, x.id)));
+  };
+  d.onchange = fv; fv();
+}
+function fillAdminPlaces(){
+  const s = $('av'); s.innerHTML = '';
+  places.districts.forEach((x) => s.add(new Option(x.name, x.id)));
+}
+function savePlace(){
+  if (!$('pvil').value) return;
+  socket.emit('setplace', $('pvil').value);
+  $('pform').style.display = 'none';
+}
+function addPlace(t){
+  if (!socket) return;
+  const inp = t === 'd' ? $('dn') : $('vn');
+  const name = inp.value.trim();
+  if (!name) return;
+  socket.emit('placeadd', { password: $('pw').value, type: t, name, parent: t === 'v' ? $('av').value : '' });
+  inp.value = '';
+}
+function wipeChat(){
+  if (socket && confirm('Ҳамаи паёмҳо нест шаванд?')) socket.emit('wipechat', { password: $('pw').value });
+}
+function item(title, sub, fn){
+  const b = document.createElement('button'); b.className = 'item';
+  const s = document.createElement('span'); s.textContent = title; b.append(s);
+  if (sub){ const m = document.createElement('small'); m.textContent = sub; b.append(m); }
+  if (fn) b.onclick = fn;
+  return b;
+}
+function hd(t){ const d = document.createElement('div'); d.className = 'sh'; d.textContent = t; return d; }
+function mini(t, cls, fn){
+  const b = document.createElement('button'); b.className = 'mini ' + (cls || ''); b.textContent = t;
+  b.onclick = (e) => { e.stopPropagation(); fn(); };
+  return b;
+}
+function renderHome(){
+  const box = $('hbody'); box.innerHTML = '';
+  if (nav.v === 'home'){
+    if (prof.village){
+      box.append(hd('Деҳаи ман'));
+      box.append(item('🏠 ' + vname(prof.village), dname(prof.district), openVillage));
+    } else {
+      box.append(item('⚠ Деҳаи худро интихоб кунед', '', () => { fillPlace('pdist', 'pvil'); $('pform').style.display = 'flex'; }));
+    }
+    if (social.incoming.length){
+      box.append(hd('Дархостҳо'));
+      social.incoming.forEach((q) => {
+        const r = item('📨 ' + q.name, vname(q.village));
+        r.append(mini('Қабул', '', () => socket.emit('reqans', { id: q.id, accept: true })));
+        r.append(mini('Рад', 'r', () => socket.emit('reqans', { id: q.id, accept: false })));
+        box.append(r);
+      });
+    }
+    if (social.contacts.length){
+      box.append(hd('Сӯҳбатҳои шахсӣ'));
+      social.contacts.forEach((c) => box.append(item('💬 ' + c.name, vname(c.village), () => showChat(c.room, c.name))));
+    }
+    box.append(hd('Ноҳияҳо'));
+    if (!places.districts.length) box.append(item('Ҳоло ноҳия нест', ''));
+    places.districts.forEach((d) => box.append(item('📍 ' + d.name, '', () => { nav = { v: 'district', id: d.id }; renderHome(); })));
+  } else if (nav.v === 'district'){
+    box.append(item('← Ба ноҳияҳо', '', () => { nav = { v: 'home' }; renderHome(); }));
+    box.append(hd(dname(nav.id)));
+    places.villages.filter((x) => x.district === nav.id).forEach((v) => {
+      const mine = v.id === prof.village;
+      box.append(item('🏘 ' + v.name, mine ? 'Деҳаи шумо' : '', () => {
+        if (mine) openVillage();
+        else { nav = { v: 'members', id: v.id, d: v.district }; members = { village: '', list: [] }; socket.emit('members', v.id); renderHome(); }
+      }));
+    });
+  } else {
+    box.append(item('← Ба деҳаҳо', '', () => { nav = { v: 'district', id: nav.d }; renderHome(); }));
+    box.append(hd(vname(nav.id) + ': аъзоён'));
+    const list = members.village === nav.id ? members.list : [];
+    if (!list.length) box.append(item('Ҳоло касе нест', ''));
+    list.forEach((m) => {
+      const r = item('👤 ' + m.name, '');
+      if (m.state === 'none') r.append(mini('Запрос', '', () => socket.emit('reqsend', m.uid)));
+      else if (m.state === 'accepted'){
+        const c = social.contacts.find((x) => x.uid === m.uid);
+        r.append(mini('Гап задан', '', () => { if (c) showChat(c.room, c.name); }));
+      } else {
+        const t = m.state === 'sent' ? 'Фиристода шуд' : m.state === 'incoming' ? 'Дархост омадааст' : 'Рад шуд';
+        const b = mini(t, 'r', () => {}); b.style.opacity = '.6'; r.append(b);
+      }
+      box.append(r);
+    });
+  }
+}
+function openVillage(){ if (prof.village) showChat('v:' + prof.village, vname(prof.village)); }
+function showChat(r, title){
+  $('home').style.display = 'none'; $('chatv').style.display = 'flex';
+  $('ctitle').textContent = title;
+  room = r; $('msgs').innerHTML = ''; renderRooms(); setReply(null);
+  socket.emit('join', r);
+}
+function goHome(){
+  room = ''; $('chatv').style.display = 'none'; $('home').style.display = 'block';
+  setReply(null); if (socket) socket.emit('leave');
+  renderHome();
 }
 
 /* ---------- бозор ---------- */
@@ -507,8 +669,15 @@ function adEl(a){
   w.textContent = (CATS[a.cat] || '') + ' · ' + a.name + ' · ' + new Date(a.time).toLocaleDateString();
   c.append(w);
   const acts = document.createElement('div'); acts.className = 'acts';
-  const tel = document.createElement('a'); tel.href = 'tel:+' + a.phone; tel.textContent = '📞 Занг задан';
-  acts.append(tel);
+  if (a.phone){
+    const tel = document.createElement('a'); tel.href = 'tel:+' + a.phone; tel.textContent = '📞 Занг задан';
+    acts.append(tel);
+  } else if (a.uid !== myUid){
+    const rq = document.createElement('button'); rq.textContent = '💬 Запрос барои сӯҳбат';
+    rq.style.background = '#dcf0d2'; rq.style.color = '#27500A';
+    rq.onclick = () => { socket.emit('reqsend', a.uid); toast('Дархост фиристода шуд'); };
+    acts.append(rq);
+  }
   if (a.uid === myUid){
     const del = document.createElement('button'); del.textContent = '🗑 Нест кардан';
     del.onclick = () => { if (confirm('Эълон нест шавад?')) socket.emit('addel', a.id); };
@@ -571,12 +740,22 @@ function start(token){
   socket.on('connect_error', (e) => { if (e && e.message === 'auth') logout(); });
   socket.on('me', (id) => { myUid = id; });
   socket.on('needgender', () => { $('gform').style.display = 'flex'; });
-  socket.on('rooms', (list) => {
-    roomList = list;
-    if (!list.some((r) => r.id === room)) room = 'village';
-    renderRooms();
-    if (room !== 'village') socket.emit('join', room);
+  socket.on('rooms', (list) => { roomList = list; renderRooms(); });
+  socket.on('profile', (p) => { prof = p; renderHome(); });
+  socket.on('places', (p) => {
+    places = p; fillPlace('pdist', 'pvil'); fillPlace('rdist', 'rvil'); fillAdminPlaces(); renderHome();
   });
+  socket.on('needplace', () => { if (places.villages.length) $('pform').style.display = 'flex'; });
+  socket.on('social', (s) => {
+    social = s;
+    if (nav.v === 'members') socket.emit('members', nav.id);
+    renderHome();
+  });
+  socket.on('members', (d) => { members = d; renderHome(); });
+  socket.on('newmsg', (m) => {
+    if (m.room !== room){ beep(); toast('💬 ' + m.name + ': паёми нав'); }
+  });
+  socket.on('wiped', () => { $('msgs').innerHTML = ''; });
   socket.on('init', (d) => {
     $('news').innerHTML = '';
     d.news.forEach((n) => addNews(n, false));
@@ -588,8 +767,9 @@ function start(token){
     d.chat.forEach(addChat);
   });
   socket.on('chat', (m) => {
+    if (m.room !== room) return;
     if (m.uid !== myUid) beep();
-    if ((m.room || 'village') === room) addChat(m);
+    addChat(m);
   });
   socket.on('msgdel', (id) => {
     const el = document.querySelector('[data-id="' + id + '"]');
@@ -704,6 +884,8 @@ function sendNews(){
   socket.emit('news', { password: $('pw').value, title: $('nt').value, text: $('nx').value });
   $('nt').value = ''; $('nx').value = '';
 }
+
+fetch('/api/places').then((r) => r.json()).then((p) => { places = p; fillPlace('rdist', 'rvil'); }).catch(() => {});
 
 const saved = localStorage.getItem('token');
 if (saved) start(saved);
