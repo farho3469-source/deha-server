@@ -106,6 +106,17 @@ nav button.on{color:#2f6b3a;font-weight:600}
 #sform .gbox{background:#fff;border-radius:14px;padding:20px;width:88%;max-width:360px;text-align:center;max-height:90vh;overflow-y:auto}
 #sform .gbox h3{margin:0 0 10px;font-size:20px}
 #sform .gbox .btn{width:100%;margin:5px 0}
+#call{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#111;z-index:20;flex-direction:column;align-items:center;justify-content:center}
+#rv{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;background:#111}
+#lv{position:absolute;right:12px;top:12px;width:96px;height:128px;object-fit:cover;border-radius:12px;background:#333;display:none;z-index:2;transform:scaleX(-1)}
+#ctop{position:absolute;top:18%;left:0;right:0;text-align:center;color:#fff;z-index:2;text-shadow:0 1px 4px #000}
+#cname{font-size:26px;font-weight:600}
+#cst{font-size:16px;margin-top:6px}
+#cin,#cout{position:absolute;left:0;right:0;bottom:calc(30px + env(safe-area-inset-bottom));display:none;justify-content:center;gap:28px;z-index:2}
+.cbtn{width:64px;height:64px;border-radius:50%;border:0;font-size:26px;background:rgba(255,255,255,.25);color:#fff;padding:0}
+.cbtn.red{background:#d32f2f}
+.cbtn.grn{background:#2e7d32}
+.cbtn.off{background:#fff;color:#111}
 </style>
 </head>
 <body>
@@ -151,7 +162,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
         <div id="hbody"></div>
       </div>
       <div id="chatv">
-      <div id="chead"><button class="ic g" style="width:36px;height:36px;font-size:16px" onclick="goHome()">←</button><b id="ctitle"></b></div>
+      <div id="chead"><button class="ic g" style="width:36px;height:36px;font-size:16px" onclick="goHome()">←</button><b id="ctitle"></b><span style="flex:1"></span><button id="cb1" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(false)" aria-label="Занг">📞</button><button id="cb2" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(true)" aria-label="Видео">🎥</button></div>
       <div class="chips" id="rooms"></div>
       <div id="msgs"></div>
       <div id="rpl">
@@ -229,6 +240,13 @@ nav button.on{color:#2f6b3a;font-weight:600}
   </div>
 </div>
 
+<div id="call">
+  <video id="rv" autoplay playsinline></video>
+  <video id="lv" autoplay playsinline muted></video>
+  <div id="ctop"><div id="cname"></div><div id="cst"></div></div>
+  <div id="cin"><button class="cbtn red" onclick="declineCall()">✕</button><button class="cbtn grn" onclick="acceptCall()">✔</button></div>
+  <div id="cout"><button class="cbtn" id="btmic" onclick="toggleMic()">🎤</button><button class="cbtn" id="btcam" onclick="toggleCam()">📷</button><button class="cbtn red" onclick="endCall(true)">✕</button></div>
+</div>
 <div id="toast"></div>
 <div id="pform">
   <div class="gbox">
@@ -685,6 +703,7 @@ function openVillage(){ if (prof.village) showChat('v:' + prof.village, vname(pr
 function showChat(r, title){
   $('home').style.display = 'none'; $('chatv').style.display = 'flex';
   $('ctitle').textContent = title;
+  $('cb1').style.display = $('cb2').style.display = r.startsWith('dm:') ? 'inline-block' : 'none';
   room = r; $('msgs').innerHTML = ''; renderRooms(); setReply(null);
   socket.emit('join', r);
 }
@@ -692,6 +711,107 @@ function goHome(){
   room = ''; $('chatv').style.display = 'none'; $('home').style.display = 'block';
   setReply(null); if (socket) socket.emit('leave');
   renderHome();
+}
+
+/* ---------- занг (видео ва овоз) ---------- */
+let pc = null, lstream = null, callPeer = '', callName = '', callVideo = false, callRole = '';
+let pendingIce = [], ringT = null, ringI = null, timerI = null, iceList = null;
+async function getIce(){
+  if (!iceList){
+    try { iceList = (await (await fetch('/api/ice?t=' + tok)).json()).iceServers; }
+    catch (e) { iceList = [{ urls: 'stun:stun.l.google.com:19302' }]; }
+  }
+  return iceList;
+}
+function showCall(status, incoming){
+  $('call').style.display = 'flex';
+  $('cname').textContent = callName; $('cst').textContent = status;
+  $('cin').style.display = incoming ? 'flex' : 'none';
+  $('cout').style.display = incoming ? 'none' : 'flex';
+  $('btcam').style.display = callVideo ? 'inline-block' : 'none';
+  $('lv').style.display = callVideo ? 'block' : 'none';
+  $('btmic').classList.remove('off'); $('btcam').classList.remove('off');
+}
+function stopRing(){ clearInterval(ringI); ringI = null; }
+function startRing(){
+  stopRing(); beep();
+  ringI = setInterval(() => { beep(); try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {} }, 2000);
+}
+async function openMedia(){
+  try {
+    lstream = await navigator.mediaDevices.getUserMedia({ audio: true, video: callVideo ? { facingMode: 'user' } : false });
+    $('lv').srcObject = lstream;
+    return true;
+  } catch (e) {
+    alert(callVideo ? 'Камера ё микрофон иҷозат надорад' : 'Микрофон иҷозат надорад');
+    return false;
+  }
+}
+async function makePc(){
+  pc = new RTCPeerConnection({ iceServers: await getIce() });
+  lstream.getTracks().forEach((t) => pc.addTrack(t, lstream));
+  pc.onicecandidate = (e) => { if (e.candidate && callPeer) socket.emit('callsig', { to: callPeer, data: { ice: e.candidate } }); };
+  pc.ontrack = (e) => { $('rv').srcObject = e.streams[0]; $('rv').play().catch(() => {}); };
+  pc.onconnectionstatechange = () => {
+    if (!pc) return;
+    const st = pc.connectionState;
+    if (st === 'connected'){
+      clearInterval(timerI);
+      const t0 = Date.now();
+      timerI = setInterval(() => { $('cst').textContent = fmt(Math.floor((Date.now() - t0) / 1000)); }, 1000);
+    } else if (st === 'failed'){
+      toast('Пайваст нашуд'); endCall(true);
+    } else if (st === 'disconnected'){
+      setTimeout(() => { if (pc && pc.connectionState === 'disconnected') endCall(true); }, 6000);
+    }
+  };
+}
+function resetCall(){
+  clearTimeout(ringT); clearInterval(timerI); stopRing();
+  if (pc){ try { pc.close(); } catch (e) {} pc = null; }
+  if (lstream){ lstream.getTracks().forEach((t) => t.stop()); lstream = null; }
+  $('rv').srcObject = null; $('lv').srcObject = null;
+  callPeer = ''; callRole = ''; pendingIce = [];
+  $('call').style.display = 'none';
+}
+function endCall(notify){
+  if (notify && callPeer && socket) socket.emit('callend', { to: callPeer });
+  resetCall();
+}
+async function startCall(video){
+  if (callPeer || pc){ toast('Шумо дар занг ҳастед'); return; }
+  const p = room.split(':');
+  if (p[0] !== 'dm') return;
+  callPeer = p[1] === myUid ? p[2] : p[1];
+  callName = $('ctitle').textContent; callVideo = video; callRole = 'caller';
+  if (!(await openMedia())){ resetCall(); return; }
+  showCall('Занг мезанем...', false);
+  socket.emit('callinvite', { to: callPeer, video });
+  clearTimeout(ringT);
+  ringT = setTimeout(() => { if (callRole === 'caller' && !pc){ toast('Ҷавоб нашуд'); endCall(true); } }, 45000);
+}
+async function acceptCall(){
+  stopRing();
+  if (!(await openMedia())){ socket.emit('callanswer', { to: callPeer, accept: false }); resetCall(); return; }
+  showCall('Пайваст мешавад...', false);
+  await makePc();
+  socket.emit('callanswer', { to: callPeer, accept: true });
+}
+function declineCall(){
+  socket.emit('callanswer', { to: callPeer, accept: false });
+  resetCall();
+}
+function toggleMic(){
+  if (!lstream) return;
+  const t = lstream.getAudioTracks(), on = !(t[0] && t[0].enabled);
+  t.forEach((x) => { x.enabled = on; });
+  $('btmic').classList.toggle('off', !on);
+}
+function toggleCam(){
+  if (!lstream) return;
+  const t = lstream.getVideoTracks(), on = !(t[0] && t[0].enabled);
+  t.forEach((x) => { x.enabled = on; });
+  $('btcam').classList.toggle('off', !on);
 }
 
 /* ---------- бозор ---------- */
@@ -827,6 +947,49 @@ function start(token){
     const el = document.querySelector('[data-id="' + id + '"]');
     if (el) el.remove();
   });
+  socket.on('callincoming', (m) => {
+    if (callPeer === m.from && callRole === 'callee') return;
+    if (callPeer){ socket.emit('callanswer', { to: m.from, accept: false, busy: true }); return; }
+    callPeer = m.from; callName = m.name; callVideo = !!m.video; callRole = 'callee';
+    showCall((m.video ? '🎥 ' : '📞 ') + 'Занг мезанад...', true);
+    startRing();
+  });
+  socket.on('callanswer', async (m) => {
+    if (m.from !== callPeer || callRole !== 'caller') return;
+    clearTimeout(ringT);
+    if (!m.accept){ toast(m.busy ? 'Банд аст' : 'Занг рад шуд'); resetCall(); return; }
+    $('cst').textContent = 'Пайваст мешавад...';
+    try {
+      await makePc();
+      const off = await pc.createOffer();
+      await pc.setLocalDescription(off);
+      socket.emit('callsig', { to: callPeer, data: { sdp: { type: off.type, sdp: off.sdp } } });
+    } catch (e) { toast('Хато дар занг'); endCall(true); }
+  });
+  socket.on('callsig', async (m) => {
+    if (m.from !== callPeer || !pc || !m.data) return;
+    const d = m.data;
+    try {
+      if (d.sdp){
+        await pc.setRemoteDescription(d.sdp);
+        if (d.sdp.type === 'offer'){
+          const ans = await pc.createAnswer();
+          await pc.setLocalDescription(ans);
+          socket.emit('callsig', { to: callPeer, data: { sdp: { type: ans.type, sdp: ans.sdp } } });
+        }
+        for (const c of pendingIce) await pc.addIceCandidate(c).catch(() => {});
+        pendingIce = [];
+      } else if (d.ice){
+        if (pc.remoteDescription) await pc.addIceCandidate(d.ice).catch(() => {});
+        else pendingIce.push(d.ice);
+      }
+    } catch (e) {}
+  });
+  socket.on('callend', (m) => {
+    if (m.from !== callPeer) return;
+    toast('Занг тамом шуд'); resetCall();
+  });
+  getIce();
   socket.on('news', (n) => addNews(n, true));
   socket.on('ad', (a) => { adsData.unshift(a); renderAds(); });
   socket.on('addel', (id) => { adsData = adsData.filter((a) => a.id !== id); renderAds(); });
