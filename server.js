@@ -19,6 +19,25 @@ let users, chat, news, media, ads, subs, config, places, reqs;
 let VAPID_PUBLIC = '';
 const AUDIO_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4'];
 const HEX24 = /^[0-9a-f]{24}$/;
+const SEED = {
+  'Душанбе': ['Душанбе', 'Исмоили Сомонӣ', 'Сино', 'Шоҳмансур', 'Фирдавсӣ'],
+  'Суғд': ['Хуҷанд', 'Бӯстон', 'Исфара', 'Истаравшан', 'Конибодом', 'Панҷакент', 'Айнӣ', 'Ашт', 'Бобоҷон Ғафуров', 'Деваштич', 'Зафаробод', 'Кӯҳистони Мастчоҳ', 'Мастчоҳ', 'Спитамен', 'Шаҳристон', 'Ҷаббор Расулов'],
+  'Хатлон': ['Бохтар', 'Кӯлоб', 'Левакант', 'Норак', 'Ёвон', 'Восеъ', 'Ховалинг', 'Данғара', 'Дӯстӣ', 'Ҷайҳун', 'Ҷалолиддини Румӣ', 'Ҷомӣ', 'Кӯшониён', 'Қубодиён', 'Муъминобод', 'Носири Хусрав', 'Панҷ', 'Фархор', 'Хуросон', 'Шаҳритус', 'Шамсиддин Шоҳин', 'Темурмалик', 'Балҷувон', 'Ҳамадонӣ'],
+  'Бадахшон': ['Хоруғ', 'Дарвоз', 'Ванҷ', 'Ишкошим', 'Рӯшон', 'Роштқалъа', 'Шуғнон', 'Мурғоб'],
+  'НТҶ': ['Ҳисор', 'Рӯдакӣ', 'Шаҳринав', 'Турсунзода', 'Варзоб', 'Файзобод', 'Рашт', 'Лахш', 'Нуробод', 'Рогун', 'Тоҷикобод', 'Ваҳдат', 'Сангвор', 'Ҷиргатол'],
+};
+const escRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+async function resolveVillage(b) {
+  const vid = String(b.village || '');
+  if (HEX24.test(vid)) return places.findOne({ _id: new ObjectId(vid), type: 'v' });
+  const did = String(b.district || '');
+  const name = String(b.vname || '').trim().slice(0, 40);
+  if (!name || !HEX24.test(did) || !(await places.findOne({ _id: new ObjectId(did), type: 'd' }))) return null;
+  const ex = await places.findOne({ type: 'v', parent: did, name: { $regex: '^' + escRe(name) + '$', $options: 'i' } });
+  if (ex) return ex;
+  const r = await places.insertOne({ type: 'v', name, parent: did });
+  return { _id: r.insertedId, type: 'v', name, parent: did };
+}
 const isAdmin = (m) => !!m && String(m.password || '').trim() === ADMIN;
 
 /* ---------- ҷойҳо (ноҳия ва деҳа) ва ҳуқуқи дастрасӣ ---------- */
@@ -55,9 +74,9 @@ const myRooms = (u) => {
 };
 const profOf = (u) => ({ village: u.village || '', district: u.district || '', gender: u.gender || '' });
 const placesOut = async () => {
-  const all = await places.find({}).sort({ name: 1 }).toArray();
+  const all = await places.find({}).sort({ ord: 1, name: 1 }).toArray();
   return {
-    districts: all.filter((x) => x.type === 'd').map((x) => ({ id: String(x._id), name: x.name })),
+    districts: all.filter((x) => x.type === 'd').map((x) => ({ id: String(x._id), name: x.name, region: x.region || '' })),
     villages: all
       .filter((x) => x.type === 'v')
       .map((x) => ({ id: String(x._id), name: x.name, district: x.parent })),
@@ -151,8 +170,7 @@ app.post('/api/register', async (req, res) => {
     if (!name || phone.length < 9 || phone.length > 15 || password.length < 6) {
       return fail(res, 400, 'Маълумот нодуруст аст');
     }
-    const vid = String(req.body.village || '');
-    const vil = HEX24.test(vid) ? await places.findOne({ _id: new ObjectId(vid), type: 'v' }) : null;
+    const vil = await resolveVillage(req.body);
     if (!vil) return fail(res, 400, 'Ноҳия ва деҳаро интихоб кунед');
     if (await users.findOne({ phone })) {
       return fail(res, 409, 'Ин рақам аллакай сабт шудааст');
@@ -168,6 +186,7 @@ app.post('/api/register', async (req, res) => {
       token,
       created: Date.now(),
     });
+    io.emit('places', await placesOut());
     res.json({ token, name });
   } catch (e) {
     console.error(e);
@@ -368,17 +387,17 @@ io.on('connection', (s) => {
     }
   });
 
-  s.on('setplace', async (vid) => {
+  s.on('setplace', async (m) => {
     try {
       if (s.user.village) return;
-      vid = String(vid);
-      if (!HEX24.test(vid)) return;
-      const v = await places.findOne({ _id: new ObjectId(vid), type: 'v' });
+      const v = await resolveVillage(m || {});
       if (!v) return;
+      const vid = String(v._id);
       await users.updateOne({ _id: s.user._id }, { $set: { village: vid, district: v.parent } });
       s.user.village = vid;
       s.user.district = v.parent;
       s.join('vil:' + vid);
+      io.emit('places', await placesOut());
       s.emit('profile', profOf(s.user));
       s.emit('rooms', myRooms(s.user));
     } catch (e) {
@@ -647,6 +666,12 @@ io.on('connection', (s) => {
     await chat.createIndex({ room: 1, time: -1 });
     await reqs.createIndex({ from: 1 });
     await reqs.createIndex({ to: 1 });
+    let ord = 0;
+    for (const [region, names] of Object.entries(SEED)) {
+      for (const name of names) {
+        await places.updateOne({ type: 'd', name }, { $set: { region, ord: ++ord }, $setOnInsert: { parent: '' } }, { upsert: true });
+      }
+    }
 
     let v = await config.findOne({ _id: 'vapid' });
     if (!v) {
