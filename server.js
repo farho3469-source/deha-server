@@ -40,6 +40,31 @@ async function resolveVillage(b) {
 }
 const isAdmin = (m) => !!m && String(m.password || '').trim() === ADMIN;
 
+/* ---------- занг (WebRTC) ---------- */
+const callPairs = new Map();
+const pendingCalls = new Map();
+const pairKey = (a, b) => [a, b].sort().join(':');
+let iceCache = { t: 0, v: null };
+async function iceServers() {
+  if (iceCache.v && Date.now() - iceCache.t < 1800000) return iceCache.v;
+  let v = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
+  try {
+    if (process.env.ICE_JSON) {
+      v = v.concat(JSON.parse(process.env.ICE_JSON));
+    } else if (process.env.METERED_DOMAIN && process.env.METERED_KEY) {
+      const r = await fetch(
+        'https://' + process.env.METERED_DOMAIN + '/api/v1/turn/credentials?apiKey=' + encodeURIComponent(process.env.METERED_KEY)
+      );
+      const j = await r.json();
+      if (Array.isArray(j) && j.length) v = j.concat(v);
+    }
+  } catch (e) {
+    console.error('ice', e);
+  }
+  iceCache = { t: Date.now(), v };
+  return v;
+}
+
 /* ---------- ҷойҳо (ноҳия ва деҳа) ва ҳуқуқи дастрасӣ ---------- */
 const vOf = (r) => {
   const p = String(r).split(':');
@@ -113,6 +138,15 @@ app.use(
 const cleanPhone = (p) => String(p || '').replace(/[^\d]/g, '');
 const fail = (res, code, error) => res.status(code).json({ error });
 
+app.get('/api/ice', async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.query.t || '') });
+    if (!u) return res.status(401).end();
+    res.json({ iceServers: await iceServers() });
+  } catch (e) {
+    res.status(500).end();
+  }
+});
 app.get('/api/vapid', (req, res) => res.json({ key: VAPID_PUBLIC }));
 app.get('/api/places', async (req, res) => {
   try {
@@ -314,6 +348,8 @@ io.on('connection', (s) => {
   s.emit('profile', profOf(s.user));
   s.emit('rooms', myRooms(s.user));
   if (!s.user.gender) s.emit('needgender');
+  const pc0 = pendingCalls.get(uid);
+  if (pc0 && Date.now() - pc0.time < 45000) s.emit('callincoming', pc0);
 
   const enter = async (r) => {
     r = String(r);
@@ -437,6 +473,52 @@ io.on('connection', (s) => {
     } catch (e) {
       console.error(e);
     }
+  });
+
+  s.on('callinvite', async (m) => {
+    try {
+      const to = String((m && m.to) || '');
+      if (!HEX24.test(to) || to === uid) return;
+      const ok = await reqs.findOne({ status: 'accepted', $or: [{ from: uid, to }, { from: to, to: uid }] });
+      if (!ok) return s.emit('err', 'Аввал запрос лозим аст');
+      const now = Date.now();
+      for (const [k, t] of callPairs) if (now - t > 3600000) callPairs.delete(k);
+      callPairs.set(pairKey(uid, to), now);
+      const info = { from: uid, name: s.user.name, video: !!m.video, time: now };
+      pendingCalls.set(to, info);
+      io.to('u:' + to).emit('callincoming', info);
+      pushTo([to], { title: (m.video ? '🎥 ' : '📞 ') + 'Занг', body: s.user.name + ' занг мезанад', tag: 'call' });
+      setTimeout(() => {
+        const p = pendingCalls.get(to);
+        if (p && p.time === now) pendingCalls.delete(to);
+      }, 50000);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('callanswer', (m) => {
+    const to = String((m && m.to) || '');
+    if (!callPairs.has(pairKey(uid, to))) return;
+    const p = pendingCalls.get(uid);
+    if (p && p.from === to) pendingCalls.delete(uid);
+    io.to('u:' + to).emit('callanswer', { from: uid, accept: !!m.accept, busy: !!m.busy });
+  });
+
+  s.on('callsig', (m) => {
+    const to = String((m && m.to) || '');
+    if (!callPairs.has(pairKey(uid, to)) || !m.data || typeof m.data !== 'object') return;
+    io.to('u:' + to).emit('callsig', { from: uid, data: m.data });
+  });
+
+  s.on('callend', (m) => {
+    const to = String((m && m.to) || '');
+    if (!callPairs.has(pairKey(uid, to))) return;
+    const p = pendingCalls.get(to);
+    if (p && p.from === uid) pendingCalls.delete(to);
+    const q = pendingCalls.get(uid);
+    if (q && q.from === to) pendingCalls.delete(uid);
+    io.to('u:' + to).emit('callend', { from: uid });
   });
 
   s.on('placeadd', async (m) => {
