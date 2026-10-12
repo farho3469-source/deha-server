@@ -72,7 +72,7 @@ const myRooms = (u) => {
   l.push({ id: b + ':football', title: 'Футболистон' });
   return l;
 };
-const profOf = (u) => ({ village: u.village || '', district: u.district || '', gender: u.gender || '' });
+const profOf = (u) => ({ name: u.name || '', village: u.village || '', district: u.district || '', gender: u.gender || '' });
 const placesOut = async () => {
   const all = await places.find({}).sort({ ord: 1, name: 1 }).toArray();
   return {
@@ -400,6 +400,40 @@ io.on('connection', (s) => {
       io.emit('places', await placesOut());
       s.emit('profile', profOf(s.user));
       s.emit('rooms', myRooms(s.user));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('settings', async (m) => {
+    try {
+      if (!m) return;
+      const set = {};
+      const name = String(m.name || '').trim().slice(0, 30);
+      if (name) set.name = name;
+      if (m.gender === 'm' || m.gender === 'f') set.gender = m.gender;
+      let v = null;
+      if (m.village || m.vname) {
+        v = await resolveVillage(m);
+        if (!v) return s.emit('err', 'Деҳаро интихоб кунед');
+        set.village = String(v._id);
+        set.district = v.parent;
+      }
+      if (!Object.keys(set).length) return;
+      await users.updateOne({ _id: s.user._id }, { $set: set });
+      const oldV = s.user.village;
+      Object.assign(s.user, set);
+      if (v && oldV !== set.village) {
+        if (oldV) s.leave('vil:' + oldV);
+        s.join('vil:' + set.village);
+        [...s.rooms].filter((x) => x.startsWith('r:')).forEach((x) => s.leave(x));
+        await ads.updateMany({ uid }, { $set: { village: set.village } });
+        io.emit('places', await placesOut());
+      }
+      s.emit('profile', profOf(s.user));
+      s.emit('rooms', myRooms(s.user));
+      s.emit('settingsok');
+      sendSocial(uid);
     } catch (e) {
       console.error(e);
     }
