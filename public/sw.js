@@ -9,7 +9,7 @@ self.addEventListener('push', (e) => {
   e.waitUntil(
     (async () => {
       const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      if (list.some((c) => c.visibilityState === 'visible')) return;
+      if (d.tag !== 'test' && list.some((c) => c.visibilityState === 'visible')) return;
       await self.registration.showNotification(d.title || 'Деҳа', {
         body: d.body || '',
         tag: d.tag || 'deha',
