@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const crypto = require('crypto');
+const zlib = require('zlib');
 const bcrypt = require('bcryptjs');
 const webpush = require('web-push');
 const { MongoClient, ObjectId } = require('mongodb');
@@ -39,6 +40,75 @@ async function resolveVillage(b) {
   return { _id: r.insertedId, type: 'v', name, parent: did };
 }
 const isAdmin = (m) => !!m && String(m.password || '').trim() === ADMIN;
+
+/* ---------- нишона ва manifest (барои насби барнома) ---------- */
+const CRC = (() => {
+  const t = [];
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+const crc32 = (b) => {
+  let c = 0xffffffff;
+  for (const x of b) c = CRC[(c ^ x) & 255] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+};
+const pngChunk = (type, data) => {
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(data.length);
+  const td = Buffer.concat([Buffer.from(type), data]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(td));
+  return Buffer.concat([len, td, crc]);
+};
+function makeIcon(n) {
+  const row = n * 3 + 1;
+  const raw = Buffer.alloc(row * n);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const u = x / n, v = y / n;
+      let c = 0x2f6b3a;
+      if (v > 0.75) c = 0x27500a;
+      if ((u - 0.68) ** 2 + (v - 0.3) ** 2 < 0.0081) c = 0xfac775;
+      if (u >= 0.33 && u <= 0.67 && v >= 0.5 && v <= 0.75) c = 0xf5c4b3;
+      if (v >= 0.3 && v < 0.5 && Math.abs(u - 0.5) <= ((v - 0.3) / 0.2) * 0.23) c = 0x993c1d;
+      if (u >= 0.46 && u <= 0.54 && v >= 0.6 && v <= 0.75) c = 0x712b13;
+      const o = y * row + 1 + x * 3;
+      raw[o] = c >> 16;
+      raw[o + 1] = (c >> 8) & 255;
+      raw[o + 2] = c & 255;
+    }
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(n, 0);
+  ihdr.writeUInt32BE(n, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    pngChunk('IHDR', ihdr),
+    pngChunk('IDAT', zlib.deflateSync(raw)),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+const ICONS = {};
+const MANIFEST = JSON.stringify({
+  name: 'Деҳа',
+  short_name: 'Деҳа',
+  start_url: '/',
+  scope: '/',
+  display: 'standalone',
+  background_color: '#efece3',
+  theme_color: '#2f6b3a',
+  lang: 'tg',
+  icons: [
+    { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+  ],
+});
 
 /* ---------- занг (WebRTC) ---------- */
 const callPairs = new Map();
@@ -138,6 +208,14 @@ app.use(
 const cleanPhone = (p) => String(p || '').replace(/[^\d]/g, '');
 const fail = (res, code, error) => res.status(code).json({ error });
 
+app.get('/manifest.json', (req, res) => res.type('application/manifest+json').send(MANIFEST));
+app.get('/icon-:s.png', (req, res) => {
+  const n = req.params.s;
+  if (n !== '192' && n !== '512') return res.status(404).end();
+  if (!ICONS[n]) ICONS[n] = makeIcon(Number(n));
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.type('image/png').send(ICONS[n]);
+});
 app.get('/api/ice', async (req, res) => {
   try {
     const u = await users.findOne({ token: String(req.query.t || '') });
