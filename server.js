@@ -114,6 +114,12 @@ const MANIFEST = JSON.stringify({
 const callPairs = new Map();
 const pendingCalls = new Map();
 const pairKey = (a, b) => [a, b].sort().join(':');
+const OPEN_RELAY = [
+  { urls: 'stun:openrelay.metered.ca:80' },
+  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+];
 let iceCache = { t: 0, v: null };
 async function iceServers() {
   if (iceCache.v && Date.now() - iceCache.t < 1800000) return iceCache.v;
@@ -127,6 +133,9 @@ async function iceServers() {
       );
       const j = await r.json();
       if (Array.isArray(j) && j.length) v = j.concat(v);
+      else v = v.concat(OPEN_RELAY);
+    } else {
+      v = v.concat(OPEN_RELAY);
     }
   } catch (e) {
     console.error('ice', e);
