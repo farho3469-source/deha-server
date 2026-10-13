@@ -5,6 +5,8 @@
 <script>window.onerror=function(m,u,l){alert('Хато: '+m+' (сатр '+l+')');};</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2f6b3a">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>Деҳа</title>
 <style>
 *{box-sizing:border-box}
@@ -716,6 +718,7 @@ function goHome(){
 /* ---------- занг (видео ва овоз) ---------- */
 let pc = null, lstream = null, callPeer = '', callName = '', callVideo = false, callRole = '';
 let pendingIce = [], ringT = null, ringI = null, timerI = null, iceList = null;
+let callStarting = 0;
 async function getIce(){
   if (!iceList){
     try { iceList = (await (await fetch('/api/ice?t=' + tok)).json()).iceServers; }
@@ -737,15 +740,32 @@ function startRing(){
   stopRing(); beep();
   ringI = setInterval(() => { beep(); try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {} }, 2000);
 }
+function gum(c, ms){
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const t = setTimeout(() => { done = true; reject(new Error('timeout')); }, ms);
+    navigator.mediaDevices.getUserMedia(c).then(
+      (s) => { clearTimeout(t); if (done) s.getTracks().forEach((x) => x.stop()); else resolve(s); },
+      (e) => { clearTimeout(t); if (!done) reject(e); }
+    );
+  });
+}
 async function openMedia(){
-  try {
-    lstream = await navigator.mediaDevices.getUserMedia({ audio: true, video: callVideo ? { facingMode: 'user' } : false });
-    $('lv').srcObject = lstream;
-    return true;
-  } catch (e) {
-    alert(callVideo ? 'Камера ё микрофон иҷозат надорад' : 'Микрофон иҷозат надорад');
-    return false;
+  const tries = callVideo
+    ? [{ audio: true, video: { facingMode: 'user' } }, { audio: true, video: false }]
+    : [{ audio: true, video: false }];
+  let err = null;
+  for (const c of tries){
+    try {
+      lstream = await gum(c, 8000);
+      if (!c.video && callVideo){ callVideo = false; toast('Камера кор намекунад, занг бо овоз мешавад'); }
+      $('lv').srcObject = lstream;
+      return true;
+    } catch (e) { err = e; }
   }
+  const env = /; wv\)/.test(navigator.userAgent) ? 'WebView (барномаи APK)' : 'Chrome';
+  alert('Микрофон ё камера иҷозат надорад\n\nХато: ' + ((err && err.name) || err) + '\nМуҳит: ' + env);
+  return false;
 }
 async function makePc(){
   pc = new RTCPeerConnection({ iceServers: await getIce() });
@@ -779,12 +799,15 @@ function endCall(notify){
   resetCall();
 }
 async function startCall(video){
-  if (callPeer || pc){ toast('Шумо дар занг ҳастед'); return; }
+  if ($('call').style.display === 'flex' || (callStarting && Date.now() - callStarting < 25000)){ toast('Шумо дар занг ҳастед'); return; }
+  resetCall();
   const p = room.split(':');
   if (p[0] !== 'dm') return;
   callPeer = p[1] === myUid ? p[2] : p[1];
   callName = $('ctitle').textContent; callVideo = video; callRole = 'caller';
-  if (!(await openMedia())){ resetCall(); return; }
+  callStarting = Date.now();
+  if (!(await openMedia())){ callStarting = 0; resetCall(); return; }
+  callStarting = 0;
   showCall('Занг мезанем...', false);
   socket.emit('callinvite', { to: callPeer, video });
   clearTimeout(ringT);
@@ -1049,9 +1072,9 @@ function fmt(s){ return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0
 async function startRec(){
   if (!socket || (rec && rec.state === 'recording')) return;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream = await gum({ audio: true }, 8000);
   } catch (e) {
-    alert('Микрофон иҷозат надорад');
+    alert('Микрофон иҷозат надорад\n\nХато: ' + ((e && e.name) || e));
     return;
   }
   const mt = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
