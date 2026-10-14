@@ -16,7 +16,7 @@ const MONGO_URI = String(process.env.MONGODB_URI || '')
   .replace(/[^\x21-\x7E]/g, '')
   .replace(/["'<>]/g, '');
 const client = new MongoClient(MONGO_URI);
-let users, chat, news, media, ads, subs, config, places, reqs;
+let users, chat, news, media, ads, subs, config, places, reqs, reports, dbh;
 let VAPID_PUBLIC = '';
 const AUDIO_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4'];
 const HEX24 = /^[0-9a-f]{24}$/;
@@ -176,7 +176,7 @@ const myRooms = (u) => {
   l.push({ id: b + ':football', title: 'Футболистон' });
   return l;
 };
-const profOf = (u) => ({ name: u.name || '', village: u.village || '', district: u.district || '', gender: u.gender || '' });
+const profOf = (u) => ({ name: u.name || '', village: u.village || '', district: u.district || '', gender: u.gender || '', avatar: u.avatar || '' });
 const placesOut = async () => {
   const all = await places.find({}).sort({ ord: 1, name: 1 }).toArray();
   return {
@@ -321,6 +321,7 @@ app.post('/api/login', async (req, res) => {
     const u = await users.findOne({ phone });
     const ok = u && (await bcrypt.compare(String(req.body.password || ''), u.hash));
     if (!ok) return fail(res, 401, 'Рақам ё парол нодуруст аст');
+    if (u.banned) return fail(res, 403, 'Ҳисоби шумо манъ шудааст');
     res.json({ token: u.token, name: u.name });
   } catch (e) {
     console.error(e);
@@ -369,7 +370,9 @@ async function pushMsg(msg, roomId) {
     if (v) {
       const q = { village: v.vid };
       if (v.sub === 'women') q.gender = 'f';
-      targets = (await users.find(q, { projection: { _id: 1 } }).toArray()).map((x) => String(x._id));
+      targets = (await users.find(q, { projection: { _id: 1, blocked: 1 } }).toArray())
+        .filter((x) => !(x.blocked || []).includes(msg.uid))
+        .map((x) => String(x._id));
     } else {
       const p = roomId.split(':');
       targets = [p[1] === msg.uid ? p[2] : p[1]];
@@ -393,22 +396,71 @@ async function sendSocial(uid) {
     const rq = await reqs.find({ $or: [{ from: uid }, { to: uid }] }).toArray();
     const ids = [...new Set(rq.map((q) => (q.from === uid ? q.to : q.from)))];
     const us = await users
-      .find({ _id: { $in: ids.map((i) => new ObjectId(i)) } }, { projection: { name: 1, village: 1 } })
+      .find({ _id: { $in: ids.map((i) => new ObjectId(i)) } }, { projection: { name: 1, village: 1, avatar: 1 } })
       .toArray();
     const info = {};
-    us.forEach((x) => (info[String(x._id)] = { name: x.name, village: x.village || '' }));
+    us.forEach((x) => (info[String(x._id)] = { name: x.name, village: x.village || '', av: x.avatar || '' }));
     const out = { incoming: [], contacts: [] };
     rq.forEach((q) => {
       const o = q.from === uid ? q.to : q.from;
       const i = info[o];
       if (!i) return;
-      if (q.status === 'accepted') out.contacts.push({ uid: o, name: i.name, village: i.village, room: dmPair(uid, o) });
+      if (q.status === 'accepted') out.contacts.push({ uid: o, name: i.name, village: i.village, av: i.av, room: dmPair(uid, o) });
       else if (q.status === 'pending' && q.to === uid)
-        out.incoming.push({ id: String(q._id), uid: o, name: i.name, village: i.village });
+        out.incoming.push({ id: String(q._id), uid: o, name: i.name, village: i.village, av: i.av });
     });
     io.to('u:' + uid).emit('social', out);
   } catch (e) {
     console.error(e);
+  }
+}
+
+async function sendBlocks(s) {
+  try {
+    const ids = (s.user.blocked || []).filter((x) => HEX24.test(x));
+    const us = ids.length
+      ? await users.find({ _id: { $in: ids.map((i) => new ObjectId(i)) } }, { projection: { name: 1 } }).toArray()
+      : [];
+    s.emit('blocks', ids.map((id) => ({ uid: id, name: (us.find((x) => String(x._id) === id) || {}).name || '—' })));
+  } catch (e) {
+    console.error(e);
+  }
+}
+async function sendReports(s) {
+  const list = await reports.find({ status: 'new' }).sort({ time: -1 }).limit(50).toArray();
+  s.emit(
+    'reports',
+    list.map((r) => ({
+      id: String(r._id),
+      targetName: r.targetName,
+      reporterName: r.reporterName,
+      text: r.text,
+      time: r.time,
+    }))
+  );
+}
+async function cleanup() {
+  try {
+    const now = Date.now();
+    const D = 86400000;
+    const tOld = now - (Number(process.env.KEEP_TEXT_DAYS) || 90) * D;
+    const mOld = now - (Number(process.env.KEEP_MEDIA_DAYS) || 14) * D;
+    const olds = await chat
+      .find(
+        { $or: [{ kind: 'text', time: { $lt: tOld } }, { kind: { $in: ['image', 'audio'] }, time: { $lt: mOld } }] },
+        { projection: { media: 1 } }
+      )
+      .limit(3000)
+      .toArray();
+    if (olds.length) {
+      const mids = olds.map((d) => d.media).filter((x) => HEX24.test(String(x))).map((x) => new ObjectId(x));
+      if (mids.length) await media.deleteMany({ _id: { $in: mids } });
+      await chat.deleteMany({ _id: { $in: olds.map((d) => d._id) } });
+      console.log('cleanup', olds.length);
+    }
+    await reports.deleteMany({ status: { $ne: 'new' }, time: { $lt: now - 90 * D } });
+  } catch (e) {
+    console.error('cleanup', e);
   }
 }
 
@@ -418,6 +470,7 @@ io.use(async (socket, next) => {
     if (!token) return next(new Error('auth'));
     const u = await users.findOne({ token });
     if (!u) return next(new Error('auth'));
+    if (u.banned) return next(new Error('banned'));
     socket.user = u;
     socket.data.uid = String(u._id);
     socket.data.vis = true;
@@ -459,6 +512,7 @@ io.on('connection', (s) => {
       s.emit('places', await placesOut());
       if (!s.user.village) s.emit('needplace');
       sendSocial(uid);
+      sendBlocks(s);
     } catch (e) {
       console.error(e);
     }
@@ -535,6 +589,11 @@ io.on('connection', (s) => {
       const name = String(m.name || '').trim().slice(0, 30);
       if (name) set.name = name;
       if (m.gender === 'm' || m.gender === 'f') set.gender = m.gender;
+      if (m.avatar !== undefined) {
+        const a = String(m.avatar || '');
+        if (!a) set.avatar = '';
+        else if (HEX24.test(a) && (await media.findOne({ _id: new ObjectId(a), avatar: true }, { projection: { _id: 1 } }))) set.avatar = a;
+      }
       let v = null;
       if (m.village || m.vname) {
         v = await resolveVillage(m);
@@ -608,6 +667,112 @@ io.on('connection', (s) => {
     io.to('u:' + to).emit('callend', { from: uid });
   });
 
+  s.on('block', async (u) => {
+    try {
+      u = String(u);
+      if (!HEX24.test(u) || u === uid) return;
+      await users.updateOne({ _id: s.user._id }, { $addToSet: { blocked: u } });
+      s.user.blocked = [...new Set([...(s.user.blocked || []), u])];
+      sendBlocks(s);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('unblock', async (u) => {
+    try {
+      u = String(u);
+      await users.updateOne({ _id: s.user._id }, { $pull: { blocked: u } });
+      s.user.blocked = (s.user.blocked || []).filter((x) => x !== u);
+      sendBlocks(s);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('report', async (m) => {
+    try {
+      const id = String((m && m.id) || '');
+      if (!HEX24.test(id)) return;
+      const doc = await chat.findOne({ _id: new ObjectId(id) });
+      if (!doc || doc.uid === uid || !(await canEnter(s.user, doc.room))) return;
+      if (!(await reports.findOne({ msg: id, reporter: uid }))) {
+        await reports.insertOne({
+          msg: id,
+          room: doc.room,
+          reporter: uid,
+          reporterName: s.user.name,
+          target: doc.uid,
+          targetName: doc.name,
+          text: previewOf(doc),
+          time: Date.now(),
+          status: 'new',
+        });
+      }
+      s.emit('reported');
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('reports', async (m) => {
+    try {
+      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      await sendReports(s);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('repact', async (m) => {
+    try {
+      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      const id = String(m.id || '');
+      if (!HEX24.test(id)) return;
+      const r = await reports.findOne({ _id: new ObjectId(id) });
+      if (!r) return;
+      if (m.act === 'delete') {
+        const doc = await chat.findOne({ _id: new ObjectId(r.msg) });
+        if (doc) {
+          await chat.deleteOne({ _id: doc._id });
+          if (doc.media && HEX24.test(doc.media)) await media.deleteOne({ _id: new ObjectId(doc.media) }).catch(() => {});
+          io.emit('msgdel', r.msg);
+        }
+      }
+      if (m.act === 'ban' && HEX24.test(r.target)) {
+        await users.updateOne({ _id: new ObjectId(r.target) }, { $set: { banned: true } });
+        io.in('u:' + r.target).disconnectSockets(true);
+      }
+      await reports.updateOne({ _id: r._id }, { $set: { status: m.act === 'dismiss' ? 'dismissed' : 'done' } });
+      await sendReports(s);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('unban', async (m) => {
+    try {
+      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      const r = await users.updateOne({ phone: cleanPhone(m.phone) }, { $set: { banned: false } });
+      s.emit('err', r.matchedCount ? 'Манъ кушода шуд' : 'Чунин рақам нест');
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('stats', async (m) => {
+    try {
+      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      const st = await dbh.command({ dbStats: 1, scale: 1048576 });
+      s.emit(
+        'stats',
+        {
+          mb: Math.round(st.storageSize * 10) / 10,
+          msgs: await chat.estimatedDocumentCount(),
+          files: await media.estimatedDocumentCount(),
+          users: await users.estimatedDocumentCount(),
+        }
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   s.on('placeadd', async (m) => {
     try {
       if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
@@ -649,7 +814,7 @@ io.on('connection', (s) => {
       vid = String(vid);
       if (!HEX24.test(vid)) return;
       const list = await users
-        .find({ village: vid, _id: { $ne: s.user._id } }, { projection: { name: 1 } })
+        .find({ village: vid, _id: { $ne: s.user._id } }, { projection: { name: 1, avatar: 1, blocked: 1 } })
         .limit(300)
         .toArray();
       const rq = await reqs.find({ $or: [{ from: uid }, { to: uid }] }).toArray();
@@ -662,7 +827,9 @@ io.on('connection', (s) => {
       };
       s.emit('members', {
         village: vid,
-        list: list.map((x) => ({ uid: String(x._id), name: x.name, state: st(String(x._id)) })),
+        list: list
+          .filter((x) => !(x.blocked || []).includes(uid))
+          .map((x) => ({ uid: String(x._id), name: x.name, av: x.avatar || '', state: st(String(x._id)) })),
       });
     } catch (e) {
       console.error(e);
@@ -675,6 +842,7 @@ io.on('connection', (s) => {
       if (!HEX24.test(to) || to === uid) return;
       const other = await users.findOne({ _id: new ObjectId(to) });
       if (!other) return;
+      if ((other.blocked || []).includes(uid)) return s.emit('err', 'Дархост фиристода нашуд');
       const ex = await reqs.findOne({ $or: [{ from: uid, to }, { from: to, to: uid }] });
       if (ex) {
         if (ex.status === 'pending' && ex.from === to) {
@@ -731,7 +899,7 @@ io.on('connection', (s) => {
       if (!ok || !m.data || !m.data.length || m.data.length > 2000000) {
         return cb({ error: 'Файл нодуруст аст' });
       }
-      const r = await media.insertOne({ type, data: Buffer.from(m.data), time: Date.now() });
+      const r = await media.insertOne({ type, data: Buffer.from(m.data), time: Date.now(), ...(m.avatar ? { avatar: true } : {}) });
       cb({ id: String(r.insertedId) });
     } catch (e) {
       console.error(e);
@@ -744,8 +912,13 @@ io.on('connection', (s) => {
       if (!m) return;
       const room = String(m.room || '');
       if (!(await canEnter(s.user, room))) return;
+      if (!vOf(room)) {
+        const pp = room.split(':');
+        const oth = await users.findOne({ _id: new ObjectId(pp[1] === uid ? pp[2] : pp[1]) }, { projection: { blocked: 1 } });
+        if (oth && (oth.blocked || []).includes(uid)) return;
+      }
       const kind = ['text', 'image', 'audio'].includes(m.kind) ? m.kind : 'text';
-      const msg = { uid, name: s.user.name, room, kind, time: Date.now() };
+      const msg = { uid, name: s.user.name, av: s.user.avatar || '', room, kind, time: Date.now() };
       if (kind === 'text') {
         msg.text = String(m.text || '').trim().slice(0, 500);
         if (!msg.text) return;
@@ -863,12 +1036,15 @@ io.on('connection', (s) => {
     config = db.collection('config');
     places = db.collection('places');
     reqs = db.collection('reqs');
+    reports = db.collection('reports');
+    dbh = db;
     await users.createIndex({ phone: 1 }, { unique: true });
     await subs.createIndex({ endpoint: 1 }, { unique: true });
     await subs.createIndex({ uid: 1 });
     await chat.createIndex({ room: 1, time: -1 });
     await reqs.createIndex({ from: 1 });
     await reqs.createIndex({ to: 1 });
+    await reports.createIndex({ status: 1, time: -1 });
     let ord = 0;
     for (const [region, names] of Object.entries(SEED)) {
       for (const name of names) {
@@ -886,6 +1062,8 @@ io.on('connection', (s) => {
     VAPID_PUBLIC = v.publicKey;
 
     server.listen(process.env.PORT || 3000, () => console.log('Деҳа кор мекунад'));
+    setInterval(cleanup, 6 * 3600 * 1000);
+    setTimeout(cleanup, 60000);
   } catch (e) {
     console.error('Хатои база:', e);
     process.exit(1);
