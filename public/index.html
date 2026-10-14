@@ -120,6 +120,11 @@ nav button.on{color:#2f6b3a;font-weight:600}
 .cbtn.red{background:#d32f2f}
 .cbtn.grn{background:#2e7d32}
 .cbtn.off{background:#fff;color:#111}
+.avt{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:#2f6b3a;color:#fff;font-weight:600;overflow:hidden;flex:none}
+.avt img{width:100%;height:100%;object-fit:cover}
+.nm{display:flex;align-items:center;gap:6px}
+#sblk{text-align:left;margin:8px 0}
+#sav{display:flex;justify-content:center}
 </style>
 </head>
 <body>
@@ -202,6 +207,12 @@ nav button.on{color:#2f6b3a;font-weight:600}
         <input id="nt" placeholder="Сарлавҳа">
         <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
         <button class="btn" onclick="sendNews()">Нашр кардан</button>
+        <div class="sh">Модератсия</div>
+        <button class="btn g" style="width:100%" onclick="loadReports()">🚩 Шикоятҳо</button>
+        <div id="rlist"></div>
+        <input id="unph" placeholder="Рақами телефон (барои кушодани манъ)">
+        <button class="btn g" style="width:100%" onclick="unban()">Кушодани манъ</button>
+        <button class="btn g" style="width:100%;margin-top:8px" onclick="loadStats()">📊 Ҳолати база</button>
         <button class="btn" style="width:100%;margin-top:18px;background:#b00020" onclick="wipeChat()">🗑 Ҳамаи паёмҳоро нест кардан</button>
         <button class="btn g" style="width:100%;margin-top:18px" onclick="testPush()">🔔 Санҷиши огоҳинома</button>
       </div>
@@ -265,11 +276,14 @@ nav button.on{color:#2f6b3a;font-weight:600}
 <div id="sform">
   <div class="gbox">
     <h3>⚙ Танзимот</h3>
+    <div id="sav"></div>
+    <button class="btn g" onclick="$('avfile').click()">📷 Сурати профил</button>
     <input id="sname" placeholder="Номи шумо">
     <select id="sgen"><option value="">Ҷинс (интихоб нашудааст)</option><option value="m">Мард</option><option value="f">Зан</option></select>
     <select id="sdist"></select>
     <select id="svil"></select>
     <input id="sviln" placeholder="Номи деҳаи шумо" style="display:none">
+    <div id="sblk"></div>
     <button class="btn" onclick="saveSettings()">Сабт кардан</button>
     <button class="btn g" onclick="$('sform').style.display='none'">Бекор кардан</button>
   </div>
@@ -280,12 +294,15 @@ nav button.on{color:#2f6b3a;font-weight:600}
     <div id="mpv"></div>
     <button class="btn" id="mrep">↩ Ҷавоб додан</button>
     <button class="btn" id="mdel" style="background:#b00020">🗑 Нест кардан</button>
+    <button class="btn g" id="mrpt">🚩 Шикоят кардан</button>
+    <button class="btn g" id="mblk">🚫 Корбарро манъ кардан</button>
     <button class="btn g" onclick="closeMenu()">Бекор кардан</button>
   </div>
 </div>
 
 <input type="file" id="pfile" accept="image/*" style="display:none">
 <input type="file" id="adphoto" accept="image/*" style="display:none">
+<input type="file" id="avfile" accept="image/*" style="display:none">
 <div id="lb" onclick="this.style.display='none'"><img id="lbimg" alt=""></div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -295,6 +312,8 @@ const CATS = { cow: 'Гов', sheep: 'Гӯсфанд', other: 'Дигар' };
 let mode = 'login', socket = null, tok = '', myUid = '', room = '';
 let places = { districts: [], villages: [] }, prof = {}, social = { incoming: [], contacts: [] };
 let nav = { v: 'home' }, members = { village: '', list: [] };
+const CALLS = false;
+let blocked = new Set(), blockedList = [];
 let adsData = [], adFilter = 'all', adFile = null, roomList = [];
 let rec = null, chunks = [], recTimer = null, recStart = 0, recCancel = false, stream = null;
 let replyTo = null, menuMsg = null, pushKey = '';
@@ -492,6 +511,7 @@ function openMenu(m){
   menuMsg = m;
   $('mpv').textContent = (m.uid === myUid ? 'Шумо' : m.name) + ': ' + prevText(m);
   $('mdel').style.display = (m.uid === myUid || $('pw').value.trim()) ? 'block' : 'none';
+  $('mrpt').style.display = $('mblk').style.display = (m.uid !== myUid) ? 'block' : 'none';
   $('menu').style.display = 'flex';
 }
 function closeMenu(){ $('menu').style.display = 'none'; menuMsg = null; }
@@ -506,13 +526,24 @@ $('mdel').onclick = () => {
   if (confirm('Паём нест шавад?')) socket.emit('msgdel', { id: m.id, password: $('pw').value });
 };
 
+$('mrpt').onclick = () => {
+  const m = menuMsg; closeMenu();
+  if (m && socket && confirm('Ин паём ба админ шикоят карда шавад?')) socket.emit('report', { id: m.id });
+};
+$('mblk').onclick = () => {
+  const m = menuMsg; closeMenu();
+  if (m && socket && confirm(m.name + ' манъ карда шавад? Паёмҳояш барои шумо намоён нест.')) socket.emit('block', m.uid);
+};
 function msgEl(m){
   const mine = m.uid && m.uid === myUid;
   const d = document.createElement('div');
   d.className = 'b ' + (mine ? 'me' : 'ot');
   d.dataset.id = m.id || '';
+  d.dataset.uid = m.uid || '';
   if (!mine){
-    const n = document.createElement('div'); n.className = 'nm'; n.textContent = m.name; d.append(n);
+    const n = document.createElement('div'); n.className = 'nm';
+    const nt = document.createElement('span'); nt.textContent = m.name;
+    n.append(avEl(m.av, m.name, 20), nt); d.append(n);
   }
   if (m.reply){
     const q = document.createElement('div'); q.className = 'rq';
@@ -548,7 +579,7 @@ function msgEl(m){
   };
   return d;
 }
-function addChat(m){ $('msgs').append(msgEl(m)); scrollDown(); }
+function addChat(m){ if (blocked.has(m.uid)) return; $('msgs').append(msgEl(m)); scrollDown(); }
 
 function renderRooms(){
   const box = $('rooms'); box.innerHTML = ''; box.style.display = room.startsWith('dm:') ? 'none' : 'flex';
@@ -606,8 +637,9 @@ function addPlace(t){
 function wipeChat(){
   if (socket && confirm('Ҳамаи паёмҳо нест шаванд?')) socket.emit('wipechat', { password: $('pw').value });
 }
-function item(title, sub, fn){
+function item(title, sub, fn, av){
   const b = document.createElement('button'); b.className = 'item';
+  if (av !== undefined) b.append(avEl(av, title, 34));
   const s = document.createElement('span'); s.textContent = title; b.append(s);
   if (sub){ const m = document.createElement('small'); m.textContent = sub; b.append(m); }
   if (fn) b.onclick = fn;
@@ -631,7 +663,7 @@ function renderHome(){
     if (social.incoming.length){
       box.append(hd('Дархостҳо'));
       social.incoming.forEach((q) => {
-        const r = item('📨 ' + q.name, vname(q.village));
+        const r = item(q.name, vname(q.village), null, q.av);
         r.append(mini('Қабул', '', () => socket.emit('reqans', { id: q.id, accept: true })));
         r.append(mini('Рад', 'r', () => socket.emit('reqans', { id: q.id, accept: false })));
         box.append(r);
@@ -639,7 +671,7 @@ function renderHome(){
     }
     if (social.contacts.length){
       box.append(hd('Сӯҳбатҳои шахсӣ'));
-      social.contacts.forEach((c) => box.append(item('💬 ' + c.name, vname(c.village), () => showChat(c.room, c.name))));
+      social.contacts.forEach((c) => box.append(item(c.name, vname(c.village), () => showChat(c.room, c.name), c.av)));
     }
     box.append(item('🗺 Ҳамаи ноҳияҳо', 'Одамони деҳаҳои дигарро ёбед', () => { nav = { v: 'districts' }; renderHome(); }));
   } else if (nav.v === 'districts'){
@@ -662,10 +694,10 @@ function renderHome(){
   } else {
     box.append(item('← Ба деҳаҳо', '', () => { nav = { v: 'district', id: nav.d }; renderHome(); }));
     box.append(hd(vname(nav.id) + ': аъзоён'));
-    const list = members.village === nav.id ? members.list : [];
+    const list = (members.village === nav.id ? members.list : []).filter((x) => !blocked.has(x.uid));
     if (!list.length) box.append(item('Ҳоло касе нест', ''));
     list.forEach((m) => {
-      const r = item('👤 ' + m.name, '');
+      const r = item(m.name, '', null, m.av);
       if (m.state === 'none') r.append(mini('Запрос', '', () => socket.emit('reqsend', m.uid)));
       else if (m.state === 'accepted'){
         const c = social.contacts.find((x) => x.uid === m.uid);
@@ -684,6 +716,8 @@ function openDistricts(){
   nav = { v: 'districts' }; renderHome();
 }
 function openSettings(){
+  $('sav').innerHTML = ''; $('sav').append(avEl(prof.avatar, prof.name, 72));
+  renderBlocks();
   $('sname').value = prof.name || '';
   $('sgen').value = prof.gender || '';
   fillPlace('sdist', 'svil');
@@ -706,7 +740,7 @@ function openVillage(){ if (prof.village) showChat('v:' + prof.village, vname(pr
 function showChat(r, title){
   $('home').style.display = 'none'; $('chatv').style.display = 'flex';
   $('ctitle').textContent = title;
-  $('cb1').style.display = $('cb2').style.display = r.startsWith('dm:') ? 'inline-block' : 'none';
+  $('cb1').style.display = $('cb2').style.display = (CALLS && r.startsWith('dm:')) ? 'inline-block' : 'none';
   room = r; $('msgs').innerHTML = ''; renderRooms(); setReply(null);
   socket.emit('join', r);
 }
@@ -872,6 +906,48 @@ function toggleCam(){
   $('btcam').classList.toggle('off', !on);
 }
 
+/* ---------- сурат, манъ, модератсия ---------- */
+function avEl(av, name, sz){
+  const d = document.createElement('span'); d.className = 'avt';
+  d.style.width = d.style.height = sz + 'px'; d.style.fontSize = Math.round(sz * 0.5) + 'px';
+  if (av){ const im = document.createElement('img'); im.alt = ''; im.src = mediaUrl(av); d.append(im); }
+  else d.textContent = String(name || '?').trim().charAt(0).toUpperCase();
+  return d;
+}
+async function shrinkSq(file, n){
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(bmp.width, bmp.height);
+  const c = document.createElement('canvas'); c.width = c.height = n;
+  c.getContext('2d').drawImage(bmp, (bmp.width - k) / 2, (bmp.height - k) / 2, k, k, 0, 0, n, n);
+  const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.8));
+  return blob.arrayBuffer();
+}
+$('avfile').onchange = async () => {
+  const f = $('avfile').files[0]; $('avfile').value = '';
+  if (!f || !socket) return;
+  try {
+    const id = await upload('image/jpeg', await shrinkSq(f, 192), true);
+    socket.emit('settings', { avatar: id });
+  } catch (e) { alert('Сурат фиристода нашуд'); }
+};
+function renderBlocks(){
+  const box = $('sblk'); box.innerHTML = '';
+  if (!blockedList.length) return;
+  box.append(hd('Манъшудагон'));
+  blockedList.forEach((b) => {
+    const r = item(b.name, '');
+    r.append(mini('Кушодан', '', () => socket.emit('unblock', b.uid)));
+    box.append(r);
+  });
+}
+function loadReports(){ if (socket) socket.emit('reports', { password: $('pw').value }); }
+function repAct(id, act){ socket.emit('repact', { password: $('pw').value, id, act }); }
+function unban(){
+  const p = $('unph').value.trim();
+  if (socket && p) socket.emit('unban', { password: $('pw').value, phone: p });
+}
+function loadStats(){ if (socket) socket.emit('stats', { password: $('pw').value }); }
+
 /* ---------- бозор ---------- */
 function renderAdChips(){
   const box = $('adchips'); box.innerHTML = '';
@@ -966,7 +1042,10 @@ function start(token){
   renderAdChips();
   socket = io({ auth: { token } });
   socket.on('connect', () => socket.emit('vis', document.visibilityState === 'visible'));
-  socket.on('connect_error', (e) => { if (e && e.message === 'auth') logout(); });
+  socket.on('connect_error', (e) => {
+    if (e && e.message === 'banned'){ alert('Ҳисоби шумо манъ шудааст'); logout(); }
+    else if (e && e.message === 'auth') logout();
+  });
   socket.on('me', (id) => { myUid = id; });
   socket.on('needgender', () => { $('gform').style.display = 'flex'; });
   socket.on('rooms', (list) => { roomList = list; renderRooms(); });
@@ -997,7 +1076,7 @@ function start(token){
     d.chat.forEach(addChat);
   });
   socket.on('chat', (m) => {
-    if (m.room !== room) return;
+    if (m.room !== room || blocked.has(m.uid)) return;
     if (m.uid !== myUid) beep();
     addChat(m);
   });
@@ -1048,6 +1127,27 @@ function start(token){
     toast('Занг тамом шуд'); resetCall();
   });
   getIce();
+  socket.on('blocks', (l) => {
+    blockedList = l; blocked = new Set(l.map((x) => x.uid));
+    document.querySelectorAll('#msgs .b').forEach((e) => { if (blocked.has(e.dataset.uid)) e.remove(); });
+    renderBlocks(); renderHome();
+  });
+  socket.on('reported', () => toast('✔ Шикоят фиристода шуд'));
+  socket.on('reports', (l) => {
+    const box = $('rlist'); box.innerHTML = '';
+    if (!l.length){ box.append(item('Шикоят нест ✔', '')); return; }
+    l.forEach((r) => {
+      const c = document.createElement('div'); c.className = 'card';
+      const t = document.createElement('div'); t.textContent = r.targetName + ': ' + r.text;
+      const w = document.createElement('div'); w.className = 'd'; w.textContent = 'Шикоят аз: ' + r.reporterName;
+      const a = document.createElement('div'); a.className = 'acts';
+      [['🗑 Паём', 'delete'], ['⛔ Манъ', 'ban'], ['Рад', 'dismiss']].forEach(([txt, act]) => {
+        const b = document.createElement('button'); b.textContent = txt; b.onclick = () => repAct(r.id, act); a.append(b);
+      });
+      c.append(t, w, a); box.append(c);
+    });
+  });
+  socket.on('stats', (d) => alert('База: ' + d.mb + ' MB (бепул: 512 MB)\nПаём: ' + d.msgs + '\nФайл: ' + d.files + '\nКорбар: ' + d.users));
   socket.on('news', (n) => addNews(n, true));
   socket.on('ad', (a) => { adsData.unshift(a); renderAds(); });
   socket.on('addel', (id) => { adsData = adsData.filter((a) => a.id !== id); renderAds(); });
@@ -1059,9 +1159,9 @@ document.addEventListener('visibilitychange', () => {
   if (socket) socket.emit('vis', document.visibilityState === 'visible');
 });
 
-function upload(type, buf){
+function upload(type, buf, avatar){
   return new Promise((resolve, reject) => {
-    socket.timeout(25000).emit('upload', { type, data: buf }, (err, r) => {
+    socket.timeout(25000).emit('upload', { type, data: buf, avatar: !!avatar }, (err, r) => {
       if (err || !r || r.error) reject(new Error((r && r.error) || 'timeout'));
       else resolve(r.id);
     });
