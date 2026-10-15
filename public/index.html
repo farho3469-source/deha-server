@@ -141,6 +141,8 @@ nav button.on{color:#2f6b3a;font-weight:600}
 html{height:100%;overflow:hidden;overscroll-behavior:none}
 body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;overscroll-behavior:none}
 #dbtn{right:10px;top:12px}
+#net{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom));background:rgba(0,0,0,.75);color:#fff;border-radius:16px;padding:8px 14px;font-size:13px;z-index:12}
+#upd{display:none;position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));background:#1565c0;color:#fff;border-radius:12px;padding:12px;font-size:15px;text-align:center;z-index:13}
 </style>
 </head>
 <body>
@@ -157,7 +159,6 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
   </svg>
   <div class="t">Деҳа</div>
   <div class="s">Чат, бозор ва хабарҳои деҳа</div>
-  <button id="dbtn" class="hb" onclick="openDistricts()">🗺 Ноҳияҳо</button>
 </div>
 
 <div id="auth">
@@ -237,6 +238,7 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
   </div>
   <nav>
     <button id="b1" class="on" onclick="tab(1)"><span>💬</span>Чат</button>
+    <button id="b6" onclick="openDistricts()"><span>🗺️</span>Ноҳияҳо</button>
     <button id="b2" onclick="tab(2)"><span>🐄</span>Бозор</button>
     <button id="b3" onclick="tab(3)"><span>📰</span>Хабарҳо</button>
     <button id="b5" onclick="openSettings()"><span>⚙️</span>Танзимот</button>
@@ -279,6 +281,8 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
   <div id="cin"><button class="cbtn red" onclick="declineCall()">✕</button><button class="cbtn grn" onclick="acceptCall()">✔</button></div>
   <div id="cout"><button class="cbtn" id="btmic" onclick="toggleMic()">🎤</button><button class="cbtn" id="btcam" onclick="toggleCam()">📷</button><button class="cbtn red" onclick="endCall(true)">✕</button></div>
 </div>
+<div id="net">⏳ Пайваст мешавад…</div>
+<div id="upd" onclick="location.reload()">🔄 Нусхаи нав ҳаст. Барои навсозӣ ламс кунед</div>
 <div id="toast"></div>
 <div id="pform">
   <div class="gbox">
@@ -1064,9 +1068,12 @@ function start(token){
   tok = token;
   $('auth').style.display = 'none';
   $('app').style.display = 'flex';
-  $('dbtn').style.display = 'block';
   renderAdChips();
   socket = io({ auth: { token } });
+  socket.on('connect', () => { $('net').style.display = 'none'; });
+  socket.on('disconnect', () => { $('net').style.display = 'block'; });
+  socket.on('connect_error', () => { $('net').style.display = 'block'; });
+  setTimeout(() => { if (socket && !socket.connected) $('net').style.display = 'block'; }, 1200);
   socket.on('connect', () => socket.emit('vis', document.visibilityState === 'visible'));
   socket.on('connect_error', (e) => {
     if (e && e.message === 'banned'){ alert('Ҳисоби шумо манъ шудааст'); logout(); }
@@ -1337,6 +1344,10 @@ window.addEventListener('popstate', () => {
 });
 setInterval(syncGuard, 250);
 
+if ('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.updated) $('upd').style.display = 'block'; });
+}
 fetch('/api/places').then((r) => r.json()).then((p) => { places = p; fillPlace('rdist', 'rvil'); }).catch(() => {});
 
 const saved = localStorage.getItem('token');
