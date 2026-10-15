@@ -39,7 +39,8 @@ async function resolveVillage(b) {
   const r = await places.insertOne({ type: 'v', name, parent: did });
   return { _id: r.insertedId, type: 'v', name, parent: did };
 }
-const isAdmin = (m) => !!m && String(m.password || '').trim() === ADMIN;
+const ADMIN_PHONES = String(process.env.ADMIN_PHONES || '').split(',').map((x) => x.replace(/\D/g, '')).filter(Boolean);
+const isAdmin = (m, u) => (!!u && u.admin === true) || (!!m && String(m.password || '').trim() === ADMIN);
 
 /* ---------- нишона ва manifest (барои насби барнома) ---------- */
 const CRC = (() => {
@@ -176,7 +177,7 @@ const myRooms = (u) => {
   l.push({ id: b + ':football', title: 'Футболистон' });
   return l;
 };
-const profOf = (u) => ({ name: u.name || '', village: u.village || '', district: u.district || '', gender: u.gender || '', avatar: u.avatar || '' });
+const profOf = (u) => ({ name: u.name || '', village: u.village || '', district: u.district || '', gender: u.gender || '', avatar: u.avatar || '', admin: !!u.admin });
 const placesOut = async () => {
   const all = await places.find({}).sort({ ord: 1, name: 1 }).toArray();
   return {
@@ -471,6 +472,7 @@ io.use(async (socket, next) => {
     const u = await users.findOne({ token });
     if (!u) return next(new Error('auth'));
     if (u.banned) return next(new Error('banned'));
+    if (ADMIN_PHONES.includes(String(u.phone))) u.admin = true;
     socket.user = u;
     socket.data.uid = String(u._id);
     socket.data.vis = true;
@@ -667,6 +669,18 @@ io.on('connection', (s) => {
     io.to('u:' + to).emit('callend', { from: uid });
   });
 
+  s.on('makeadmin', async (m) => {
+    try {
+      if (!(m && String(m.password || '').trim() === ADMIN)) return s.emit('err', 'Парол нодуруст');
+      await users.updateOne({ _id: s.user._id }, { $set: { admin: true } });
+      s.user.admin = true;
+      s.emit('profile', profOf(s.user));
+      s.emit('err', '✔ Ҳисоби шумо акнун админ аст. Парол дигар лозим нест.');
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   s.on('block', async (u) => {
     try {
       u = String(u);
@@ -715,7 +729,7 @@ io.on('connection', (s) => {
   });
   s.on('reports', async (m) => {
     try {
-      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
       await sendReports(s);
     } catch (e) {
       console.error(e);
@@ -723,7 +737,7 @@ io.on('connection', (s) => {
   });
   s.on('repact', async (m) => {
     try {
-      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
       const id = String(m.id || '');
       if (!HEX24.test(id)) return;
       const r = await reports.findOne({ _id: new ObjectId(id) });
@@ -748,7 +762,7 @@ io.on('connection', (s) => {
   });
   s.on('unban', async (m) => {
     try {
-      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
       const r = await users.updateOne({ phone: cleanPhone(m.phone) }, { $set: { banned: false } });
       s.emit('err', r.matchedCount ? 'Манъ кушода шуд' : 'Чунин рақам нест');
     } catch (e) {
@@ -757,7 +771,7 @@ io.on('connection', (s) => {
   });
   s.on('stats', async (m) => {
     try {
-      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
       const st = await dbh.command({ dbStats: 1, scale: 1048576 });
       s.emit(
         'stats',
@@ -775,7 +789,7 @@ io.on('connection', (s) => {
 
   s.on('placeadd', async (m) => {
     try {
-      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
       const name = String(m.name || '').trim().slice(0, 40);
       if (!name) return;
       const type = m.type === 'v' ? 'v' : 'd';
@@ -795,7 +809,7 @@ io.on('connection', (s) => {
 
   s.on('wipechat', async (m) => {
     try {
-      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
       const docs = await chat.find({ media: { $exists: true } }, { projection: { media: 1 } }).toArray();
       const ids = docs
         .map((d) => d.media)
@@ -954,7 +968,7 @@ io.on('connection', (s) => {
     try {
       const id = String((m && m.id) || '');
       if (!HEX24.test(id)) return;
-      const admin = isAdmin(m);
+      const admin = isAdmin(m, s.user);
       const _id = new ObjectId(id);
       const doc = await chat.findOne(admin ? { _id } : { _id, uid });
       if (!doc) return s.emit('err', 'Нест кардан мумкин нест');
@@ -1009,7 +1023,7 @@ io.on('connection', (s) => {
 
   s.on('news', async (m) => {
     try {
-      if (!isAdmin(m)) return s.emit('err', 'Парол нодуруст');
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
       const n = {
         title: String(m.title || '').slice(0, 100),
         text: String(m.text || '').slice(0, 2000),
