@@ -134,6 +134,10 @@ nav button.on{color:#2f6b3a;font-weight:600}
 .me:after{right:-8px;background:#d9fdd3;clip-path:polygon(0 0,0 100%,100% 0)}
 .tm{color:#667781}
 .item .avt{flex:none;margin-right:8px}
+#lb{z-index:15}
+#lbbox{max-width:100%;max-height:100%;display:flex;flex-direction:column;align-items:center}
+#lb img.big{width:min(88vw,440px);height:min(88vw,440px);object-fit:cover;border-radius:50%}
+#lbcap{color:#fff;font-size:20px;font-weight:600;margin-top:16px;text-align:center}
 </style>
 </head>
 <body>
@@ -314,7 +318,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
 <input type="file" id="pfile" accept="image/*" style="display:none">
 <input type="file" id="adphoto" accept="image/*" style="display:none">
 <input type="file" id="avfile" accept="image/*" style="display:none">
-<div id="lb" onclick="this.style.display='none'"><img id="lbimg" alt=""></div>
+<div id="lb" onclick="this.style.display='none'"><div id="lbbox"><img id="lbimg" alt=""><div id="lbcap"></div></div></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -494,7 +498,8 @@ function tab(n){
 function hhmm(t){ return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 function scrollDown(){ const b = $('msgs'); b.scrollTop = b.scrollHeight; }
 function mediaUrl(id){ return '/media/' + id + '?t=' + tok; }
-function openImg(src){ $('lbimg').src = src; $('lb').style.display = 'flex'; }
+function openImg(src){ $('lbimg').className = ''; $('lbcap').textContent = ''; $('lbimg').src = src; $('lb').style.display = 'flex'; }
+function openAvatar(av, name){ $('lbimg').className = 'big'; $('lbcap').textContent = name || ''; $('lbimg').src = mediaUrl(av); $('lb').style.display = 'flex'; }
 
 function setGender(g){
   if (socket) socket.emit('setgender', g);
@@ -923,7 +928,11 @@ function toggleCam(){
 function avEl(av, name, sz){
   const d = document.createElement('span'); d.className = 'avt';
   d.style.width = d.style.height = sz + 'px'; d.style.fontSize = Math.round(sz * 0.5) + 'px';
-  if (av){ const im = document.createElement('img'); im.alt = ''; im.src = mediaUrl(av); d.append(im); }
+  if (av){
+    const im = document.createElement('img'); im.alt = ''; im.src = mediaUrl(av); d.append(im);
+    d.style.cursor = 'pointer';
+    d.onclick = (e) => { e.stopPropagation(); openAvatar(av, name); };
+  }
   else d.textContent = String(name || '?').trim().charAt(0).toUpperCase();
   return d;
 }
@@ -939,7 +948,7 @@ $('avfile').onchange = async () => {
   const f = $('avfile').files[0]; $('avfile').value = '';
   if (!f || !socket) return;
   try {
-    const id = await upload('image/jpeg', await shrinkSq(f, 192), true);
+    const id = await upload('image/jpeg', await shrinkSq(f, 384), true);
     socket.emit('settings', { avatar: id });
   } catch (e) { alert('Сурат фиристода нашуд'); }
 };
