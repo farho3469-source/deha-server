@@ -138,6 +138,9 @@ nav button.on{color:#2f6b3a;font-weight:600}
 #lbbox{max-width:100%;max-height:100%;display:flex;flex-direction:column;align-items:center}
 #lb img.big{width:min(88vw,440px);height:min(88vw,440px);object-fit:cover;border-radius:50%}
 #lbcap{color:#fff;font-size:20px;font-weight:600;margin-top:16px;text-align:center}
+html{height:100%;overflow:hidden;overscroll-behavior:none}
+body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;overscroll-behavior:none}
+#dbtn{right:10px;top:12px}
 </style>
 </head>
 <body>
@@ -154,9 +157,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
   </svg>
   <div class="t">Деҳа</div>
   <div class="s">Чат, бозор ва хабарҳои деҳа</div>
-  <button id="out" onclick="logout()">Баромадан</button>
   <button id="dbtn" class="hb" onclick="openDistricts()">🗺 Ноҳияҳо</button>
-  <button id="stbtn" class="hb" onclick="openSettings()" aria-label="Танзимот">⚙</button>
 </div>
 
 <div id="auth">
@@ -238,6 +239,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
     <button id="b1" class="on" onclick="tab(1)"><span>💬</span>Чат</button>
     <button id="b2" onclick="tab(2)"><span>🐄</span>Бозор</button>
     <button id="b3" onclick="tab(3)"><span>📰</span>Хабарҳо</button>
+    <button id="b5" onclick="openSettings()"><span>⚙️</span>Танзимот</button>
     <button id="b4" onclick="tab(4)" style="display:none"><span>🔐</span>Админ</button>
   </nav>
 </div>
@@ -301,6 +303,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
     <input id="sviln" placeholder="Номи деҳаи шумо" style="display:none">
     <div id="sblk"></div>
     <button class="btn" onclick="saveSettings()">Сабт кардан</button>
+    <button class="btn" style="background:#fff;color:#b00020;border:1px solid #b00020" onclick="logout()">Баромадан аз ҳисоб</button>
     <button class="btn g" onclick="$('sform').style.display='none'">Бекор кардан</button>
   </div>
 </div>
@@ -1061,7 +1064,7 @@ function start(token){
   tok = token;
   $('auth').style.display = 'none';
   $('app').style.display = 'flex';
-  $('out').style.display = $('dbtn').style.display = $('stbtn').style.display = 'block';
+  $('dbtn').style.display = 'block';
   renderAdChips();
   socket = io({ auth: { token } });
   socket.on('connect', () => socket.emit('vis', document.visibilityState === 'visible'));
