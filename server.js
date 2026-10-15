@@ -102,7 +102,7 @@ const MANIFEST = JSON.stringify({
   start_url: '/',
   scope: '/',
   display: 'standalone',
-  background_color: '#efece3',
+  background_color: '#2f6b3a',
   theme_color: '#2f6b3a',
   lang: 'tg',
   icons: [
@@ -218,6 +218,7 @@ app.use(
 const cleanPhone = (p) => String(p || '').replace(/[^\d]/g, '');
 const fail = (res, code, error) => res.status(code).json({ error });
 
+app.get('/health', (req, res) => res.type('text/plain').send('ok'));
 app.get('/manifest.json', (req, res) => res.type('application/manifest+json').send(MANIFEST));
 app.get('/icon-:s.png', (req, res) => {
   const n = req.params.s;
