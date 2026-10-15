@@ -219,6 +219,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
         <input id="pw" type="password" autocomplete="new-password" placeholder="Пароли админ">
         <div id="admnote" style="display:none;color:#2f6b3a;font-weight:600;margin:6px 2px">✔ Шумо админ ҳастед, парол лозим нест</div>
         <button class="btn g" id="mkadm" style="width:100%" onclick="makeAdmin()">👑 Ин ҳисобро админ кардан</button>
+        <div class="sh">Хабар нашр кардан</div>
         <input id="nt" placeholder="Сарлавҳа">
         <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
         <button class="btn" onclick="sendNews()">Нашр кардан</button>
@@ -228,8 +229,8 @@ nav button.on{color:#2f6b3a;font-weight:600}
         <input id="unph" placeholder="Рақами телефон (барои кушодани манъ)">
         <button class="btn g" style="width:100%" onclick="unban()">Кушодани манъ</button>
         <button class="btn g" style="width:100%;margin-top:8px" onclick="loadStats()">📊 Ҳолати база</button>
-        <button class="btn" style="width:100%;margin-top:18px;background:#b00020" onclick="wipeChat()">🗑 Ҳамаи паёмҳоро нест кардан</button>
-        <button class="btn g" style="width:100%;margin-top:18px" onclick="testPush()">🔔 Санҷиши огоҳинома</button>
+        <div class="sh">Хатарнок</div>
+        <button class="btn" style="width:100%;background:#b00020" onclick="wipeChat()">🗑 Ҳамаи паёмҳоро нест кардан</button>
       </div>
     </div>
   </div>
@@ -237,7 +238,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
     <button id="b1" class="on" onclick="tab(1)"><span>💬</span>Чат</button>
     <button id="b2" onclick="tab(2)"><span>🐄</span>Бозор</button>
     <button id="b3" onclick="tab(3)"><span>📰</span>Хабарҳо</button>
-    <button id="b4" onclick="tab(4)"><span>🔐</span>Админ</button>
+    <button id="b4" onclick="tab(4)" style="display:none"><span>🔐</span>Админ</button>
   </nav>
 </div>
 
@@ -1281,12 +1282,19 @@ function sendNews(){
   $('nt').value = ''; $('nx').value = '';
 }
 
+let adminPeek = false;
 function updAdmin(){
   const a = !!prof.admin;
+  $('b4').style.display = (a || adminPeek) ? '' : 'none';
   $('pw').style.display = a ? 'none' : '';
   $('mkadm').style.display = a ? 'none' : '';
   $('admnote').style.display = a ? 'block' : 'none';
 }
+let tapN = 0, tapT = null;
+document.querySelector('#hdr .t').addEventListener('click', () => {
+  tapN++; clearTimeout(tapT); tapT = setTimeout(() => { tapN = 0; }, 1500);
+  if (tapN >= 5){ tapN = 0; adminPeek = true; updAdmin(); tab(4); }
+});
 function makeAdmin(){
   if (!$('pw').value.trim()){ alert('Аввал пароли админро нависед'); return; }
   if (socket) socket.emit('makeadmin', { password: $('pw').value });
