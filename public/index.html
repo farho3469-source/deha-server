@@ -125,6 +125,14 @@ nav button.on{color:#2f6b3a;font-weight:600}
 .nm{display:flex;align-items:center;gap:6px}
 #sblk{text-align:left;margin:8px 0}
 #sav{display:flex;justify-content:center}
+#msgs{background:#efeae2}
+.b{border-radius:8px;box-shadow:0 1px .5px rgba(11,20,26,.13);color:#111b21;padding:6px 9px 4px;position:relative}
+.ot{background:#fff;border-top-left-radius:0}
+.me{background:#d9fdd3;border-top-right-radius:0}
+.ot:before,.me:after{content:'';position:absolute;top:0;width:8px;height:13px}
+.ot:before{left:-8px;background:#fff;clip-path:polygon(100% 0,100% 100%,0 0)}
+.me:after{right:-8px;background:#d9fdd3;clip-path:polygon(0 0,0 100%,100% 0)}
+.tm{color:#667781}
 </style>
 </head>
 <body>
@@ -204,6 +212,8 @@ nav button.on{color:#2f6b3a;font-weight:600}
     <div class="sec" id="s4">
       <div class="pad">
         <input id="pw" type="password" autocomplete="new-password" placeholder="Пароли админ">
+        <div id="admnote" style="display:none;color:#2f6b3a;font-weight:600;margin:6px 2px">✔ Шумо админ ҳастед, парол лозим нест</div>
+        <button class="btn g" id="mkadm" style="width:100%" onclick="makeAdmin()">👑 Ин ҳисобро админ кардан</button>
         <input id="nt" placeholder="Сарлавҳа">
         <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
         <button class="btn" onclick="sendNews()">Нашр кардан</button>
@@ -510,7 +520,7 @@ function takeReply(){
 function openMenu(m){
   menuMsg = m;
   $('mpv').textContent = (m.uid === myUid ? 'Шумо' : m.name) + ': ' + prevText(m);
-  $('mdel').style.display = (m.uid === myUid || $('pw').value.trim()) ? 'block' : 'none';
+  $('mdel').style.display = (m.uid === myUid || prof.admin || $('pw').value.trim()) ? 'block' : 'none';
   $('mrpt').style.display = $('mblk').style.display = (m.uid !== myUid) ? 'block' : 'none';
   $('menu').style.display = 'flex';
 }
@@ -534,6 +544,8 @@ $('mblk').onclick = () => {
   const m = menuMsg; closeMenu();
   if (m && socket && confirm(m.name + ' манъ карда шавад? Паёмҳояш барои шумо намоён нест.')) socket.emit('block', m.uid);
 };
+const NAMECOL = ['#1fa855', '#d4452f', '#a05bd0', '#cf7d00', '#0a8ea6', '#c24a8e', '#5b7fcf', '#7a8f00'];
+function nameColor(k){ let h = 0; for (const c of String(k)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return NAMECOL[h % NAMECOL.length]; }
 function msgEl(m){
   const mine = m.uid && m.uid === myUid;
   const d = document.createElement('div');
@@ -542,7 +554,7 @@ function msgEl(m){
   d.dataset.uid = m.uid || '';
   if (!mine){
     const n = document.createElement('div'); n.className = 'nm';
-    const nt = document.createElement('span'); nt.textContent = m.name;
+    const nt = document.createElement('span'); nt.textContent = m.name; nt.style.color = nameColor(m.uid || m.name);
     n.append(avEl(m.av, m.name, 20), nt); d.append(n);
   }
   if (m.reply){
@@ -1049,7 +1061,7 @@ function start(token){
   socket.on('me', (id) => { myUid = id; });
   socket.on('needgender', () => { $('gform').style.display = 'flex'; });
   socket.on('rooms', (list) => { roomList = list; renderRooms(); });
-  socket.on('profile', (p) => { prof = p; renderHome(); });
+  socket.on('profile', (p) => { prof = p; renderHome(); updAdmin(); });
   socket.on('places', (p) => {
     places = p; fillPlace('pdist', 'pvil'); fillPlace('rdist', 'rvil'); renderHome();
   });
@@ -1258,6 +1270,51 @@ function sendNews(){
   socket.emit('news', { password: $('pw').value, title: $('nt').value, text: $('nx').value });
   $('nt').value = ''; $('nx').value = '';
 }
+
+function updAdmin(){
+  const a = !!prof.admin;
+  $('pw').style.display = a ? 'none' : '';
+  $('mkadm').style.display = a ? 'none' : '';
+  $('admnote').style.display = a ? 'block' : 'none';
+}
+function makeAdmin(){
+  if (!$('pw').value.trim()){ alert('Аввал пароли админро нависед'); return; }
+  if (socket) socket.emit('makeadmin', { password: $('pw').value });
+}
+
+/* ---------- тугмаи бозгашти телефон ---------- */
+let guard = false, ignorePop = false;
+function isOpen(id){ return $(id).style.display === 'flex'; }
+function atRoot(){
+  if ($('app').style.display !== 'flex') return mode === 'login';
+  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('call')
+    || $('chatv').style.display === 'flex' || nav.v !== 'home' || !$('s1').classList.contains('on'));
+}
+function appBack(){
+  if ($('app').style.display !== 'flex'){ if (mode === 'register'){ toggleMode(); return true; } return false; }
+  if (isOpen('lb')){ $('lb').style.display = 'none'; return true; }
+  if (isOpen('menu')){ closeMenu(); return true; }
+  for (const id of ['sform', 'pform', 'gform', 'adform']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
+  if (isOpen('call')) return true;
+  if ($('chatv').style.display === 'flex'){ goHome(); return true; }
+  if (nav.v === 'members'){ nav = { v: 'district', id: nav.d }; renderHome(); return true; }
+  if (nav.v === 'district'){ nav = { v: 'districts' }; renderHome(); return true; }
+  if (nav.v === 'districts'){ nav = { v: 'home' }; renderHome(); return true; }
+  if (!$('s1').classList.contains('on')){ tab(1); return true; }
+  return false;
+}
+function syncGuard(){
+  const root = atRoot();
+  if (!root && !guard){ history.pushState({ g: 1 }, ''); guard = true; }
+  else if (root && guard){ guard = false; ignorePop = true; history.back(); }
+}
+window.addEventListener('popstate', () => {
+  if (ignorePop){ ignorePop = false; return; }
+  guard = false;
+  appBack();
+  syncGuard();
+});
+setInterval(syncGuard, 250);
 
 fetch('/api/places').then((r) => r.json()).then((p) => { places = p; fillPlace('rdist', 'rvil'); }).catch(() => {});
 
