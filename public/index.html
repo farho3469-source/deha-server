@@ -163,12 +163,14 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
 
 <div id="auth">
   <h3 id="atitle">Воридшавӣ</h3>
-  <input id="rname" placeholder="Номи шумо" style="display:none">
+  <input id="rname" placeholder="Ном" style="display:none">
+  <input id="rsur" placeholder="Насаб" style="display:none">
+  <input id="rage" type="number" inputmode="numeric" min="5" max="100" placeholder="Синну сол" style="display:none">
+  <input id="phone" type="tel" placeholder="Рақами телефон (+992...)">
+  <input id="pass" type="password" placeholder="Парол (камаш 6 аломат)">
   <select id="rdist" style="display:none"></select>
   <select id="rvil" style="display:none"></select>
   <input id="rviln" placeholder="Номи деҳаи шумо" style="display:none">
-  <input id="phone" type="tel" placeholder="Рақами телефон (+992...)">
-  <input id="pass" type="password" placeholder="Парол (камаш 6 аломат)">
   <div id="aerr"></div>
   <button class="btn" id="abtn" onclick="submitAuth()">Ворид шудан</button>
   <p class="link" id="alink" onclick="toggleMode()">Сабти ном</p>
@@ -300,7 +302,9 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
     <h3>⚙ Танзимот</h3>
     <div id="sav"></div>
     <button class="btn g" onclick="$('avfile').click()">📷 Сурати профил</button>
-    <input id="sname" placeholder="Номи шумо">
+    <input id="sname" placeholder="Ном">
+    <input id="ssur" placeholder="Насаб">
+    <input id="sage" type="number" inputmode="numeric" placeholder="Синну сол">
     <select id="sgen"><option value="">Ҷинс (интихоб нашудааст)</option><option value="m">Мард</option><option value="f">Зан</option></select>
     <select id="sdist"></select>
     <select id="svil"></select>
@@ -451,12 +455,12 @@ async function enablePush(){
 function toggleMode(){
   mode = mode === 'login' ? 'register' : 'login';
   const reg = mode === 'register';
-  $('rname').style.display = reg ? 'block' : 'none';
+  $('rname').style.display = $('rsur').style.display = $('rage').style.display = reg ? 'block' : 'none';
   $('rdist').style.display = $('rvil').style.display = reg ? 'block' : 'none';
   if (reg && $('rvil').onchange) $('rvil').onchange(); else $('rviln').style.display = 'none';
   $('atitle').textContent = reg ? 'Сабти ном' : 'Воридшавӣ';
   $('abtn').textContent = reg ? 'Сабти ном кардан' : 'Ворид шудан';
-  $('alink').textContent = reg ? 'Ман ҳисоб дорам' : 'Сабти ном';
+  $('alink').textContent = reg ? 'Ҳисоб дорам? Ворид шавед' : 'Ҳисоб надоред? Сабти ном кунед';
   $('aerr').textContent = '';
 }
 
@@ -466,7 +470,7 @@ async function submitAuth(){
     const r = await fetch('/api/' + mode, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: $('rname').value, phone: $('phone').value, password: $('pass').value, village: $('rvil').value === '__new' ? '' : $('rvil').value, district: $('rdist').value, vname: $('rviln').value })
+      body: JSON.stringify({ name: $('rname').value, surname: $('rsur').value, age: $('rage').value, phone: $('phone').value, password: $('pass').value, village: $('rvil').value === '__new' ? '' : $('rvil').value, district: $('rdist').value, vname: $('rviln').value })
     });
     const d = await r.json();
     if (!r.ok){ $('aerr').textContent = d.error || 'Хато'; return; }
@@ -744,7 +748,9 @@ function openDistricts(){
 function openSettings(){
   $('sav').innerHTML = ''; $('sav').append(avEl(prof.avatar, prof.name, 72));
   renderBlocks();
-  $('sname').value = prof.name || '';
+  $('sname').value = prof.first || prof.name || '';
+  $('ssur').value = prof.surname || '';
+  $('sage').value = prof.age || '';
   $('sgen').value = prof.gender || '';
   fillPlace('sdist', 'svil');
   if (prof.district){ $('sdist').value = prof.district; $('sdist').onchange(); }
@@ -754,7 +760,7 @@ function openSettings(){
 }
 function saveSettings(){
   const v = $('svil').value;
-  const m = { name: $('sname').value.trim(), gender: $('sgen').value };
+  const m = { name: $('sname').value.trim(), surname: $('ssur').value.trim(), age: $('sage').value, gender: $('sgen').value };
   if (v === '__new'){
     m.district = $('sdist').value; m.vname = $('sviln').value.trim();
     if (!m.vname){ alert('Номи деҳаро нависед'); return; }
@@ -1314,12 +1320,12 @@ function makeAdmin(){
 let guard = false, ignorePop = false;
 function isOpen(id){ return $(id).style.display === 'flex'; }
 function atRoot(){
-  if ($('app').style.display !== 'flex') return mode === 'login';
+  if ($('app').style.display !== 'flex') return true;
   return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('call')
     || $('chatv').style.display === 'flex' || nav.v !== 'home' || !$('s1').classList.contains('on'));
 }
 function appBack(){
-  if ($('app').style.display !== 'flex'){ if (mode === 'register'){ toggleMode(); return true; } return false; }
+  if ($('app').style.display !== 'flex') return false;
   if (isOpen('lb')){ $('lb').style.display = 'none'; return true; }
   if (isOpen('menu')){ closeMenu(); return true; }
   for (const id of ['sform', 'pform', 'gform', 'adform']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
@@ -1352,6 +1358,7 @@ fetch('/api/places').then((r) => r.json()).then((p) => { places = p; fillPlace('
 
 const saved = localStorage.getItem('token');
 if (saved) start(saved);
+else toggleMode();
 </script>
 </body>
 </html>
