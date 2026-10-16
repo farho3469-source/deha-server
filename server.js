@@ -39,6 +39,7 @@ async function resolveVillage(b) {
   const r = await places.insertOne({ type: 'v', name, parent: did });
   return { _id: r.insertedId, type: 'v', name, parent: did };
 }
+const MIN_AGE = Number(process.env.MIN_AGE) || 13;
 const ADMIN_PHONES = String(process.env.ADMIN_PHONES || '').split(',').map((x) => x.replace(/\D/g, '')).filter(Boolean);
 const isAdmin = (m, u) => (!!u && u.admin === true) || (!!m && String(m.password || '').trim() === ADMIN);
 
@@ -177,7 +178,7 @@ const myRooms = (u) => {
   l.push({ id: b + ':football', title: 'Футболистон' });
   return l;
 };
-const profOf = (u) => ({ name: u.name || '', village: u.village || '', district: u.district || '', gender: u.gender || '', avatar: u.avatar || '', admin: !!u.admin });
+const profOf = (u) => ({ name: u.name || '', village: u.village || '', district: u.district || '', gender: u.gender || '', avatar: u.avatar || '', admin: !!u.admin, first: u.first || u.name || '', surname: u.surname || '', age: u.age || '' });
 const placesOut = async () => {
   const all = await places.find({}).sort({ ord: 1, name: 1 }).toArray();
   return {
@@ -287,11 +288,16 @@ app.post('/api/pushtest', async (req, res) => {
 app.post('/api/register', async (req, res) => {
   try {
     const name = String(req.body.name || '').trim().slice(0, 30);
+    const surname = String(req.body.surname || '').trim().slice(0, 30);
+    const age = parseInt(req.body.age, 10);
     const phone = cleanPhone(req.body.phone);
     const password = String(req.body.password || '');
     const gender = req.body.gender === 'f' ? 'f' : req.body.gender === 'm' ? 'm' : '';
-    if (!name || phone.length < 9 || phone.length > 15 || password.length < 6) {
-      return fail(res, 400, 'Маълумот нодуруст аст');
+    if (!name || !surname) return fail(res, 400, 'Ном ва насабро нависед');
+    if (!(age >= 5 && age <= 100)) return fail(res, 400, 'Синну солро дуруст нависед');
+    if (age < MIN_AGE) return fail(res, 400, 'Ин барнома барои синни аз ' + MIN_AGE + ' боло аст');
+    if (phone.length < 9 || phone.length > 15 || password.length < 6) {
+      return fail(res, 400, 'Рақам ё парол нодуруст аст (парол камаш 6 аломат)');
     }
     const vil = await resolveVillage(req.body);
     if (!vil) return fail(res, 400, 'Ноҳия ва деҳаро интихоб кунед');
@@ -300,7 +306,10 @@ app.post('/api/register', async (req, res) => {
     }
     const token = crypto.randomBytes(24).toString('hex');
     await users.insertOne({
-      name,
+      name: name + ' ' + surname,
+      first: name,
+      surname,
+      age,
       phone,
       gender,
       village: String(vil._id),
@@ -310,7 +319,7 @@ app.post('/api/register', async (req, res) => {
       created: Date.now(),
     });
     io.emit('places', await placesOut());
-    res.json({ token, name });
+    res.json({ token, name: name + ' ' + surname });
   } catch (e) {
     console.error(e);
     fail(res, 500, 'Хатои сервер');
@@ -589,8 +598,16 @@ io.on('connection', (s) => {
     try {
       if (!m) return;
       const set = {};
-      const name = String(m.name || '').trim().slice(0, 30);
-      if (name) set.name = name;
+      const first = String(m.name || '').trim().slice(0, 30);
+      if (first) set.first = first;
+      if (m.surname !== undefined) set.surname = String(m.surname || '').trim().slice(0, 30);
+      const ag = parseInt(m.age, 10);
+      if (ag >= MIN_AGE && ag <= 100) set.age = ag;
+      if (set.first !== undefined || set.surname !== undefined) {
+        const f = set.first !== undefined ? set.first : s.user.first || s.user.name || '';
+        const sn = set.surname !== undefined ? set.surname : s.user.surname || '';
+        set.name = (f + ' ' + sn).trim();
+      }
       if (m.gender === 'm' || m.gender === 'f') set.gender = m.gender;
       if (m.avatar !== undefined) {
         const a = String(m.avatar || '');
