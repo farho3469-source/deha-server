@@ -44,25 +44,31 @@ self.addEventListener('fetch', (e) => {
     (async () => {
       const cache = await caches.open(V);
       const cached = await cache.match(key);
-      const refresh = fetch(key, { cache: 'no-store' })
-        .then(async (r) => {
-          if (await okFor(key, r)) {
-            if (key === '/' && cached) {
-              const a = await cached.clone().text();
-              const b = await r.clone().text();
-              if (a !== b) await tell();
-            }
-            await cache.put(key, r.clone());
-          }
-          return r;
-        })
+      const net = fetch(key, { cache: 'no-store' })
+        .then(async (r) => ((await okFor(key, r)) ? r : null))
         .catch(() => null);
-      if (cached) {
-        e.waitUntil(refresh);
-        return cached;
+      const store = net.then(async (r) => {
+        if (r) await cache.put(key, r.clone());
+        return r;
+      });
+      if (!cached) {
+        const r = await store;
+        return r || new Response('Сервер ҷавоб намедиҳад', { status: 503 });
       }
-      const r = await refresh;
-      return r || new Response('Сервер ҷавоб намедиҳад', { status: 503 });
+      e.waitUntil(store);
+      // агар сервер дар 2.5 сония ҷавоб диҳад, нусхаи нав; вагарна захираи кӯҳна (кушодани фаврӣ)
+      const fast = await Promise.race([store, new Promise((res) => setTimeout(() => res(null), 2500))]);
+      if (fast) return fast;
+      e.waitUntil(
+        store.then(async (r) => {
+          if (r && key === '/') {
+            const x = await cached.clone().text();
+            const y = await r.clone().text();
+            if (x !== y) await tell();
+          }
+        })
+      );
+      return cached;
     })()
   );
 });
