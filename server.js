@@ -204,8 +204,12 @@ const chatOut = (d) => {
   const { _id, ...rest } = d;
   return { ...rest, id: String(_id) };
 };
-const previewOf = (o) =>
-  o.kind === 'image' ? '📷 Расм' : o.kind === 'audio' ? '🎤 Паёми овозӣ' : String(o.text || '').slice(0, 80);
+const previewOf = (o, l) =>
+  o.kind === 'image'
+    ? l === 'ru' ? '📷 Фото' : '📷 Расм'
+    : o.kind === 'audio'
+    ? l === 'ru' ? '🎤 Голосовое сообщение' : '🎤 Паёми овозӣ'
+    : String(o.text || '').slice(0, 80);
 
 app.use(express.json());
 app.use(
@@ -316,6 +320,7 @@ app.post('/api/register', async (req, res) => {
       district: vil.parent,
       hash: await bcrypt.hash(password, 10),
       token,
+      lang: req.body.lang === 'ru' ? 'ru' : 'tg',
       created: Date.now(),
     });
     io.emit('places', await placesOut());
@@ -357,14 +362,20 @@ app.get('/media/:id', async (req, res) => {
 });
 
 /* ---------- огоҳиномаи push ---------- */
-async function pushTo(uids, data) {
+async function pushTo(uids, mk) {
   if (!VAPID_PUBLIC || !uids.length) return;
+  const ids = uids.filter((x) => HEX24.test(x)).map((x) => new ObjectId(x));
+  const us = await users.find({ _id: { $in: ids } }, { projection: { lang: 1 } }).toArray();
+  const lang = {};
+  us.forEach((u) => (lang[String(u._id)] = u.lang === 'ru' ? 'ru' : 'tg'));
   const list = await subs.find({ uid: { $in: uids } }).toArray();
-  const payload = JSON.stringify(data);
+  const cache = {};
   await Promise.all(
     list.map(async (x) => {
+      const l = lang[x.uid] || 'tg';
+      if (!cache[l]) cache[l] = JSON.stringify(typeof mk === 'function' ? mk(l) : mk);
       try {
-        await webpush.sendNotification({ endpoint: x.endpoint, keys: x.keys }, payload, {
+        await webpush.sendNotification({ endpoint: x.endpoint, keys: x.keys }, cache[l], {
           TTL: 3600,
           urgency: 'high',
         });
@@ -391,10 +402,13 @@ async function pushMsg(msg, roomId) {
     const inRoom = await io.in('r:' + roomId).fetchSockets();
     const skip = new Set(inRoom.filter((x) => x.data && x.data.vis !== false).map((x) => x.data.uid));
     skip.add(msg.uid);
-    const sub = v && v.sub ? (v.sub === 'women' ? ' · Занҳо' : ' · Футболистон') : '';
     await pushTo(
       targets.filter((t) => !skip.has(t)),
-      { title: msg.name + sub, body: previewOf(msg), tag: 'room-' + roomId }
+      (l) => {
+        const ru = l === 'ru';
+        const sub = v && v.sub ? (v.sub === 'women' ? (ru ? ' · Женщины' : ' · Занҳо') : ru ? ' · Футболисты' : ' · Футболистон') : '';
+        return { title: msg.name + sub, body: previewOf(msg, l), tag: 'room-' + roomId };
+      }
     );
   } catch (e) {
     console.error(e);
@@ -483,6 +497,11 @@ io.use(async (socket, next) => {
     if (!u) return next(new Error('auth'));
     if (u.banned) return next(new Error('banned'));
     if (ADMIN_PHONES.includes(String(u.phone))) u.admin = true;
+    const lang = (socket.handshake.auth || {}).lang === 'ru' ? 'ru' : 'tg';
+    if (u.lang !== lang) {
+      users.updateOne({ _id: u._id }, { $set: { lang } }).catch(() => {});
+      u.lang = lang;
+    }
     socket.user = u;
     socket.data.uid = String(u._id);
     socket.data.vis = true;
@@ -881,7 +900,7 @@ io.on('connection', (s) => {
           await reqs.updateOne({ _id: ex._id }, { $set: { status: 'accepted' } });
         } else if (ex.status === 'declined' && ex.from === to) {
           await reqs.updateOne({ _id: ex._id }, { $set: { from: uid, to, status: 'pending', time: Date.now() } });
-          pushTo([to], { title: 'Деҳа', body: s.user.name + ' мехоҳад бо шумо гап занад', tag: 'req' });
+          pushTo([to], (l) => ({ title: 'Деҳа', body: l === 'ru' ? s.user.name + ' хочет написать вам' : s.user.name + ' мехоҳад бо шумо гап занад', tag: 'req' }));
         } else {
           return s.emit(
             'err',
@@ -894,7 +913,7 @@ io.on('connection', (s) => {
         }
       } else {
         await reqs.insertOne({ from: uid, to, status: 'pending', time: Date.now() });
-        pushTo([to], { title: 'Деҳа', body: s.user.name + ' мехоҳад бо шумо гап занад', tag: 'req' });
+        pushTo([to], (l) => ({ title: 'Деҳа', body: l === 'ru' ? s.user.name + ' хочет написать вам' : s.user.name + ' мехоҳад бо шумо гап занад', tag: 'req' }));
       }
       sendSocial(uid);
       sendSocial(to);
