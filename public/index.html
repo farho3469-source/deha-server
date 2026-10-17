@@ -176,6 +176,7 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
   <div id="aerr"></div>
   <button class="btn" id="abtn" onclick="submitAuth()">Ворид шудан</button>
   <p class="link" id="alink" onclick="toggleMode()">Сабти ном</p>
+  <p style="margin-top:22px;font-size:13px"><a href="/privacy" target="_blank" style="color:#2f6b3a">Сиёсати махфият</a></p>
 </div>
 
 <div id="app">
@@ -314,6 +315,9 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
     <div id="sblk"></div>
     <button class="btn" onclick="saveSettings()">Сабт кардан</button>
     <button class="btn" style="background:#fff;color:#b00020;border:1px solid #b00020" onclick="logout()">Баромадан аз ҳисоб</button>
+    <input id="dpass" type="password" autocomplete="current-password" placeholder="Парол барои тасдиқ" style="display:none">
+    <button class="btn" style="background:#b00020" onclick="delAccount()">Ҳисобро нест кардан</button>
+    <a href="/privacy" target="_blank" style="display:block;margin-top:12px;color:#2f6b3a">Сиёсати махфият</a>
     <button class="btn g" onclick="$('sform').style.display='none'">Бекор кардан</button>
   </div>
 </div>
@@ -557,6 +561,11 @@ const RU = {
 "Ҷиргатол":"Джиргаталь",
 "Файзобод":"Файзабад"
 };
+Object.assign(RU, {
+  'Ҳисобро нест кардан':'Удалить аккаунт','Сиёсати махфият':'Политика конфиденциальности','Парол барои тасдиқ':'Пароль для подтверждения',
+  'Ҳисоби шумо ва ҳамаи маълумоти шумо (паёмҳо, эълонҳо, суратҳо) якбора нест мешавад. Давом диҳем?':'Ваш аккаунт и все данные (сообщения, объявления, фото) будут удалены без возможности восстановления. Продолжить?',
+  'Ҳисоби шумо нест карда шуд.':'Ваш аккаунт удалён.'
+});
 const RX = [
   [/^(.*): паёми нав$/, '$1: новое сообщение'],
   [/^(.*): аъзоён$/, '$1: участники'],
@@ -1462,6 +1471,7 @@ function start(token){
     });
   });
   socket.on('stats', (d) => alert('База: ' + d.mb + ' MB (бепул: 512 MB)\nПаём: ' + d.msgs + '\nФайл: ' + d.files + '\nКорбар: ' + d.users));
+  socket.on('deleted', () => { localStorage.removeItem('token'); alert('Ҳисоби шумо нест карда шуд.'); location.reload(); });
   socket.on('news', (n) => addNews(n, true));
   socket.on('ad', (a) => { adsData.unshift(a); renderAds(); });
   socket.on('addel', (id) => { adsData = adsData.filter((a) => a.id !== id); renderAds(); });
@@ -1586,6 +1596,13 @@ document.querySelector('#hdr .t').addEventListener('click', () => {
   tapN++; clearTimeout(tapT); tapT = setTimeout(() => { tapN = 0; }, 1500);
   if (tapN >= 5){ tapN = 0; adminPeek = true; updAdmin(); tab(4); }
 });
+function delAccount(){
+  const i = $('dpass');
+  if (i.style.display === 'none'){ i.style.display = 'block'; i.focus(); return; }
+  if (!i.value) return;
+  if (!confirm('Ҳисоби шумо ва ҳамаи маълумоти шумо (паёмҳо, эълонҳо, суратҳо) якбора нест мешавад. Давом диҳем?')) return;
+  if (socket) socket.emit('delaccount', { password: i.value });
+}
 function makeAdmin(){
   if (!$('pw').value.trim()){ alert('Аввал пароли админро нависед'); return; }
   if (socket) socket.emit('makeadmin', { password: $('pw').value });
