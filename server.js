@@ -39,6 +39,7 @@ async function resolveVillage(b) {
   const r = await places.insertOne({ type: 'v', name, parent: did });
   return { _id: r.insertedId, type: 'v', name, parent: did };
 }
+const CONTACT = String(process.env.CONTACT_EMAIL || '').trim();
 const MIN_AGE = Number(process.env.MIN_AGE) || 13;
 const ADMIN_PHONES = String(process.env.ADMIN_PHONES || '').split(',').map((x) => x.replace(/\D/g, '')).filter(Boolean);
 const isAdmin = (m, u) => (!!u && u.admin === true) || (!!m && String(m.password || '').trim() === ADMIN);
@@ -100,6 +101,10 @@ const ICONS = {};
 const MANIFEST = JSON.stringify({
   name: 'Деҳа',
   short_name: 'Деҳа',
+  id: '/',
+  description: 'Чат, бозор ва хабарҳои деҳа',
+  categories: ['social'],
+  orientation: 'portrait',
   start_url: '/',
   scope: '/',
   display: 'standalone',
@@ -223,6 +228,106 @@ app.use(
 const cleanPhone = (p) => String(p || '').replace(/[^\d]/g, '');
 const fail = (res, code, error) => res.status(code).json({ error });
 
+/* ---------- сиёсати махфият, нест кардани ҳисоб, assetlinks (барои Play Market) ---------- */
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const shell = (title, inner) =>
+  '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' +
+  esc(title) +
+  '</title><style>body{font-family:system-ui,sans-serif;max-width:720px;margin:0 auto;padding:18px;line-height:1.55;color:#222;background:#fff}h1{color:#2f6b3a;font-size:26px}h2{font-size:19px;margin-top:26px;color:#2f6b3a}li{margin:4px 0}input,button{font-size:16px;padding:12px;margin:6px 0;width:100%;box-sizing:border-box;border:1px solid #bbb;border-radius:10px}button{background:#b00020;color:#fff;border:0}.ok{color:#2f6b3a;font-weight:600}.err{color:#b00020}hr{margin:30px 0;border:0;border-top:1px solid #ddd}.nav a{margin-right:14px;color:#2f6b3a}</style></head><body>' +
+  inner +
+  '</body></html>';
+const POLICY = {
+  en: ['Privacy Policy', 'Last updated: October 2026', [
+    ['About', ['Деҳа (Deha) is a community app for villages in Tajikistan: village chat, private chats, a marketplace and news.', 'This policy explains what data the app collects, how it is used and how it can be deleted.']],
+    ['Data we collect', ['Account data: first name, surname, age, phone number, password (stored only as a hash), the district and village you choose, and your language.', 'Optional: gender and profile photo.', 'Content you create: chat messages, photos, voice messages, marketplace ads, and your reports and blocks.', 'Technical: a push-notification token, so that notifications can be delivered to your device.']],
+    ['How we use it', ['To create your account and show you your village chat, marketplace and news.', 'To deliver notifications about new messages and chat requests.', 'To keep the community safe: reports, blocking and moderation.']],
+    ['Who can see your data', ['Your name, photo and messages are visible to the people in the chats where you write.', 'Your phone number is visible only to people from your own village (for the call button in the marketplace). It is not shown to anyone else.', 'A private chat with a person from another village starts only after that person accepts your request.']],
+    ['Sharing', ['We do not sell your data and we do not show ads.', 'Service providers process data on our behalf: hosting (Render), database (MongoDB Atlas) and push delivery (your browser vendor, for example Google). Data may therefore be processed outside Tajikistan.']],
+    ['Retention', ['Text messages: 90 days. Photos and voice messages: 14 days. Marketplace ads: 90 days.', 'Account data is kept until you delete your account.']],
+    ['Security', ['Data is sent over an encrypted HTTPS connection. Passwords are stored only as hashes.']],
+    ['Children', ['The app is not intended for children under 13. We do not knowingly collect data from them. Age is entered at registration.']],
+    ['Your rights and account deletion', ['You can edit your name, surname, age, village and photo in Settings.', 'You can delete your account in the app (Settings → Delete account) or on the page /delete-account. Deletion removes your account, messages, photos, voice messages, ads and notification tokens.']],
+  ], 'Contact'],
+  ru: ['Политика конфиденциальности', 'Обновлено: октябрь 2026', [
+    ['О приложении', ['Деҳа (Деха) — приложение для сельских общин Таджикистана: чат деревни, личные чаты, рынок объявлений и новости.', 'Здесь описано, какие данные собирает приложение, как они используются и как их удалить.']],
+    ['Какие данные мы собираем', ['Данные аккаунта: имя, фамилия, возраст, номер телефона, пароль (хранится только в виде хэша), выбранные район и деревня, язык.', 'По желанию: пол и фото профиля.', 'Ваш контент: сообщения в чатах, фото, голосовые сообщения, объявления на рынке, ваши жалобы и блокировки.', 'Технические данные: токен push-уведомлений для доставки уведомлений на ваше устройство.']],
+    ['Как мы их используем', ['Чтобы создать аккаунт и показывать чат вашей деревни, рынок и новости.', 'Чтобы доставлять уведомления о новых сообщениях и запросах на чат.', 'Чтобы поддерживать безопасность: жалобы, блокировка и модерация.']],
+    ['Кто видит ваши данные', ['Ваше имя, фото и сообщения видят участники чатов, в которых вы пишете.', 'Ваш номер телефона видят только жители вашей деревни (кнопка звонка на рынке). Другим он не показывается.', 'Личный чат с жителем другой деревни начинается только после того, как он примет ваш запрос.']],
+    ['Передача данных', ['Мы не продаём данные и не показываем рекламу.', 'Данные обрабатывают наши поставщики услуг: хостинг (Render), база данных (MongoDB Atlas) и доставка push (производитель браузера, например Google). Поэтому данные могут обрабатываться за пределами Таджикистана.']],
+    ['Сроки хранения', ['Текстовые сообщения — 90 дней. Фото и голосовые сообщения — 14 дней. Объявления — 90 дней.', 'Данные аккаунта хранятся, пока вы не удалите аккаунт.']],
+    ['Безопасность', ['Данные передаются по защищённому соединению HTTPS. Пароли хранятся только в виде хэшей.']],
+    ['Дети', ['Приложение не предназначено для детей младше 13 лет. Мы сознательно не собираем их данные. Возраст указывается при регистрации.']],
+    ['Ваши права и удаление аккаунта', ['Имя, фамилию, возраст, деревню и фото можно изменить в «Настройках».', 'Аккаунт можно удалить в приложении («Настройки» → «Удалить аккаунт») или на странице /delete-account. При удалении стираются аккаунт, сообщения, фото, голосовые, объявления и токены уведомлений.']],
+  ], 'Контакты'],
+  tg: ['Сиёсати махфият', 'Навсозӣ: октябри 2026', [
+    ['Дар бораи барнома', ['Деҳа — барнома барои деҳаҳои Тоҷикистон: чати деҳа, чатҳои шахсӣ, бозори эълонҳо ва хабарҳо.', 'Дар ин ҷо навишта шудааст, ки барнома кадом маълумотро ҷамъ мекунад, чӣ тавр истифода мебарад ва чӣ тавр нест кардан мумкин аст.']],
+    ['Кадом маълумотро ҷамъ мекунем', ['Маълумоти ҳисоб: ном, насаб, синну сол, рақами телефон, парол (танҳо ҳамчун хэш нигоҳ дошта мешавад), ноҳия ва деҳаи интихобшуда, забон.', 'Ихтиёрӣ: ҷинс ва сурати профил.', 'Мундариҷаи шумо: паёмҳо дар чат, суратҳо, паёмҳои овозӣ, эълонҳо дар бозор, шикоят ва манъҳои шумо.', 'Техникӣ: токени огоҳиномаҳо барои расонидани огоҳинома ба дастгоҳи шумо.']],
+    ['Чӣ тавр истифода мебарем', ['Барои сохтани ҳисоб ва нишон додани чати деҳа, бозор ва хабарҳо.', 'Барои расонидани огоҳинома дар бораи паёмҳои нав ва дархостҳои чат.', 'Барои амнияти ҷамъият: шикоят, манъ ва назорат.']],
+    ['Кӣ маълумотро мебинад', ['Номи шумо, сурат ва паёмҳоятонро иштирокчиёни чатҳое мебинанд, ки дар онҳо менависед.', 'Рақами телефони шумо танҳо барои одамони деҳаи худатон намоён аст (тугмаи занг дар бозор). Ба дигарон нишон дода намешавад.', 'Чати шахсӣ бо одами деҳаи дигар танҳо баъд аз он оғоз мешавад, ки ӯ дархости шуморо қабул кунад.']],
+    ['Додани маълумот', ['Мо маълумотро намефурӯшем ва реклама нишон намедиҳем.', 'Маълумотро хидматрасонҳо коркард мекунанд: ҳостинг (Render), база (MongoDB Atlas) ва расонидани push (истеҳсолкунандаи браузер, масалан Google). Бинобар ин маълумот метавонад берун аз Тоҷикистон коркард шавад.']],
+    ['Мӯҳлати нигоҳдорӣ', ['Паёмҳои матнӣ: 90 рӯз. Суратҳо ва паёмҳои овозӣ: 14 рӯз. Эълонҳо: 90 рӯз.', 'Маълумоти ҳисоб то нест кардани ҳисоб нигоҳ дошта мешавад.']],
+    ['Бехатарӣ', ['Маълумот тавассути пайвасти рамзгузоришудаи HTTPS ирсол мешавад. Паролҳо танҳо ҳамчун хэш нигоҳ дошта мешаванд.']],
+    ['Кӯдакон', ['Барнома барои кӯдакони аз 13 хурд нест. Мо маълумоти онҳоро ҷамъ намекунем. Синну сол ҳангоми сабти ном навишта мешавад.']],
+    ['Ҳуқуқи шумо ва нест кардани ҳисоб', ['Ном, насаб, синну сол, деҳа ва суратро дар «Танзимот» тағйир додан мумкин аст.', 'Ҳисобро дар барнома («Танзимот» → «Ҳисобро нест кардан») ё дар саҳифаи /delete-account нест кардан мумкин аст. Ҳангоми нест кардан ҳисоб, паёмҳо, суратҳо, паёмҳои овозӣ, эълонҳо ва токени огоҳиномаҳо нест мешаванд.']],
+  ], 'Тамос'],
+};
+app.get('/privacy', (req, res) => {
+  const lang = POLICY[req.query.lang] ? req.query.lang : 'en';
+  const [title, upd, sections, contact] = POLICY[lang];
+  let h = '<p class="nav"><a href="?lang=en">English</a><a href="?lang=ru">Русский</a><a href="?lang=tg">Тоҷикӣ</a><a href="/delete-account">Delete account</a></p><h1>' + esc(title) + ' · Деҳа</h1><p>' + esc(upd) + '</p>';
+  sections.forEach(([hd, items]) => {
+    h += '<h2>' + esc(hd) + '</h2><ul>' + items.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>';
+  });
+  h += '<h2>' + esc(contact) + '</h2><p>' + (CONTACT ? esc(CONTACT) : '—') + '</p>';
+  res.send(shell(title + ' · Деҳа', h));
+});
+app.get('/delete-account', (req, res) => {
+  const h = `<p class="nav"><a href="/privacy">Privacy Policy</a></p>
+<h1>Деҳа — Delete account / Удалить аккаунт / Нест кардани ҳисоб</h1>
+<p>EN: Enter your phone number and password to permanently delete your account and all your data (messages, photos, voice messages, ads).</p>
+<p>RU: Введите номер телефона и пароль, чтобы навсегда удалить аккаунт и все ваши данные (сообщения, фото, голосовые, объявления).</p>
+<p>TG: Рақами телефон ва паролро нависед, то ҳисоб ва ҳамаи маълумоти шумо (паёмҳо, суратҳо, овозҳо, эълонҳо) якбора нест шавад.</p>
+<input id="p" type="tel" placeholder="+992...">
+<input id="w" type="password" placeholder="Password / Пароль / Парол">
+<button id="b">Delete / Удалить / Нест кардан</button>
+<p id="m"></p>
+<script>
+document.getElementById('b').onclick = async function(){
+  var m = document.getElementById('m'); m.className = ''; m.textContent = '...';
+  try {
+    var r = await fetch('/api/delete-account', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: document.getElementById('p').value, password: document.getElementById('w').value }) });
+    var d = await r.json();
+    if (r.ok){ m.className = 'ok'; m.textContent = 'OK: account deleted / Аккаунт удалён / Ҳисоб нест шуд'; }
+    else { m.className = 'err'; m.textContent = d.error || 'Error'; }
+  } catch (e) { m.className = 'err'; m.textContent = 'Error / Ошибка / Хато'; }
+};
+</script>`;
+  res.send(shell('Delete account · Деҳа', h));
+});
+app.post('/api/delete-account', async (req, res) => {
+  try {
+    const u = await users.findOne({ phone: cleanPhone(req.body.phone) });
+    const ok = u && (await bcrypt.compare(String(req.body.password || ''), u.hash));
+    if (!ok) return fail(res, 401, 'Wrong phone or password / Неверный номер или пароль / Рақам ё парол нодуруст аст');
+    await deleteUser(u);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    fail(res, 500, 'Server error / Ошибка сервера / Хатои сервер');
+  }
+});
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  const pkg = String(process.env.ANDROID_PACKAGE || '').trim();
+  const fp = String(process.env.ANDROID_SHA256 || '').split(',').map((x) => x.trim()).filter(Boolean);
+  res.type('application/json').send(
+    JSON.stringify(
+      pkg && fp.length
+        ? [{ relation: ['delegate_permission/common.handle_all_urls'], target: { namespace: 'android_app', package_name: pkg, sha256_cert_fingerprints: fp } }]
+        : []
+    )
+  );
+});
 app.get('/health', (req, res) => res.type('text/plain').send('ok'));
 app.get('/manifest.json', (req, res) => res.type('application/manifest+json').send(MANIFEST));
 app.get('/icon-:s.png', (req, res) => {
@@ -416,6 +521,23 @@ async function pushMsg(msg, roomId) {
 }
 
 /* ---------- дархостҳо ва сӯҳбатҳои шахсӣ ---------- */
+async function deleteUser(u) {
+  const uid = String(u._id);
+  const msgs = await chat.find({ uid }, { projection: { media: 1 } }).toArray();
+  const myAds = await ads.find({ uid }).toArray();
+  const mids = msgs.map((d) => d.media).concat(myAds.map((a) => a.photo), [u.avatar]).filter((x) => HEX24.test(String(x || ''))).map((x) => new ObjectId(x));
+  if (mids.length) await media.deleteMany({ _id: { $in: mids } });
+  await chat.deleteMany({ uid });
+  await ads.deleteMany({ uid });
+  await subs.deleteMany({ uid });
+  await reqs.deleteMany({ $or: [{ from: uid }, { to: uid }] });
+  await reports.deleteMany({ $or: [{ by: uid }, { msgUid: uid }] });
+  await users.updateMany({ blocked: uid }, { $pull: { blocked: uid } });
+  await users.deleteOne({ _id: u._id });
+  myAds.forEach((a) => io.emit('addel', String(a._id)));
+  io.in('u:' + uid).emit('deleted');
+  io.in('u:' + uid).disconnectSockets(true);
+}
 async function sendSocial(uid) {
   try {
     const rq = await reqs.find({ $or: [{ from: uid }, { to: uid }] }).toArray();
@@ -704,6 +826,16 @@ io.on('connection', (s) => {
     const q = pendingCalls.get(uid);
     if (q && q.from === to) pendingCalls.delete(uid);
     io.to('u:' + to).emit('callend', { from: uid });
+  });
+
+  s.on('delaccount', async (m) => {
+    try {
+      const ok = m && (await bcrypt.compare(String(m.password || ''), s.user.hash));
+      if (!ok) return s.emit('err', 'Парол нодуруст');
+      await deleteUser(s.user);
+    } catch (e) {
+      console.error(e);
+    }
   });
 
   s.on('makeadmin', async (m) => {
