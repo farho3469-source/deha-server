@@ -1019,6 +1019,42 @@ io.on('connection', (s) => {
     }
   });
 
+  s.on('vinfo', async () => {
+    try {
+      const vid = s.user.village;
+      if (!vid) return;
+      const bl = (s.user.blocked || []).filter((b) => HEX24.test(b)).map((b) => new ObjectId(b));
+      const list = await users
+        .find({ village: vid, banned: { $ne: true }, blocked: { $ne: uid }, _id: { $nin: bl } }, { projection: { name: 1, avatar: 1 } })
+        .limit(500)
+        .toArray();
+      const socks = await io.in('vil:' + vid).fetchSockets();
+      const on = new Set(socks.map((x) => x.data && x.data.uid));
+      s.emit('vinfo', {
+        village: vid,
+        total: list.length,
+        online: list.filter((x) => on.has(String(x._id))).length,
+        list: list.map((x) => ({ uid: String(x._id), name: x.name, av: x.avatar || '', on: on.has(String(x._id)), me: String(x._id) === uid })),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('markread', async (m) => {
+    try {
+      const room = String((m && m.room) || '');
+      if (!room.startsWith('dm:') || !(await canEnter(s.user, room))) return;
+      const r = await chat.updateMany({ room, uid: { $ne: uid }, rd: { $ne: true } }, { $set: { rd: true } });
+      if (r.modifiedCount) {
+        const p = room.split(':');
+        io.to('u:' + (p[1] === uid ? p[2] : p[1])).emit('read', { room });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   s.on('reqsend', async (to) => {
     try {
       to = String(to);
@@ -1026,9 +1062,12 @@ io.on('connection', (s) => {
       const other = await users.findOne({ _id: new ObjectId(to) });
       if (!other) return;
       if ((other.blocked || []).includes(uid)) return s.emit('err', 'Дархост фиристода нашуд');
+      const same = !!(other.village && other.village === s.user.village);
       const ex = await reqs.findOne({ $or: [{ from: uid, to }, { from: to, to: uid }] });
       if (ex) {
-        if (ex.status === 'pending' && ex.from === to) {
+        if (same && ex.status !== 'accepted') {
+          await reqs.updateOne({ _id: ex._id }, { $set: { status: 'accepted' } });
+        } else if (ex.status === 'pending' && ex.from === to) {
           await reqs.updateOne({ _id: ex._id }, { $set: { status: 'accepted' } });
         } else if (ex.status === 'declined' && ex.from === to) {
           await reqs.updateOne({ _id: ex._id }, { $set: { from: uid, to, status: 'pending', time: Date.now() } });
@@ -1044,8 +1083,8 @@ io.on('connection', (s) => {
           );
         }
       } else {
-        await reqs.insertOne({ from: uid, to, status: 'pending', time: Date.now() });
-        pushTo([to], (l) => ({ title: 'Деҳа', body: l === 'ru' ? s.user.name + ' хочет написать вам' : s.user.name + ' мехоҳад бо шумо гап занад', tag: 'req' }));
+        await reqs.insertOne({ from: uid, to, status: same ? 'accepted' : 'pending', time: Date.now() });
+        if (!same) pushTo([to], (l) => ({ title: 'Деҳа', body: l === 'ru' ? s.user.name + ' хочет написать вам' : s.user.name + ' мехоҳад бо шумо гап занад', tag: 'req' }));
       }
       sendSocial(uid);
       sendSocial(to);
