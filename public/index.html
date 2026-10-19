@@ -149,6 +149,13 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
 #mem{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:8;flex-direction:column}
 #mem .top{background:#2f6b3a;color:#fff;padding:14px;font-size:18px;font-weight:600;flex:none}
 #mem .body{flex:1;overflow-y:auto;padding:12px}
+#sbar{display:none;align-items:center;gap:6px;padding:6px 10px;background:#fff;border-bottom:1px solid #ddd;flex:none}
+#sbar input{margin:0;padding:8px 12px;border-radius:18px}
+#sres{display:none;flex:1;overflow-y:auto;padding:10px;background:#efeae2}
+.sr{background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:8px;box-shadow:0 1px .5px rgba(11,20,26,.13)}
+.sr b{font-size:13px;color:#2f6b3a}
+.sr .d{font-size:11px;color:#667781}
+mark{background:#ffe58f;border-radius:3px}
 </style>
 </head>
 <body>
@@ -192,12 +199,15 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
           <span>🔔 Барои он ки вақти пӯшида будани барнома ҳам паём биёяд</span>
           <button class="btn" onclick="enablePush()">Фаъол кардан</button>
         </div>
+        <div id="dsrch" style="display:none"><input id="dsq" placeholder="🔍 Ноҳия, деҳа ё ном..." autocomplete="off"></div>
         <div id="hbody"></div>
       </div>
       <div id="chatv">
-      <div id="chead"><button class="ic g" style="width:36px;height:36px;font-size:16px" onclick="goHome()">←</button><div id="ctw" style="line-height:1.25;min-width:0;cursor:pointer" onclick="openMembers()"><b id="ctitle"></b><div id="csub" style="font-size:12px;color:#667781"></div></div><span style="flex:1"></span><button id="cb1" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(false)" aria-label="Занг">📞</button><button id="cb2" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(true)" aria-label="Видео">🎥</button></div>
+      <div id="chead"><button class="ic g" style="width:36px;height:36px;font-size:16px" onclick="goHome()">←</button><div id="ctw" style="line-height:1.25;min-width:0;cursor:pointer" onclick="openMembers()"><b id="ctitle"></b><div id="csub" style="font-size:12px;color:#667781"></div></div><span style="flex:1"></span><button id="csrch" class="ic g" style="width:36px;height:36px;font-size:16px" onclick="toggleSearch()" aria-label="Ҷустуҷӯ">🔍</button><button id="cb1" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(false)" aria-label="Занг">📞</button><button id="cb2" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(true)" aria-label="Видео">🎥</button></div>
       <div class="chips" id="rooms"></div>
+      <div id="sbar"><input id="sq" placeholder="Ҷустуҷӯ дар чат..." autocomplete="off"><button class="ic g" style="width:34px;height:34px;font-size:15px" onclick="toggleSearch()" aria-label="Бекор">✕</button></div>
       <div id="msgs"></div>
+      <div id="sres"></div>
       <div id="rpl">
         <div class="q"><b id="rpln"></b><span id="rplt"></span></div>
         <button class="ic g" onclick="setReply(null)" aria-label="Бекор">✕</button>
@@ -581,6 +591,10 @@ Object.assign(RU, {
 Object.assign(RU, {
   '👥 Иштирокчиён':'👥 Участники','Бастан':'Закрыть','💬 Шахсӣ нависед':'💬 Написать лично'
 });
+Object.assign(RU, {
+  '🔍 Ноҳия, деҳа ё ном...':'🔍 Район, деревня или имя...','Ҷустуҷӯ дар чат...':'Поиск в чате...','Деҳаҳо':'Деревни','Одамон':'Люди',
+  'Ҳеҷ чиз ёфт нашуд':'Ничего не найдено','Ин паём дар таърихи кӯҳна аст':'Это сообщение из старой истории','Ҷустуҷӯ':'Поиск','💬 Лично':'💬 Лично'
+});
 const RX = [
   [/^(.*): паёми нав$/, '$1: новое сообщение'],
   [/^(.*): аъзоён$/, '$1: участники'],
@@ -639,7 +653,7 @@ const CATS = { cow: 'Гов', sheep: 'Гӯсфанд', other: 'Дигар' };
 let mode = 'login', socket = null, tok = '', myUid = '', room = '';
 let places = { districts: [], villages: [] }, prof = {}, social = { incoming: [], contacts: [] };
 let nav = { v: 'home' }, members = { village: '', list: [] };
-const CALLS = false;
+const CALLS = true;
 let blocked = new Set(), blockedList = [];
 let adsData = [], adFilter = 'all', adFile = null, roomList = [];
 let rec = null, chunks = [], recTimer = null, recStart = 0, recCancel = false, stream = null;
@@ -1018,6 +1032,8 @@ function mini(t, cls, fn){
 }
 function renderHome(){
   const box = $('hbody'); box.innerHTML = '';
+  $('dsrch').style.display = nav.v === 'districts' ? 'block' : 'none';
+  if (nav.v === 'home' && $('dsq').value){ $('dsq').value = ''; peopleRes = { q: '', list: [] }; }
   if (nav.v === 'home'){
     if (prof.village){
       box.append(hd('Деҳаи ман'));
@@ -1041,9 +1057,7 @@ function renderHome(){
     box.append(item('🗺 Ҳамаи ноҳияҳо', 'Одамони деҳаҳои дигарро ёбед', () => { nav = { v: 'districts' }; renderHome(); }));
   } else if (nav.v === 'districts'){
     box.append(item('← Бозгашт', '', () => { nav = { v: 'home' }; renderHome(); }));
-    box.append(hd('Ноҳияҳо'));
-    if (!places.districts.length) box.append(item('Ҳоло ноҳия нест', ''));
-    places.districts.forEach((d) => box.append(item('📍 ' + d.name, d.region || '', () => { nav = { v: 'district', id: d.id }; renderHome(); })));
+    searchView(box);
   } else if (nav.v === 'district'){
     box.append(item('← Ба ноҳияҳо', '', () => { nav = { v: 'districts' }; renderHome(); }));
     box.append(hd(dname(nav.id)));
@@ -1107,6 +1121,7 @@ function openVillage(){ if (prof.village) showChat('v:' + prof.village, vname(pr
 function showChat(r, title){
   $('home').style.display = 'none'; $('chatv').style.display = 'flex';
   $('ctitle').textContent = title; $('csub').textContent = '';
+  $('sbar').style.display = 'none'; $('sq').value = ''; showSearch(false);
   $('cb1').style.display = $('cb2').style.display = (CALLS && r.startsWith('dm:')) ? 'inline-block' : 'none';
   room = r; $('msgs').innerHTML = ''; renderRooms(); setReply(null);
   socket.emit('join', r);
@@ -1320,6 +1335,83 @@ function unban(){
 }
 function loadStats(){ if (socket) socket.emit('stats', { password: $('pw').value }); }
 
+/* ---------- ҷустуҷӯ ---------- */
+let srT = null, dsT = null, peopleRes = { q: '', list: [] };
+function showSearch(on){ $('sres').style.display = on ? 'block' : 'none'; $('msgs').style.display = on ? 'none' : ''; }
+function toggleSearch(){
+  const on = $('sbar').style.display !== 'flex';
+  $('sbar').style.display = on ? 'flex' : 'none';
+  $('sq').value = ''; showSearch(false);
+  if (on) $('sq').focus();
+}
+function hl(text, q){
+  const f = document.createDocumentFragment(), lt = text.toLowerCase(), lq = q.toLowerCase();
+  let i = 0, j;
+  while ((j = lt.indexOf(lq, i)) !== -1){
+    f.append(document.createTextNode(text.slice(i, j)));
+    const mk = document.createElement('mark'); mk.textContent = text.slice(j, j + q.length); f.append(mk);
+    i = j + q.length;
+  }
+  f.append(document.createTextNode(text.slice(i)));
+  return f;
+}
+function jumpTo(id){
+  toggleSearch();
+  const el = document.querySelector('#msgs [data-id="' + id + '"]');
+  if (el){ el.scrollIntoView({ block: 'center' }); el.classList.remove('hl'); void el.offsetWidth; el.classList.add('hl'); }
+  else toast('Ин паём дар таърихи кӯҳна аст');
+}
+$('sq').addEventListener('input', () => {
+  clearTimeout(srT);
+  const q = $('sq').value.trim();
+  if (q.length < 2){ showSearch(false); return; }
+  srT = setTimeout(() => { if (socket) socket.emit('search', { room, q }); }, 300);
+});
+function personRow(m){
+  const r = item(m.name, vname(m.village), null, m.av || '');
+  if (m.state === 'accepted'){
+    const c = social.contacts.find((x) => x.uid === m.uid);
+    r.append(mini('Гап задан', '', () => { if (c) showChat(c.room, c.name); }));
+  } else if (m.state === 'declined'){
+    const b = mini('Рад шуд', 'r', () => {}); b.style.opacity = '.6'; r.append(b);
+  } else {
+    const same = m.village && m.village === prof.village;
+    r.append(mini(same ? '💬 Лично' : 'Запрос', '', () => { startDM(m.uid, m.name); if (!same) toast('Дархост фиристода шуд'); }));
+  }
+  return r;
+}
+function searchView(box){
+  const q = $('dsq').value.trim().toLowerCase();
+  const ml = (x) => (x.name + ' ' + (RU[x.name] || '')).toLowerCase();
+  const openD = (d) => () => { nav = { v: 'district', id: d.id }; renderHome(); };
+  if (!q){
+    box.append(hd('Ноҳияҳо'));
+    if (!places.districts.length) box.append(item('Ҳоло ноҳия нест', ''));
+    places.districts.forEach((d) => box.append(item('📍 ' + d.name, d.region || '', openD(d))));
+    return;
+  }
+  const ds = places.districts.filter((d) => ml(d).includes(q));
+  const vs = places.villages.filter((v) => ml(v).includes(q)).slice(0, 30);
+  const pp = peopleRes.q.toLowerCase() === q ? peopleRes.list : [];
+  if (ds.length){ box.append(hd('Ноҳияҳо')); ds.forEach((d) => box.append(item('📍 ' + d.name, d.region || '', openD(d)))); }
+  if (vs.length){
+    box.append(hd('Деҳаҳо'));
+    vs.forEach((v) => box.append(item('🏘 ' + v.name, dname(v.district), () => {
+      if (v.id === prof.village) openVillage();
+      else { nav = { v: 'members', id: v.id, d: v.district }; members = { village: '', list: [] }; socket.emit('members', v.id); renderHome(); }
+    })));
+  }
+  if (pp.length){ box.append(hd('Одамон')); pp.forEach((m) => box.append(personRow(m))); }
+  if (!ds.length && !vs.length && !pp.length) box.append(item('Ҳеҷ чиз ёфт нашуд', ''));
+}
+$('dsq').addEventListener('input', () => {
+  clearTimeout(dsT);
+  const q = $('dsq').value.trim();
+  renderHome();
+  if (q.length >= 2) dsT = setTimeout(() => { if (socket) socket.emit('findpeople', { q }); }, 300);
+  else peopleRes = { q: '', list: [] };
+});
+
 /* ---------- бозор ---------- */
 function renderAdChips(){
   const box = $('adchips'); box.innerHTML = '';
@@ -1436,6 +1528,7 @@ function start(token){
       if (c){ pendingDM = ''; $('mem').style.display = 'none'; showChat(c.room, c.name); }
     }
     if (nav.v === 'members') socket.emit('members', nav.id);
+    if (nav.v === 'districts' && $('dsq').value.trim().length >= 2) socket.emit('findpeople', { q: $('dsq').value.trim() });
     renderHome();
   });
   socket.on('members', (d) => { members = d; renderHome(); });
@@ -1539,6 +1632,21 @@ function start(token){
   });
   socket.on('stats', (d) => alert('База: ' + d.mb + ' MB (бепул: 512 MB)\nПаём: ' + d.msgs + '\nФайл: ' + d.files + '\nКорбар: ' + d.users));
   socket.on('deleted', () => { localStorage.removeItem('token'); alert('Ҳисоби шумо нест карда шуд.'); location.reload(); });
+  socket.on('people', (d) => { peopleRes = d; renderHome(); });
+  socket.on('searchres', (d) => {
+    if (d.room !== room || d.q !== $('sq').value.trim()) return;
+    const box = $('sres'); box.innerHTML = '';
+    const list = d.list.filter((m) => !blocked.has(m.uid));
+    if (!list.length){ const e = document.createElement('div'); e.className = 'sr'; e.textContent = 'Ҳеҷ чиз ёфт нашуд'; box.append(e); }
+    list.forEach((m) => {
+      const c = document.createElement('div'); c.className = 'sr';
+      const n = document.createElement('b'); n.textContent = m.uid === myUid ? 'Шумо' : m.name;
+      const t = document.createElement('span'); t.className = 'd'; t.textContent = ' · ' + new Date(m.time).toLocaleString();
+      const x = document.createElement('div'); x.append(hl(m.text || '', d.q));
+      c.append(n, t, x); c.onclick = () => jumpTo(m.id); box.append(c);
+    });
+    showSearch(true);
+  });
   socket.on('news', (n) => addNews(n, true));
   socket.on('ad', (a) => { adsData.unshift(a); renderAds(); });
   socket.on('addel', (id) => { adsData = adsData.filter((a) => a.id !== id); renderAds(); });
@@ -1690,6 +1798,7 @@ function appBack(){
   if (isOpen('menu')){ closeMenu(); return true; }
   for (const id of ['sform', 'pform', 'gform', 'adform', 'mem']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
   if (isOpen('call')) return true;
+  if (isOpen('sbar')){ toggleSearch(); return true; }
   if ($('chatv').style.display === 'flex'){ goHome(); return true; }
   if (nav.v === 'members'){ nav = { v: 'district', id: nav.d }; renderHome(); return true; }
   if (nav.v === 'district'){ nav = { v: 'districts' }; renderHome(); return true; }
