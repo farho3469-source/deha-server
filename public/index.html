@@ -144,6 +144,11 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
 #net{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom));background:rgba(0,0,0,.75);color:#fff;border-radius:16px;padding:8px 14px;font-size:13px;z-index:12}
 #upd{display:none;position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));background:#1565c0;color:#fff;border-radius:12px;padding:12px;font-size:15px;text-align:center;z-index:13}
 #lang{display:block;right:10px;top:12px}
+.tk{color:#8696a0;margin-left:3px}.tk.rd{color:#53bdeb}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1fa855;margin-left:6px}
+#mem{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:8;flex-direction:column}
+#mem .top{background:#2f6b3a;color:#fff;padding:14px;font-size:18px;font-weight:600;flex:none}
+#mem .body{flex:1;overflow-y:auto;padding:12px}
 </style>
 </head>
 <body>
@@ -190,7 +195,7 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
         <div id="hbody"></div>
       </div>
       <div id="chatv">
-      <div id="chead"><button class="ic g" style="width:36px;height:36px;font-size:16px" onclick="goHome()">←</button><b id="ctitle"></b><span style="flex:1"></span><button id="cb1" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(false)" aria-label="Занг">📞</button><button id="cb2" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(true)" aria-label="Видео">🎥</button></div>
+      <div id="chead"><button class="ic g" style="width:36px;height:36px;font-size:16px" onclick="goHome()">←</button><div id="ctw" style="line-height:1.25;min-width:0;cursor:pointer" onclick="openMembers()"><b id="ctitle"></b><div id="csub" style="font-size:12px;color:#667781"></div></div><span style="flex:1"></span><button id="cb1" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(false)" aria-label="Занг">📞</button><button id="cb2" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(true)" aria-label="Видео">🎥</button></div>
       <div class="chips" id="rooms"></div>
       <div id="msgs"></div>
       <div id="rpl">
@@ -322,10 +327,17 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
   </div>
 </div>
 
+<div id="mem">
+  <div class="top">👥 Иштирокчиён</div>
+  <div class="body" id="memlist"></div>
+  <div style="padding:10px"><button class="btn g" style="width:100%" onclick="closeMembers()">Бастан</button></div>
+</div>
+
 <div id="menu" onclick="closeMenu()">
   <div class="mbox" onclick="event.stopPropagation()">
     <div id="mpv"></div>
     <button class="btn" id="mrep">↩ Ҷавоб додан</button>
+    <button class="btn" id="mdm">💬 Шахсӣ нависед</button>
     <button class="btn" id="mdel" style="background:#b00020">🗑 Нест кардан</button>
     <button class="btn g" id="mrpt">🚩 Шикоят кардан</button>
     <button class="btn g" id="mblk">🚫 Корбарро манъ кардан</button>
@@ -566,6 +578,9 @@ Object.assign(RU, {
   'Ҳисоби шумо ва ҳамаи маълумоти шумо (паёмҳо, эълонҳо, суратҳо) якбора нест мешавад. Давом диҳем?':'Ваш аккаунт и все данные (сообщения, объявления, фото) будут удалены без возможности восстановления. Продолжить?',
   'Ҳисоби шумо нест карда шуд.':'Ваш аккаунт удалён.'
 });
+Object.assign(RU, {
+  '👥 Иштирокчиён':'👥 Участники','Бастан':'Закрыть','💬 Шахсӣ нависед':'💬 Написать лично'
+});
 const RX = [
   [/^(.*): паёми нав$/, '$1: новое сообщение'],
   [/^(.*): аъзоён$/, '$1: участники'],
@@ -573,6 +588,7 @@ const RX = [
   [/^Барнома иҷозат намедиҳад \((.*)\)\. Барномаро аз Chrome насб кунед\.$/, 'Приложению не разрешён доступ ($1). Установите приложение из Chrome.'],
   [/^Ин барнома барои синни аз (\d+) боло аст$/, 'Приложение предназначено для возраста от $1 лет']
 ];
+RX.push([/^(\d+) нафар · (\d+) онлайн$/, '$1 чел. · $2 онлайн']);
 function tr(s){
   if (LANG !== 'ru' || !s) return s;
   const k = String(s);
@@ -824,6 +840,7 @@ function openMenu(m){
   $('mpv').textContent = (m.uid === myUid ? 'Шумо' : m.name) + ': ' + prevText(m);
   $('mdel').style.display = (m.uid === myUid || prof.admin || $('pw').value.trim()) ? 'block' : 'none';
   $('mrpt').style.display = $('mblk').style.display = (m.uid !== myUid) ? 'block' : 'none';
+  $('mdm').style.display = (m.uid !== myUid && room.startsWith('v:')) ? 'block' : 'none';
   $('menu').style.display = 'flex';
 }
 function closeMenu(){ $('menu').style.display = 'none'; menuMsg = null; }
@@ -846,6 +863,36 @@ $('mblk').onclick = () => {
   const m = menuMsg; closeMenu();
   if (m && socket && confirm(m.name + ' манъ карда шавад? Паёмҳояш барои шумо намоён нест.')) socket.emit('block', m.uid);
 };
+/* ---------- иштирокчиён, чати шахсӣ, «хонда шуд» ---------- */
+let pendingDM = '', vinfo = null;
+function startDM(uid, name){
+  const c = social.contacts.find((x) => x.uid === uid);
+  if (c){ $('mem').style.display = 'none'; showChat(c.room, c.name); return; }
+  pendingDM = uid;
+  clearTimeout(startDM.t); startDM.t = setTimeout(() => { pendingDM = ''; }, 6000);
+  socket.emit('reqsend', uid);
+}
+function openMembers(){
+  if (!socket || !room.startsWith('v:')) return;
+  $('memlist').innerHTML = ''; $('mem').style.display = 'flex'; socket.emit('vinfo');
+}
+function closeMembers(){ $('mem').style.display = 'none'; }
+function renderMembers(){
+  const box = $('memlist'); box.innerHTML = '';
+  if (!vinfo) return;
+  box.append(hd(vinfo.total + ' нафар · ' + vinfo.online + ' онлайн'));
+  vinfo.list.filter((u) => !blocked.has(u.uid)).forEach((u) => {
+    const r = item(u.me ? u.name + ' (Шумо)' : u.name, '', null, u.av || '');
+    if (u.on){ const d = document.createElement('i'); d.className = 'dot'; r.querySelector('span').append(d); }
+    if (!u.me) r.append(mini('💬', '', () => startDM(u.uid, u.name)));
+    box.append(r);
+  });
+}
+function markRead(){
+  if (socket && room.startsWith('dm:') && document.visibilityState === 'visible') socket.emit('markread', { room });
+}
+setInterval(() => { if (socket && prof.village && room === 'v:' + prof.village) socket.emit('vinfo'); }, 30000);
+$('mdm').onclick = () => { const m = menuMsg; closeMenu(); if (m && socket) startDM(m.uid, m.name); };
 const NAMECOL = ['#1fa855', '#d4452f', '#a05bd0', '#cf7d00', '#0a8ea6', '#c24a8e', '#5b7fcf', '#7a8f00'];
 function nameColor(k){ let h = 0; for (const c of String(k)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return NAMECOL[h % NAMECOL.length]; }
 function msgEl(m){
@@ -886,7 +933,11 @@ function msgEl(m){
   } else {
     const p = document.createElement('div'); p.textContent = m.text || ''; d.append(p);
   }
-  const t = document.createElement('div'); t.className = 'tm'; t.textContent = hhmm(m.time); d.append(t);
+  const t = document.createElement('div'); t.className = 'tm'; t.textContent = hhmm(m.time);
+  if (mine && m.room && m.room.startsWith('dm:')){
+    const k = document.createElement('span'); k.className = 'tk' + (m.rd ? ' rd' : ''); k.textContent = m.rd ? ' ✓✓' : ' ✓'; t.append(k);
+  }
+  d.append(t);
   d.onclick = (e) => {
     if (!m.id || e.target.closest('audio,img,.rq')) return;
     openMenu(m);
@@ -1055,10 +1106,11 @@ function saveSettings(){
 function openVillage(){ if (prof.village) showChat('v:' + prof.village, vname(prof.village)); }
 function showChat(r, title){
   $('home').style.display = 'none'; $('chatv').style.display = 'flex';
-  $('ctitle').textContent = title;
+  $('ctitle').textContent = title; $('csub').textContent = '';
   $('cb1').style.display = $('cb2').style.display = (CALLS && r.startsWith('dm:')) ? 'inline-block' : 'none';
   room = r; $('msgs').innerHTML = ''; renderRooms(); setReply(null);
   socket.emit('join', r);
+  if (r === 'v:' + prof.village) socket.emit('vinfo');
 }
 function goHome(){
   room = ''; $('chatv').style.display = 'none'; $('home').style.display = 'block';
@@ -1379,10 +1431,23 @@ function start(token){
   socket.on('needplace', () => { if (places.districts.length) $('pform').style.display = 'flex'; });
   socket.on('social', (s) => {
     social = s;
+    if (pendingDM){
+      const c = s.contacts.find((x) => x.uid === pendingDM);
+      if (c){ pendingDM = ''; $('mem').style.display = 'none'; showChat(c.room, c.name); }
+    }
     if (nav.v === 'members') socket.emit('members', nav.id);
     renderHome();
   });
   socket.on('members', (d) => { members = d; renderHome(); });
+  socket.on('vinfo', (d) => {
+    vinfo = d;
+    if (room === 'v:' + prof.village) $('csub').textContent = d.total + ' нафар · ' + d.online + ' онлайн';
+    if ($('mem').style.display === 'flex') renderMembers();
+  });
+  socket.on('read', (d) => {
+    if (d.room !== room) return;
+    document.querySelectorAll('#msgs .b.me .tk').forEach((k) => { k.className = 'tk rd'; k.textContent = ' ✓✓'; });
+  });
   socket.on('newmsg', (m) => {
     if (m.room !== room){ beep(); toast('💬 ' + m.name + ': паёми нав'); }
   });
@@ -1397,11 +1462,13 @@ function start(token){
     if (d.room !== room) return;
     $('msgs').innerHTML = '';
     d.chat.forEach(addChat);
+    markRead();
   });
   socket.on('chat', (m) => {
     if (m.room !== room || blocked.has(m.uid)) return;
     if (m.uid !== myUid) beep();
     addChat(m);
+    if (m.uid !== myUid) markRead();
   });
   socket.on('msgdel', (id) => {
     const el = document.querySelector('[data-id="' + id + '"]');
@@ -1481,6 +1548,7 @@ function start(token){
 }
 document.addEventListener('visibilitychange', () => {
   if (socket) socket.emit('vis', document.visibilityState === 'visible');
+  if (document.visibilityState === 'visible') markRead();
 });
 
 function upload(type, buf, avatar){
@@ -1613,14 +1681,14 @@ let guard = false, ignorePop = false;
 function isOpen(id){ return $(id).style.display === 'flex'; }
 function atRoot(){
   if ($('app').style.display !== 'flex') return true;
-  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('call')
+  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('mem') || isOpen('call')
     || $('chatv').style.display === 'flex' || nav.v !== 'home' || !$('s1').classList.contains('on'));
 }
 function appBack(){
   if ($('app').style.display !== 'flex') return false;
   if (isOpen('lb')){ $('lb').style.display = 'none'; return true; }
   if (isOpen('menu')){ closeMenu(); return true; }
-  for (const id of ['sform', 'pform', 'gform', 'adform']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
+  for (const id of ['sform', 'pform', 'gform', 'adform', 'mem']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
   if (isOpen('call')) return true;
   if ($('chatv').style.display === 'flex'){ goHome(); return true; }
   if (nav.v === 'members'){ nav = { v: 'district', id: nav.d }; renderHome(); return true; }
