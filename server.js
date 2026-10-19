@@ -1019,6 +1019,51 @@ io.on('connection', (s) => {
     }
   });
 
+  s.on('search', async (m) => {
+    try {
+      const room = String((m && m.room) || '');
+      const q = String((m && m.q) || '').trim().slice(0, 50);
+      if (q.length < 2 || !(await canEnter(s.user, room))) return;
+      const list = await chat
+        .find({ room, kind: 'text', text: { $regex: escRe(q), $options: 'i' } })
+        .sort({ time: -1 })
+        .limit(50)
+        .toArray();
+      s.emit('searchres', { room, q, list: list.map(chatOut) });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('findpeople', async (m) => {
+    try {
+      const q = String((m && m.q) || '').trim().slice(0, 40);
+      if (q.length < 2) return;
+      const bl = (s.user.blocked || []).filter((b) => HEX24.test(b)).map((b) => new ObjectId(b));
+      const list = await users
+        .find(
+          { name: { $regex: escRe(q), $options: 'i' }, _id: { $ne: s.user._id, $nin: bl }, blocked: { $ne: uid }, banned: { $ne: true } },
+          { projection: { name: 1, avatar: 1, village: 1 } }
+        )
+        .limit(30)
+        .toArray();
+      const rq = await reqs.find({ $or: [{ from: uid }, { to: uid }] }).toArray();
+      const st = (id) => {
+        const x = rq.find((r) => r.from === id || r.to === id);
+        if (!x) return 'none';
+        if (x.status === 'accepted') return 'accepted';
+        if (x.status === 'pending') return x.from === uid ? 'sent' : 'incoming';
+        return x.from === uid ? 'declined' : 'none';
+      };
+      s.emit('people', {
+        q,
+        list: list.map((x) => ({ uid: String(x._id), name: x.name, av: x.avatar || '', village: x.village || '', state: st(String(x._id)) })),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   s.on('vinfo', async () => {
     try {
       const vid = s.user.village;
