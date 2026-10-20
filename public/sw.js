@@ -22,7 +22,15 @@ self.addEventListener('push', (e) => {
     opt.renotify = !!d.renotify;
   }
   if (d.vibrate) opt.vibrate = d.vibrate;
-  e.waitUntil(self.registration.showNotification(d.title || 'Деҳа', opt));
+  let job = self.registration.showNotification(d.title || 'Деҳа', opt);
+  if (d.type === 'call') {
+    // огоҳиномаи занг баъди 40 сония худаш пӯшида мешавад
+    job = job
+      .then(() => new Promise((r) => setTimeout(r, 40000)))
+      .then(() => self.registration.getNotifications({ tag: 'call' }))
+      .then((l) => l.forEach((n) => n.close()));
+  }
+  e.waitUntil(job);
 });
 
 self.addEventListener('notificationclick', (e) => {
