@@ -467,9 +467,10 @@ app.get('/media/:id', async (req, res) => {
 });
 
 /* ---------- огоҳиномаи push ---------- */
-/* ★ НАВ: параметри сеюм (opt) — масалан { TTL: 30 } барои занг */
-async function pushTo(uids, mk, opt) {
+// opts.ttl — мӯҳлати push бо сонияҳо (барои занг кӯтоҳ мешавад)
+async function pushTo(uids, mk, opts) {
   if (!VAPID_PUBLIC || !uids.length) return;
+  const ttl = (opts && opts.ttl) || 3600;
   const ids = uids.filter((x) => HEX24.test(x)).map((x) => new ObjectId(x));
   const us = await users.find({ _id: { $in: ids } }, { projection: { lang: 1 } }).toArray();
   const lang = {};
@@ -482,7 +483,7 @@ async function pushTo(uids, mk, opt) {
       if (!cache[l]) cache[l] = JSON.stringify(typeof mk === 'function' ? mk(l) : mk);
       try {
         await webpush.sendNotification({ endpoint: x.endpoint, keys: x.keys }, cache[l], {
-          TTL: (opt && opt.TTL) || 3600,
+          TTL: ttl,
           urgency: 'high',
         });
       } catch (e) {
@@ -521,7 +522,7 @@ async function pushMsg(msg, roomId) {
   }
 }
 
-/* ★ НАВ: ҳисоби паёмҳои нахондашуда */
+/* ---------- шумораи паёмҳои нахондашуда ---------- */
 async function bump(msg, roomId) {
   try {
     let targets = [];
@@ -547,7 +548,7 @@ async function bump(msg, roomId) {
     );
     targets.forEach((u) => io.to('u:' + u).emit('unread', { room: roomId, inc: 1 }));
   } catch (e) {
-    console.error(e);
+    console.error('bump', e);
   }
 }
 
@@ -676,25 +677,21 @@ io.on('connection', (s) => {
   const pc0 = pendingCalls.get(uid);
   if (pc0 && Date.now() - pc0.time < 45000) s.emit('callincoming', pc0);
 
-  /* ★ НАВ: рақамҳои нахондашуда ҳангоми пайвастшавӣ */
   unread
     .find({ uid })
     .toArray()
     .then((l) => {
       const o = {};
-      l.forEach((x) => {
-        if (x.n > 0) o[x.room] = x.n;
-      });
+      l.forEach((x) => (o[x.room] = x.n));
       s.emit('unreadall', o);
     })
-    .catch((e) => console.error(e));
+    .catch(console.error);
 
   const enter = async (r) => {
     r = String(r);
     if (!(await canEnter(s.user, r))) return s.emit('err', 'Ба ин гурӯҳ дастрасӣ нест');
     [...s.rooms].filter((x) => x.startsWith('r:')).forEach((x) => s.leave(x));
     s.join('r:' + r);
-    /* ★ НАВ: ҳангоми кушодани чат ҳисоб сифр мешавад */
     unread.deleteOne({ uid, room: r }).catch(() => {});
     s.emit('unread', { room: r, set: 0 });
     const list = await chat.find({ room: r }).sort({ time: -1 }).limit(100).toArray();
@@ -723,11 +720,10 @@ io.on('connection', (s) => {
     s.data.vis = !!v;
   });
 
-  /* ★ НАВ: корбар чатро дид (барнома аз пасзамина баргашт) */
   s.on('seen', async (m) => {
     try {
       const room = String((m && m.room) || '');
-      if (!room) return;
+      if (!room || !(await canEnter(s.user, room))) return;
       await unread.deleteOne({ uid, room });
       s.emit('unread', { room, set: 0 });
     } catch (e) {
@@ -854,19 +850,18 @@ io.on('connection', (s) => {
       const info = { from: uid, name: s.user.name, video: !!m.video, time: now };
       pendingCalls.set(to, info);
       io.to('u:' + to).emit('callincoming', info);
-      /* ★ НАВ: push-и занг — бо тарзи занг (requireInteraction, ларзиш, TTL кӯтоҳ) */
       pushTo(
         [to],
-        (l) => ({
-          title: (m.video ? '🎥 ' : '📞 ') + (l === 'ru' ? 'Звонок' : 'Занг'),
-          body: l === 'ru' ? s.user.name + ' звонит вам' : s.user.name + ' занг мезанад',
+        {
+          title: (m.video ? '🎥 ' : '📞 ') + 'Занг',
+          body: s.user.name + ' занг мезанад',
           tag: 'call',
           type: 'call',
-          renotify: true,
           requireInteraction: true,
+          renotify: true,
           vibrate: [400, 200, 400, 200, 400, 200, 400],
-        }),
-        { TTL: 30 }
+        },
+        { ttl: 30 }
       );
       setTimeout(() => {
         const p = pendingCalls.get(to);
@@ -1061,7 +1056,6 @@ io.on('connection', (s) => {
       await chat.deleteMany({});
       await unread.deleteMany({});
       io.emit('wiped');
-      io.emit('unreadall', {});
     } catch (e) {
       console.error(e);
     }
@@ -1286,8 +1280,8 @@ io.on('connection', (s) => {
         const p = room.split(':');
         io.to('u:' + (p[1] === uid ? p[2] : p[1])).emit('newmsg', { room, name: msg.name });
       }
+      bump(msg, room);
       pushMsg(msg, room);
-      bump(msg, room); /* ★ НАВ */
     } catch (e) {
       console.error(e);
     }
@@ -1380,16 +1374,16 @@ io.on('connection', (s) => {
     places = db.collection('places');
     reqs = db.collection('reqs');
     reports = db.collection('reports');
-    unread = db.collection('unread'); /* ★ НАВ */
+    unread = db.collection('unread');
     dbh = db;
     await users.createIndex({ phone: 1 }, { unique: true });
     await subs.createIndex({ endpoint: 1 }, { unique: true });
     await subs.createIndex({ uid: 1 });
-    await unread.createIndex({ uid: 1, room: 1 }, { unique: true }); /* ★ НАВ */
     await chat.createIndex({ room: 1, time: -1 });
     await reqs.createIndex({ from: 1 });
     await reqs.createIndex({ to: 1 });
     await reports.createIndex({ status: 1, time: -1 });
+    await unread.createIndex({ uid: 1, room: 1 }, { unique: true });
     let ord = 0;
     for (const [region, names] of Object.entries(SEED)) {
       for (const name of names) {
