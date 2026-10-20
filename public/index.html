@@ -69,9 +69,10 @@ input,textarea,select{width:100%;padding:12px;margin:5px 0;font-size:16px;border
 .acts button{background:#f3d6d6;color:#8a1c1c}
 .fab{position:absolute;right:14px;bottom:14px;background:#2f6b3a;color:#fff;border:0;border-radius:26px;padding:13px 20px;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 nav{flex:none;display:flex;background:#fff;border-top:1px solid #ddd;padding-bottom:env(safe-area-inset-bottom)}
-nav button{flex:1;border:0;background:none;padding:8px 0;font-size:11px;color:#777}
+nav button{flex:1;border:0;background:none;padding:8px 0;font-size:11px;color:#777;position:relative}
 nav button span{display:block;font-size:21px}
 nav button.on{color:#2f6b3a;font-weight:600}
+.nb{display:none;position:absolute;top:2px;left:calc(50% + 6px);background:#d4452f;color:#fff;border-radius:10px;min-width:18px;padding:1px 5px;font-size:11px;font-style:normal;font-weight:600;line-height:16px;text-align:center}
 #lb{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.92);z-index:9;align-items:center;justify-content:center}
 #lb img{max-width:100%;max-height:100%}
 #adform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:8;flex-direction:column}
@@ -257,7 +258,7 @@ mark{background:#ffe58f;border-radius:3px}
     </div>
   </div>
   <nav>
-    <button id="b1" class="on" onclick="tab(1)"><span>💬</span>Чат</button>
+    <button id="b1" class="on" onclick="tab(1)"><span>💬</span>Чат<i class="nb" id="nbadge"></i></button>
     <button id="b6" onclick="openDistricts()"><span>🗺️</span>Ноҳияҳо</button>
     <button id="b2" onclick="tab(2)"><span>🐄</span>Бозор</button>
     <button id="b3" onclick="tab(3)"><span>📰</span>Хабарҳо</button>
@@ -659,8 +660,42 @@ let adsData = [], adFilter = 'all', adFile = null, roomList = [];
 let rec = null, chunks = [], recTimer = null, recStart = 0, recCancel = false, stream = null;
 let replyTo = null, menuMsg = null, pushKey = '';
 
-/* ---------- садои паёми нав ---------- */
-let actx = null, fbAudio = null;
+/* ---------- паёмҳои нахондашуда ---------- */
+let unreadMap = {};
+function badge(n){
+  if (!n) return null;
+  const b = document.createElement('b');
+  b.textContent = n > 99 ? '99+' : String(n);
+  b.style.cssText = 'background:#1fa855;color:#fff;border-radius:12px;min-width:22px;padding:2px 7px;font-size:13px;text-align:center;margin-left:8px;display:inline-block';
+  return b;
+}
+function totalUnread(){
+  let t = 0;
+  for (const k in unreadMap) t += unreadMap[k] || 0;
+  return t;
+}
+function updUnread(){
+  const n = totalUnread(), el = $('nbadge');
+  if (el){ el.textContent = n > 99 ? '99+' : String(n); el.style.display = n ? 'block' : 'none'; }
+  try {
+    if (navigator.setAppBadge){
+      if (n) navigator.setAppBadge(n).catch(() => {});
+      else navigator.clearAppBadge().catch(() => {});
+    }
+  } catch (e) {}
+}
+function seen(){
+  if (socket && room && (unreadMap[room] || 0) > 0 && document.visibilityState === 'visible') socket.emit('seen', { room });
+}
+
+/* ---------- садои паём ва занг ---------- */
+let actx = null, fbAudio = null, msgAudio = null, ringAudio = null;
+function initAudio(){
+  try {
+    if (!msgAudio){ msgAudio = new Audio('/msg.wav'); msgAudio.preload = 'auto'; }
+    if (!ringAudio){ ringAudio = new Audio('/ring.wav'); ringAudio.preload = 'auto'; ringAudio.loop = true; }
+  } catch (e) {}
+}
 function makeWav(){
   const sr = 22050, n = Math.floor(sr * 0.4);
   const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
@@ -678,6 +713,7 @@ function makeWav(){
 }
 function unlockSound(){
   try {
+    initAudio();
     if (!actx){
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) actx = new AC();
@@ -703,6 +739,12 @@ function tones(){
 }
 async function beep(){
   try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) {}
+  try {
+    initAudio();
+    msgAudio.currentTime = 0;
+    await msgAudio.play();
+    return;
+  } catch (e) {}
   let ok = false;
   try {
     if (!actx) unlockSound();
@@ -809,6 +851,7 @@ async function logout(){
       }
     }
   } catch (e) {}
+  try { if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {}); } catch (e) {}
   localStorage.removeItem('token');
   location.reload();
 }
@@ -965,7 +1008,8 @@ function renderRooms(){
   roomList.forEach((r) => {
     const b = document.createElement('button');
     b.className = 'chip' + (r.id === room ? ' on' : '');
-    b.textContent = r.title;
+    const n = r.id === room ? 0 : (unreadMap[r.id] || 0);
+    b.textContent = r.title + (n ? ' (' + (n > 99 ? '99+' : n) + ')' : '');
     b.onclick = () => selectRoom(r.id);
     box.append(b);
   });
@@ -1037,7 +1081,10 @@ function renderHome(){
   if (nav.v === 'home'){
     if (prof.village){
       box.append(hd('Деҳаи ман'));
-      box.append(item('🏠 ' + vname(prof.village), dname(prof.district), openVillage));
+      const vr = item('🏠 ' + vname(prof.village), dname(prof.district), openVillage);
+      const vb = badge(unreadMap['v:' + prof.village]);
+      if (vb) vr.append(vb);
+      box.append(vr);
     } else {
       box.append(item('⚠ Деҳаи худро интихоб кунед', '', () => { fillPlace('pdist', 'pvil'); $('pform').style.display = 'flex'; }));
     }
@@ -1052,7 +1099,12 @@ function renderHome(){
     }
     if (social.contacts.length){
       box.append(hd('Сӯҳбатҳои шахсӣ'));
-      social.contacts.forEach((c) => box.append(item(c.name, vname(c.village), () => showChat(c.room, c.name), c.av)));
+      social.contacts.forEach((c) => {
+        const r = item(c.name, vname(c.village), () => showChat(c.room, c.name), c.av);
+        const cb = badge(unreadMap[c.room]);
+        if (cb) r.append(cb);
+        box.append(r);
+      });
     }
     box.append(item('🗺 Ҳамаи ноҳияҳо', 'Одамони деҳаҳои дигарро ёбед', () => { nav = { v: 'districts' }; renderHome(); }));
   } else if (nav.v === 'districts'){
@@ -1157,10 +1209,20 @@ function showCall(status, incoming){
   $('lv').style.display = callVideo ? 'block' : 'none';
   $('btmic').classList.remove('off'); $('btcam').classList.remove('off');
 }
-function stopRing(){ clearInterval(ringI); ringI = null; }
+function stopRing(){
+  clearInterval(ringI); ringI = null;
+  try { if (ringAudio){ ringAudio.pause(); ringAudio.currentTime = 0; } } catch (e) {}
+  try { if (navigator.vibrate) navigator.vibrate(0); } catch (e) {}
+}
 function startRing(){
-  stopRing(); beep();
-  ringI = setInterval(() => { beep(); try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {} }, 2000);
+  stopRing();
+  try {
+    initAudio();
+    ringAudio.currentTime = 0;
+    ringAudio.play().catch(() => { beep(); });
+  } catch (e) { beep(); }
+  try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {}
+  ringI = setInterval(() => { try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {} }, 2000);
 }
 function gum(c, ms){
   const once = () => new Promise((resolve, reject) => {
@@ -1521,6 +1583,18 @@ function start(token){
     places = p; fillPlace('pdist', 'pvil'); fillPlace('rdist', 'rvil'); renderHome();
   });
   socket.on('needplace', () => { if (places.districts.length) $('pform').style.display = 'flex'; });
+  socket.on('unreadall', (m) => {
+    unreadMap = m || {};
+    if (room) delete unreadMap[room];
+    updUnread(); renderHome(); renderRooms();
+  });
+  socket.on('unread', (d) => {
+    if (!d || !d.room) return;
+    if (d.set !== undefined) unreadMap[d.room] = d.set;
+    else unreadMap[d.room] = (unreadMap[d.room] || 0) + (d.inc || 1);
+    if (!unreadMap[d.room]) delete unreadMap[d.room];
+    updUnread(); renderHome(); renderRooms();
+  });
   socket.on('social', (s) => {
     social = s;
     if (pendingDM){
@@ -1544,7 +1618,7 @@ function start(token){
   socket.on('newmsg', (m) => {
     if (m.room !== room){ beep(); toast('💬 ' + m.name + ': паёми нав'); }
   });
-  socket.on('wiped', () => { $('msgs').innerHTML = ''; });
+  socket.on('wiped', () => { $('msgs').innerHTML = ''; unreadMap = {}; updUnread(); renderHome(); renderRooms(); });
   socket.on('settingsok', () => { toast('✔ Сабт шуд'); nav = { v: 'home' }; goHome(); });
   socket.on('init', (d) => {
     $('news').innerHTML = '';
@@ -1656,7 +1730,7 @@ function start(token){
 }
 document.addEventListener('visibilitychange', () => {
   if (socket) socket.emit('vis', document.visibilityState === 'visible');
-  if (document.visibilityState === 'visible') markRead();
+  if (document.visibilityState === 'visible'){ markRead(); seen(); }
 });
 
 function upload(type, buf, avatar){
