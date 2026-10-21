@@ -1,1908 +1,1549 @@
-<!DOCTYPE html>
-<html lang="tg">
-<head>
-<meta charset="utf-8">
-<script>window.onerror=function(m,u,l){alert('Хато: '+m+' (сатр '+l+')');};</script>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2f6b3a">
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.png">
-<title>Деҳа</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;height:100dvh;display:flex;flex-direction:column;font-family:system-ui,sans-serif;background:#efece3;color:#222}
-#hdr{position:relative;height:84px;background:#2f6b3a;flex:none;overflow:hidden}
-#hdr svg{position:absolute;left:0;top:0;width:100%;height:100%}
-#hdr .t{position:absolute;left:14px;top:10px;color:#fff;font-size:21px;font-weight:600}
-#hdr .s{position:absolute;left:14px;top:40px;color:#dfe8dc;font-size:12px}
-#out{position:absolute;right:10px;top:10px;display:none;background:rgba(0,0,0,.3);color:#fff;border:0;border-radius:14px;padding:5px 12px;font-size:13px}
-#auth{flex:1;overflow-y:auto;padding:20px}
-#auth h3{margin:0 0 12px;font-size:22px}
-input,textarea,select{width:100%;padding:12px;margin:5px 0;font-size:16px;border:1px solid #ccc;border-radius:10px;background:#fff;font-family:inherit}
-.btn{background:#2f6b3a;color:#fff;border:0;padding:12px 20px;font-size:16px;border-radius:10px}
-.btn.g{background:#e6e3d9;color:#222}
-#aerr{color:#b00020;font-size:14px;min-height:20px;margin:6px 0}
-.link{color:#2f6b3a;text-decoration:underline;margin-top:16px}
-#app{display:none;flex:1;min-height:0;flex-direction:column}
-#views{flex:1;min-height:0;display:flex;flex-direction:column}
-.sec{display:none;flex:1;min-height:0;flex-direction:column;position:relative}
-.sec.on{display:flex}
-.pad{overflow-y:auto;padding:12px}
-.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 10px;flex:none;background:#fff;border-bottom:1px solid #ddd}
-.chip{flex:none;border:1px solid #2f6b3a;color:#2f6b3a;background:#fff;border-radius:16px;padding:6px 14px;font-size:14px}
-.chip.on{background:#2f6b3a;color:#fff}
-#notif{display:none;flex:none;align-items:center;gap:8px;background:#fff3cd;color:#664d03;padding:8px 12px;font-size:13px;border-bottom:1px solid #ddd}
-#notif span{flex:1}
-#notif .btn{padding:6px 12px;font-size:14px;flex:none}
-#msgs{flex:1;overflow-y:auto;padding:10px}
-.b{max-width:84%;width:fit-content;margin:6px 0;padding:7px 10px;border-radius:14px;font-size:15px;word-break:break-word}
-.ot{background:#fff;border-top-left-radius:4px}
-.me{background:#dcf0d2;margin-left:auto;border-top-right-radius:4px}
-.nm{font-size:12px;font-weight:600;color:#2f6b3a;margin-bottom:2px}
-.tm{font-size:11px;color:#777;text-align:right;margin-top:3px}
-.b img{display:block;max-width:100%;max-height:260px;border-radius:10px}
-.b audio{width:230px;max-width:100%}
-.rq{border-left:3px solid #2f6b3a;background:rgba(0,0,0,.06);border-radius:6px;padding:4px 8px;margin-bottom:5px;font-size:13px;color:#444}
-.rq b{display:block;font-size:12px;color:#2f6b3a}
-.rq span{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:60vw}
-.hl{animation:hl 1.4s}
-@keyframes hl{0%,70%{box-shadow:0 0 0 3px #f5c542}100%{box-shadow:0 0 0 3px transparent}}
-#rpl{display:none;flex:none;align-items:center;gap:8px;background:#fff;border-top:1px solid #ddd;padding:6px 10px}
-#rpl .q{flex:1;min-width:0;border-left:3px solid #2f6b3a;padding-left:8px;font-size:13px;color:#444}
-#rpl .q b{display:block;color:#2f6b3a;font-size:12px}
-#rpl .q span{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-#rpl .ic{width:34px;height:34px;font-size:15px}
-#comp{flex:none;display:flex;align-items:center;padding:8px;background:#fff;border-top:1px solid #ddd}
-#bar{display:flex;flex:1;gap:6px;align-items:center}
-#text{flex:1;border-radius:22px;padding:10px 14px;margin:0}
-.ic{width:44px;height:44px;border:0;border-radius:50%;background:#2f6b3a;color:#fff;font-size:20px;flex:none;padding:0}
-.ic.g{background:#e6e3d9;color:#222}
-#rec{display:none;flex:1;align-items:center;gap:10px;color:#b00020;font-weight:600}
-.card{background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:10px}
-.card b{display:block;font-size:16px;margin-bottom:4px}
-.card .d{font-size:12px;color:#777;margin-top:6px}
-.card img{display:block;width:100%;max-height:230px;object-fit:cover;border-radius:10px;margin-bottom:8px}
-.price{display:inline-block;background:#dcf0d2;color:#27500A;border-radius:10px;padding:3px 10px;font-weight:600;margin:2px 0 6px}
-.acts{display:flex;gap:8px;margin-top:8px}
-.acts a,.acts button{flex:1;text-align:center;text-decoration:none;border:0;border-radius:10px;padding:10px;font-size:15px}
-.acts a{background:#2f6b3a;color:#fff}
-.acts button{background:#f3d6d6;color:#8a1c1c}
-.fab{position:absolute;right:14px;bottom:14px;background:#2f6b3a;color:#fff;border:0;border-radius:26px;padding:13px 20px;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
-nav{flex:none;display:flex;background:#fff;border-top:1px solid #ddd;padding-bottom:env(safe-area-inset-bottom)}
-nav button{flex:1;border:0;background:none;padding:8px 0;font-size:11px;color:#777;position:relative}
-nav button span{display:block;font-size:21px}
-nav button.on{color:#2f6b3a;font-weight:600}
-.nb{display:none;position:absolute;top:2px;left:calc(50% + 6px);background:#d4452f;color:#fff;border-radius:10px;min-width:18px;padding:1px 5px;font-size:11px;font-style:normal;font-weight:600;line-height:16px;text-align:center}
-#lb{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.92);z-index:9;align-items:center;justify-content:center}
-#lb img{max-width:100%;max-height:100%}
-#adform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:8;flex-direction:column}
-#adform .top{background:#2f6b3a;color:#fff;padding:14px;font-size:18px;font-weight:600;flex:none}
-#adform .body{flex:1;overflow-y:auto;padding:14px}
-#gform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:10;align-items:center;justify-content:center}
-#gform .gbox{background:#fff;border-radius:14px;padding:20px;width:84%;max-width:360px;text-align:center}
-#gform .gbox h3{margin:0 0 6px;font-size:20px}
-#gform .gbox p{margin:0 0 14px;color:#666;font-size:14px}
-#gform .gbox .btn{width:100%;margin:5px 0}
-#menu{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:11;align-items:flex-end;justify-content:center}
-#menu .mbox{background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom))}
-#menu .mbox .btn{width:100%;margin:5px 0}
-#mpv{font-size:14px;color:#555;border-left:3px solid #2f6b3a;padding-left:8px;margin-bottom:8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-#home{flex:1;min-height:0;overflow-y:auto;padding:12px}
-#chatv{display:none;flex:1;min-height:0;flex-direction:column}
-#chead{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border-bottom:1px solid #ddd;flex:none}
-#chead b{font-size:17px}
-.item{display:flex;align-items:center;gap:6px;background:#fff;border-radius:12px;padding:14px;margin-bottom:8px;font-size:16px;width:100%;border:0;text-align:left;color:#222;font-family:inherit}
-.item span{flex:1}
-.item small{color:#777;font-size:12px}
-.sh{font-size:13px;color:#777;margin:14px 2px 6px;font-weight:600}
-.mini{border:0;border-radius:10px;padding:8px 12px;font-size:14px;background:#2f6b3a;color:#fff}
-.mini.r{background:#f3d6d6;color:#8a1c1c}
-#toast{display:none;position:fixed;left:12px;right:12px;top:12px;z-index:12;background:#2f6b3a;color:#fff;border-radius:12px;padding:12px;font-size:15px}
-#pform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:10;align-items:center;justify-content:center}
-#pform .gbox{background:#fff;border-radius:14px;padding:20px;width:84%;max-width:360px;text-align:center}
-#pform .gbox h3{margin:0 0 10px;font-size:20px}
-#pform .gbox .btn{width:100%;margin:5px 0}
-.hb{position:absolute;top:46px;display:none;background:rgba(0,0,0,.3);color:#fff;border:0;border-radius:14px;padding:5px 12px;font-size:13px}
-#dbtn{right:56px}
-#stbtn{right:10px}
-#sform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:10;align-items:center;justify-content:center}
-#sform .gbox{background:#fff;border-radius:14px;padding:20px;width:88%;max-width:360px;text-align:center;max-height:90vh;overflow-y:auto}
-#sform .gbox h3{margin:0 0 10px;font-size:20px}
-#sform .gbox .btn{width:100%;margin:5px 0}
-#call{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#111;z-index:20;flex-direction:column;align-items:center;justify-content:center}
-#rv{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;background:#111}
-#lv{position:absolute;right:12px;top:12px;width:96px;height:128px;object-fit:cover;border-radius:12px;background:#333;display:none;z-index:2;transform:scaleX(-1)}
-#ctop{position:absolute;top:18%;left:0;right:0;text-align:center;color:#fff;z-index:2;text-shadow:0 1px 4px #000}
-#cname{font-size:26px;font-weight:600}
-#cst{font-size:16px;margin-top:6px}
-#cdbg{font-size:11px;color:#bbb;margin-top:12px;padding:0 12px}
-#cin,#cout{position:absolute;left:0;right:0;bottom:calc(30px + env(safe-area-inset-bottom));display:none;justify-content:center;gap:28px;z-index:2}
-.cbtn{width:64px;height:64px;border-radius:50%;border:0;font-size:26px;background:rgba(255,255,255,.25);color:#fff;padding:0}
-.cbtn.red{background:#d32f2f}
-.cbtn.grn{background:#2e7d32}
-.cbtn.off{background:#fff;color:#111}
-.avt{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:#2f6b3a;color:#fff;font-weight:600;overflow:hidden;flex:none}
-.avt img{width:100%;height:100%;object-fit:cover}
-.nm{display:flex;align-items:center;gap:6px}
-#sblk{text-align:left;margin:8px 0}
-#sav{display:flex;justify-content:center}
-#msgs{background:#efeae2}
-.b{border-radius:8px;box-shadow:0 1px .5px rgba(11,20,26,.13);color:#111b21;padding:6px 9px 4px;position:relative}
-.ot{background:#fff;border-top-left-radius:0}
-.me{background:#d9fdd3;border-top-right-radius:0}
-.ot:before,.me:after{content:'';position:absolute;top:0;width:8px;height:13px}
-.ot:before{left:-8px;background:#fff;clip-path:polygon(100% 0,100% 100%,0 0)}
-.me:after{right:-8px;background:#d9fdd3;clip-path:polygon(0 0,0 100%,100% 0)}
-.tm{color:#667781}
-.item .avt{flex:none;margin-right:8px}
-#lb{z-index:15}
-#lbbox{max-width:100%;max-height:100%;display:flex;flex-direction:column;align-items:center}
-#lb img.big{width:min(88vw,440px);height:min(88vw,440px);object-fit:cover;border-radius:50%}
-#lbcap{color:#fff;font-size:20px;font-weight:600;margin-top:16px;text-align:center}
-html{height:100%;overflow:hidden;overscroll-behavior:none}
-body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;overscroll-behavior:none}
-#dbtn{right:10px;top:12px}
-#net{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom));background:rgba(0,0,0,.75);color:#fff;border-radius:16px;padding:8px 14px;font-size:13px;z-index:12}
-#upd{display:none;position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));background:#1565c0;color:#fff;border-radius:12px;padding:12px;font-size:15px;text-align:center;z-index:13}
-#lang{display:block;right:10px;top:12px}
-.tk{color:#8696a0;margin-left:3px}.tk.rd{color:#53bdeb}
-.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1fa855;margin-left:6px}
-#mem{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:8;flex-direction:column}
-#mem .top{background:#2f6b3a;color:#fff;padding:14px;font-size:18px;font-weight:600;flex:none}
-#mem .body{flex:1;overflow-y:auto;padding:12px}
-#sbar{display:none;align-items:center;gap:6px;padding:6px 10px;background:#fff;border-bottom:1px solid #ddd;flex:none}
-#sbar input{margin:0;padding:8px 12px;border-radius:18px}
-#sres{display:none;flex:1;overflow-y:auto;padding:10px;background:#efeae2}
-.sr{background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:8px;box-shadow:0 1px .5px rgba(11,20,26,.13)}
-.sr b{font-size:13px;color:#2f6b3a}
-.sr .d{font-size:11px;color:#667781}
-mark{background:#ffe58f;border-radius:3px}
-</style>
-</head>
-<body>
-<div id="hdr">
-  <svg viewBox="0 0 360 84" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-    <circle cx="300" cy="24" r="12" fill="#FAC775"/>
-    <path d="M0 84 L0 58 Q50 36 110 56 Q170 74 230 52 Q300 30 360 52 L360 84 Z" fill="#4c8f5a"/>
-    <path d="M0 84 L0 68 Q70 54 150 68 Q250 82 360 64 L360 84 Z" fill="#27500A"/>
-    <rect x="262" y="46" width="30" height="22" fill="#F5C4B3"/>
-    <path d="M256 47 L277 31 L298 47 Z" fill="#993C1D"/>
-    <rect x="272" y="55" width="8" height="13" fill="#712B13"/>
-    <rect x="228" y="54" width="4" height="14" fill="#712B13"/>
-    <circle cx="230" cy="50" r="9" fill="#27500A"/>
-  </svg>
-  <div class="t" data-nt>Деҳа</div>
-  <div class="s">Чат, бозор ва хабарҳои деҳа</div>
-  <button id="lang" class="hb" data-nt onclick="toggleLang()"></button>
-</div>
+const express = require('express');
+const http = require('http');
+const crypto = require('crypto');
+const zlib = require('zlib');
+const bcrypt = require('bcryptjs');
+const webpush = require('web-push');
+const { MongoClient, ObjectId } = require('mongodb');
+const { Server } = require('socket.io');
 
-<div id="auth">
-  <h3 id="atitle">Воридшавӣ</h3>
-  <input id="rname" placeholder="Ном" style="display:none">
-  <input id="rsur" placeholder="Насаб" style="display:none">
-  <input id="rage" type="number" inputmode="numeric" min="5" max="100" placeholder="Синну сол" style="display:none">
-  <input id="phone" type="tel" placeholder="Рақами телефон (+992...)">
-  <input id="pass" type="password" placeholder="Парол (камаш 6 аломат)">
-  <select id="rdist" style="display:none"></select>
-  <select id="rvil" style="display:none"></select>
-  <input id="rviln" placeholder="Номи деҳаи шумо" style="display:none">
-  <div id="aerr"></div>
-  <button class="btn" id="abtn" onclick="submitAuth()">Ворид шудан</button>
-  <p class="link" id="alink" onclick="toggleMode()">Сабти ном</p>
-  <p style="margin-top:22px;font-size:13px"><a href="/privacy" target="_blank" style="color:#2f6b3a">Сиёсати махфият</a></p>
-</div>
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { maxHttpBufferSize: 3e6 });
 
-<div id="app">
-  <div id="views">
-    <div class="sec on" id="s1">
-      <div id="home">
-        <div id="notif">
-          <span>🔔 Барои он ки вақти пӯшида будани барнома ҳам паём биёяд</span>
-          <button class="btn" onclick="enablePush()">Фаъол кардан</button>
-        </div>
-        <div id="dsrch" style="display:none"><input id="dsq" placeholder="🔍 Ноҳия, деҳа ё ном..." autocomplete="off"></div>
-        <div id="hbody"></div>
-      </div>
-      <div id="chatv">
-      <div id="chead"><button class="ic g" style="width:36px;height:36px;font-size:16px" onclick="goHome()">←</button><div id="ctw" style="line-height:1.25;min-width:0;cursor:pointer" onclick="openMembers()"><b id="ctitle"></b><div id="csub" style="font-size:12px;color:#667781"></div></div><span style="flex:1"></span><button id="csrch" class="ic g" style="width:36px;height:36px;font-size:16px" onclick="toggleSearch()" aria-label="Ҷустуҷӯ">🔍</button><button id="cb1" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(false)" aria-label="Занг">📞</button><button id="cb2" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(true)" aria-label="Видео">🎥</button></div>
-      <div class="chips" id="rooms"></div>
-      <div id="sbar"><input id="sq" placeholder="Ҷустуҷӯ дар чат..." autocomplete="off"><button class="ic g" style="width:34px;height:34px;font-size:15px" onclick="toggleSearch()" aria-label="Бекор">✕</button></div>
-      <div id="msgs"></div>
-      <div id="sres"></div>
-      <div id="rpl">
-        <div class="q"><b id="rpln"></b><span id="rplt"></span></div>
-        <button class="ic g" onclick="setReply(null)" aria-label="Бекор">✕</button>
-      </div>
-      <div id="comp">
-        <div id="bar">
-          <button class="ic g" id="pbtn" aria-label="Расм">📷</button>
-          <input id="text" placeholder="Паём нависед...">
-          <button class="ic" id="sbtn" aria-label="Фиристодан">🎤</button>
-        </div>
-        <div id="rec">
-          <span id="rt">● 0:00</span>
-          <span style="flex:1"></span>
-          <button class="ic g" id="rcancel" aria-label="Бекор">✕</button>
-          <button class="ic" id="rsend" aria-label="Фиристодан">➤</button>
-        </div>
-      </div>
-      </div>
-    </div>
+const ADMIN = String(process.env.ADMIN_PASSWORD || 'admin123').trim();
+const MONGO_URI = String(process.env.MONGODB_URI || '')
+  .replace(/[^\x21-\x7E]/g, '')
+  .replace(/["'<>]/g, '');
+const client = new MongoClient(MONGO_URI);
+let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, dbh;
+let VAPID_PUBLIC = '';
 
-    <div class="sec" id="s2">
-      <div class="chips" id="adchips"></div>
-      <div class="pad" id="ads" style="flex:1;padding-bottom:80px"></div>
-      <button class="fab" onclick="openAd()">＋ Эълон</button>
-    </div>
-
-    <div class="sec" id="s3"><div class="pad" id="news"></div></div>
-
-    <div class="sec" id="s4">
-      <div class="pad">
-        <input id="pw" type="password" autocomplete="new-password" placeholder="Пароли админ">
-        <div id="admnote" style="display:none;color:#2f6b3a;font-weight:600;margin:6px 2px">✔ Шумо админ ҳастед, парол лозим нест</div>
-        <button class="btn g" id="mkadm" style="width:100%" onclick="makeAdmin()">👑 Ин ҳисобро админ кардан</button>
-        <div class="sh">Хабар нашр кардан</div>
-        <input id="nt" placeholder="Сарлавҳа">
-        <textarea id="nx" rows="5" placeholder="Матни хабар"></textarea>
-        <button class="btn" onclick="sendNews()">Нашр кардан</button>
-        <div class="sh">Модератсия</div>
-        <button class="btn g" style="width:100%" onclick="loadReports()">🚩 Шикоятҳо</button>
-        <div id="rlist"></div>
-        <input id="unph" placeholder="Рақами телефон (барои кушодани манъ)">
-        <button class="btn g" style="width:100%" onclick="unban()">Кушодани манъ</button>
-        <button class="btn g" style="width:100%;margin-top:8px" onclick="loadStats()">📊 Ҳолати база</button>
-        <div class="sh">Хатарнок</div>
-        <button class="btn" style="width:100%;background:#b00020" onclick="wipeChat()">🗑 Ҳамаи паёмҳоро нест кардан</button>
-      </div>
-    </div>
-  </div>
-  <nav>
-    <button id="b1" class="on" onclick="tab(1)"><span>💬</span>Чат<i class="nb" id="nbadge"></i></button>
-    <button id="b6" onclick="openDistricts()"><span>🗺️</span>Ноҳияҳо</button>
-    <button id="b2" onclick="tab(2)"><span>🐄</span>Бозор</button>
-    <button id="b3" onclick="tab(3)"><span>📰</span>Хабарҳо</button>
-    <button id="b5" onclick="openSettings()"><span>⚙️</span>Танзимот</button>
-    <button id="b4" onclick="tab(4)" style="display:none"><span>🔐</span>Админ</button>
-  </nav>
-</div>
-
-<div id="adform">
-  <div class="top">Эълони нав</div>
-  <div class="body">
-    <select id="adc">
-      <option value="cow">Гов</option>
-      <option value="sheep">Гӯсфанд</option>
-      <option value="other">Дигар</option>
-    </select>
-    <input id="adt" placeholder="Сарлавҳа (масалан: Гови ширдеҳ)">
-    <input id="adp" placeholder="Нарх (масалан: 8000 сомонӣ)">
-    <textarea id="add" rows="4" placeholder="Тавсиф (синну сол, ҷой ва ғайра)"></textarea>
-    <button class="btn g" style="width:100%;margin:6px 0" onclick="$('adphoto').click()">📷 Расм интихоб кунед</button>
-    <div id="adpn" style="font-size:13px;color:#777;margin-bottom:10px">Расм интихоб нашудааст</div>
-    <div style="font-size:13px;color:#777;margin-bottom:10px">Рақами шумо танҳо барои ҳамдеҳагонатон намоён аст.</div>
-    <button class="btn" id="adsend" style="width:100%" onclick="submitAd()">Нашр кардан</button>
-    <button class="btn g" style="width:100%;margin-top:8px" onclick="closeAd()">Бекор кардан</button>
-  </div>
-</div>
-
-<div id="gform">
-  <div class="gbox">
-    <h3>Шумо кистед?</h3>
-    <p>Ин барои гурӯҳҳои «Занҳо» ва дигарон лозим аст. Баъдтар дар ⚙ тағйир додан мумкин аст.</p>
-    <button class="btn" onclick="setGender('m')">Мард</button>
-    <button class="btn" onclick="setGender('f')">Зан</button>
-  </div>
-</div>
-
-<div id="call">
-  <video id="rv" autoplay playsinline></video>
-  <video id="lv" autoplay playsinline muted></video>
-  <div id="ctop"><div id="cname"></div><div id="cst"></div><div id="cdbg"></div></div>
-  <div id="cin"><button class="cbtn red" onclick="declineCall()">✕</button><button class="cbtn grn" onclick="acceptCall()">✔</button></div>
-  <div id="cout"><button class="cbtn" id="btmic" onclick="toggleMic()">🎤</button><button class="cbtn" id="btcam" onclick="toggleCam()">📷</button><button class="cbtn red" onclick="endCall(true)">✕</button></div>
-</div>
-<div id="net">⏳ Пайваст мешавад…</div>
-<div id="upd" onclick="location.reload()">🔄 Нусхаи нав ҳаст. Барои навсозӣ ламс кунед</div>
-<div id="toast"></div>
-<div id="pform">
-  <div class="gbox">
-    <h3>Деҳаатонро интихоб кунед</h3>
-    <select id="pdist"></select>
-    <select id="pvil"></select>
-    <input id="pviln" placeholder="Номи деҳаи шумо" style="display:none">
-    <button class="btn" onclick="savePlace()">Сабт кардан</button>
-    <button class="btn g" onclick="$('pform').style.display='none'">Баъдтар</button>
-  </div>
-</div>
-
-<div id="sform">
-  <div class="gbox">
-    <h3>⚙ Танзимот</h3>
-    <div id="sav"></div>
-    <button class="btn g" onclick="$('avfile').click()">📷 Сурати профил</button>
-    <input id="sname" placeholder="Ном">
-    <input id="ssur" placeholder="Насаб">
-    <input id="sage" type="number" inputmode="numeric" placeholder="Синну сол">
-    <select id="sgen"><option value="">Ҷинс (интихоб нашудааст)</option><option value="m">Мард</option><option value="f">Зан</option></select>
-    <select id="sdist"></select>
-    <select id="svil"></select>
-    <input id="sviln" placeholder="Номи деҳаи шумо" style="display:none">
-    <div id="sblk"></div>
-    <button class="btn" onclick="saveSettings()">Сабт кардан</button>
-    <button class="btn" style="background:#fff;color:#b00020;border:1px solid #b00020" onclick="logout()">Баромадан аз ҳисоб</button>
-    <input id="dpass" type="password" autocomplete="current-password" placeholder="Парол барои тасдиқ" style="display:none">
-    <button class="btn" style="background:#b00020" onclick="delAccount()">Ҳисобро нест кардан</button>
-    <a href="/privacy" target="_blank" style="display:block;margin-top:12px;color:#2f6b3a">Сиёсати махфият</a>
-    <button class="btn g" onclick="$('sform').style.display='none'">Бекор кардан</button>
-  </div>
-</div>
-
-<div id="mem">
-  <div class="top">👥 Иштирокчиён</div>
-  <div class="body" id="memlist"></div>
-  <div style="padding:10px"><button class="btn g" style="width:100%" onclick="closeMembers()">Бастан</button></div>
-</div>
-
-<div id="menu" onclick="closeMenu()">
-  <div class="mbox" onclick="event.stopPropagation()">
-    <div id="mpv"></div>
-    <button class="btn" id="mrep">↩ Ҷавоб додан</button>
-    <button class="btn" id="mdm">💬 Шахсӣ нависед</button>
-    <button class="btn" id="mdel" style="background:#b00020">🗑 Нест кардан</button>
-    <button class="btn g" id="mrpt">🚩 Шикоят кардан</button>
-    <button class="btn g" id="mblk">🚫 Корбарро манъ кардан</button>
-    <button class="btn g" onclick="closeMenu()">Бекор кардан</button>
-  </div>
-</div>
-
-<input type="file" id="pfile" accept="image/*" style="display:none">
-<input type="file" id="adphoto" accept="image/*" style="display:none">
-<input type="file" id="avfile" accept="image/*" style="display:none">
-<div id="lb" onclick="this.style.display='none'"><div id="lbbox"><img id="lbimg" alt=""><div id="lbcap"></div></div></div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-/* ---------- забон / язык ---------- */
-const LANG = localStorage.getItem('lang') === 'ru' ? 'ru' : 'tg';
-document.documentElement.lang = LANG;
-const RU = {
-"Деҳа":"Деревня",
-"Чат, бозор ва хабарҳои деҳа":"Чат, рынок и новости деревни",
-"Воридшавӣ":"Вход",
-"Ворид шудан":"Войти",
-"Сабти ном":"Регистрация",
-"Сабти ном кардан":"Зарегистрироваться",
-"Ҳисоб дорам? Ворид шавед":"Уже есть аккаунт? Войти",
-"Ҳисоб надоред? Сабти ном кунед":"Нет аккаунта? Зарегистрируйтесь",
-"Ном":"Имя",
-"Насаб":"Фамилия",
-"Синну сол":"Возраст",
-"Рақами телефон (+992...)":"Номер телефона (+992...)",
-"Парол (камаш 6 аломат)":"Пароль (не менее 6 символов)",
-"Номи деҳаи шумо":"Название вашей деревни",
-"Чат":"Чат",
-"Ноҳияҳо":"Районы",
-"Бозор":"Рынок",
-"Хабарҳо":"Новости",
-"Танзимот":"Настройки",
-"Админ":"Админ",
-"🔔 Барои он ки вақти пӯшида будани барнома ҳам паём биёяд":"🔔 Чтобы сообщения приходили, даже когда приложение закрыто",
-"Фаъол кардан":"Включить",
-"⏳ Пайваст мешавад…":"⏳ Подключение…",
-"🔄 Нусхаи нав ҳаст. Барои навсозӣ ламс кунед":"🔄 Доступна новая версия. Нажмите для обновления",
-"Интизор шавед...":"Подождите...",
-"Хато":"Ошибка",
-"Пайваст нашуд. Дубора кӯшиш кунед.":"Не удалось подключиться. Попробуйте ещё раз.",
-"Ҳисоби шумо манъ шудааст":"Ваш аккаунт заблокирован",
-"Паём нависед...":"Напишите сообщение...",
-"Фиристодан":"Отправить",
-"Бекор":"Отмена",
-"Расм":"Фото",
-"Занг":"Звонок",
-"Видео":"Видео",
-"📷 Расм":"📷 Фото",
-"🎤 Паёми овозӣ":"🎤 Голосовое сообщение",
-"Шумо":"Вы",
-"↩ Ҷавоб додан":"↩ Ответить",
-"🗑 Нест кардан":"🗑 Удалить",
-"🚩 Шикоят кардан":"🚩 Пожаловаться",
-"🚫 Корбарро манъ кардан":"🚫 Заблокировать пользователя",
-"Паём нест шавад?":"Удалить сообщение?",
-"Ин паём ба админ шикоят карда шавад?":"Пожаловаться на это сообщение администратору?",
-"✔ Шикоят фиристода шуд":"✔ Жалоба отправлена",
-"Расм фиристода нашуд":"Не удалось отправить фото",
-"Сурат фиристода нашуд":"Не удалось отправить фото",
-"Паём аз ҳад дароз аст":"Сообщение слишком длинное",
-"Овоз фиристода нашуд":"Не удалось отправить голосовое",
-"Микрофон банд аст. Барномаҳои дигарро (Chrome, WhatsApp, Instagram) пӯшед ва дубора кӯшиш кунед.":"Микрофон занят. Закройте другие приложения (Chrome, WhatsApp, Instagram) и попробуйте снова.",
-"Иҷозати микрофон ё камера дода нашудааст.":"Нет разрешения на микрофон или камеру.",
-"Микрофон ё камера ёфт нашуд.":"Микрофон или камера не найдены.",
-"Деҳаи ман":"Моя деревня",
-"⚠ Деҳаи худро интихоб кунед":"⚠ Выберите свою деревню",
-"Дархостҳо":"Запросы",
-"Қабул":"Принять",
-"Рад":"Отклонить",
-"Сӯҳбатҳои шахсӣ":"Личные чаты",
-"🗺 Ҳамаи ноҳияҳо":"🗺 Все районы",
-"Одамони деҳаҳои дигарро ёбед":"Найдите людей из других деревень",
-"← Бозгашт":"← Назад",
-"Ҳоло ноҳия нест":"Районов пока нет",
-"← Ба ноҳияҳо":"← К районам",
-"Ҳоло деҳа нест":"Деревень пока нет",
-"Деҳаи шумо":"Ваша деревня",
-"← Ба деҳаҳо":"← К деревням",
-"Ҳоло касе нест":"Пока никого нет",
-"Запрос":"Запрос",
-"Гап задан":"Написать",
-"Фиристода шуд":"Отправлено",
-"Дархост омадааст":"Запрос получен",
-"Рад шуд":"Отклонено",
-"Дархост фиристода шуд":"Запрос отправлен",
-"Деҳаатонро интихоб кунед":"Выберите вашу деревню",
-"Сабт кардан":"Сохранить",
-"Баъдтар":"Позже",
-"Номи деҳаро нависед":"Напишите название деревни",
-"➕ Деҳаи дигар (худам менависам)":"➕ Другая деревня (напишу сам)",
-"Деҳаро интихоб кунед ё номашро нависед":"Выберите деревню или напишите её название",
-"⚙ Танзимот":"⚙ Настройки",
-"📷 Сурати профил":"📷 Фото профиля",
-"Ҷинс (интихоб нашудааст)":"Пол (не выбран)",
-"Мард":"Мужчина",
-"Зан":"Женщина",
-"Баромадан аз ҳисоб":"Выйти из аккаунта",
-"✔ Сабт шуд":"✔ Сохранено",
-"Манъшудагон":"Заблокированные",
-"Кушодан":"Разблокировать",
-"Шумо кистед?":"Кто вы?",
-"Ин барои гурӯҳҳои «Занҳо» ва дигарон лозим аст. Баъдтар дар ⚙ тағйир додан мумкин аст.":"Это нужно для групп, например «Женщины». Позже можно изменить в ⚙.",
-"Бекор кардан":"Отмена",
-"Браузери шумо огоҳиномаро дастгирӣ намекунад":"Ваш браузер не поддерживает уведомления",
-"Огоҳинома манъ шуд. Дар танзимоти браузер (Site settings → Notifications) иҷозат диҳед.":"Уведомления запрещены. Разрешите их в настройках браузера (Site settings → Notifications).",
-"＋ Эълон":"＋ Объявление",
-"Эълони нав":"Новое объявление",
-"Гов":"Корова",
-"Гӯсфанд":"Овца",
-"Дигар":"Другое",
-"Ҳама":"Все",
-"📷 Расм интихоб кунед":"📷 Выбрать фото",
-"Расм интихоб нашудааст":"Фото не выбрано",
-"Рақами шумо танҳо барои ҳамдеҳагонатон намоён аст.":"Ваш номер виден только землякам из вашей деревни.",
-"Нашр кардан":"Опубликовать",
-"Сарлавҳа":"Заголовок",
-"Сарлавҳа (масалан: Гови ширдеҳ)":"Заголовок (например: Дойная корова)",
-"Нарх (масалан: 8000 сомонӣ)":"Цена (например: 8000 сомони)",
-"Тавсиф (синну сол, ҷой ва ғайра)":"Описание (возраст, место и т.д.)",
-"📞 Занг задан":"📞 Позвонить",
-"💬 Запрос барои сӯҳбат":"💬 Запрос на чат",
-"Эълон нест шавад?":"Удалить объявление?",
-"Ҳоло эълон нест. Аввалин шумо гузоред!":"Объявлений пока нет. Станьте первым!",
-"Сарлавҳа нависед":"Напишите заголовок",
-"Фиристода нашуд. Дубора кӯшиш кунед.":"Не удалось отправить. Попробуйте ещё раз.",
-"Пароли админ":"Пароль администратора",
-"Матни хабар":"Текст новости",
-"✔ Шумо админ ҳастед, парол лозим нест":"✔ Вы администратор, пароль не нужен",
-"👑 Ин ҳисобро админ кардан":"👑 Сделать этот аккаунт админом",
-"Хабар нашр кардан":"Опубликовать новость",
-"Модератсия":"Модерация",
-"🚩 Шикоятҳо":"🚩 Жалобы",
-"Кушодани манъ":"Снять блокировку",
-"Рақами телефон (барои кушодани манъ)":"Номер телефона (для снятия блокировки)",
-"📊 Ҳолати база":"📊 Состояние базы",
-"Хатарнок":"Опасная зона",
-"🗑 Ҳамаи паёмҳоро нест кардан":"🗑 Удалить все сообщения",
-"Ҳамаи паёмҳо нест шаванд?":"Удалить все сообщения?",
-"Шикоят нест ✔":"Жалоб нет ✔",
-"🗑 Паём":"🗑 Сообщение",
-"⛔ Манъ":"⛔ Блок",
-"Аввал пароли админро нависед":"Сначала введите пароль администратора",
-"Камера кор намекунад, занг бо овоз мешавад":"Камера не работает, звонок будет только с голосом",
-"Пайваст нашуд":"Не удалось соединиться",
-"Пайваст нашуд. Шабака манъ мекунад.":"Не удалось соединиться. Сеть блокирует соединение.",
-"Шумо дар занг ҳастед":"Вы уже в звонке",
-"Занг мезанем...":"Звоним...",
-"Ҷавоб нашуд":"Нет ответа",
-"Пайваст мешавад...":"Соединение...",
-"Занг мезанад...":"Звонит...",
-"Банд аст":"Занято",
-"Занг рад шуд":"Звонок отклонён",
-"Хато дар занг":"Ошибка звонка",
-"Занг тамом шуд":"Звонок завершён",
-"Хатои сервер":"Ошибка сервера",
-"Ном ва насабро нависед":"Введите имя и фамилию",
-"Синну солро дуруст нависед":"Укажите правильный возраст",
-"Рақам ё парол нодуруст аст (парол камаш 6 аломат)":"Неверный номер или пароль (пароль не менее 6 символов)",
-"Ноҳия ва деҳаро интихоб кунед":"Выберите район и деревню",
-"Ин рақам аллакай сабт шудааст":"Этот номер уже зарегистрирован",
-"Рақам ё парол нодуруст аст":"Неверный номер или пароль",
-"Ба ин гурӯҳ дастрасӣ нест":"Нет доступа к этой группе",
-"Деҳаро интихоб кунед":"Выберите деревню",
-"Аввал запрос лозим аст":"Сначала нужен запрос",
-"Парол нодуруст":"Неверный пароль",
-"✔ Ҳисоби шумо акнун админ аст. Парол дигар лозим нест.":"✔ Ваш аккаунт теперь администратор. Пароль больше не нужен.",
-"Манъ кушода шуд":"Блокировка снята",
-"Чунин рақам нест":"Такого номера нет",
-"Ноҳияро интихоб кунед":"Выберите район",
-"Дархост фиристода нашуд":"Запрос не отправлен",
-"Шумо аллакай гап зада метавонед":"Вы уже можете общаться",
-"Дархост аллакай фиристода шудааст":"Запрос уже отправлен",
-"Дархост рад шудааст":"Запрос отклонён",
-"Файл нодуруст аст":"Недопустимый файл",
-"Нест кардан мумкин нест":"Удалить нельзя",
-"Эълон нашр нашуд":"Объявление не опубликовано",
-"Занҳо":"Женщины",
-"Футболистон":"Футболисты",
-"Суғд":"Согд",
-"Бадахшон":"Бадахшан",
-"НТҶ":"РРП",
-"Исмоили Сомонӣ":"Исмоили Сомони",
-"Шоҳмансур":"Шохмансур",
-"Фирдавсӣ":"Фирдавси",
-"Хуҷанд":"Худжанд",
-"Бӯстон":"Бустон",
-"Конибодом":"Канибадам",
-"Панҷакент":"Пенджикент",
-"Айнӣ":"Айни",
-"Бобоҷон Ғафуров":"Бободжон Гафуров",
-"Зафаробод":"Зафарабад",
-"Кӯҳистони Мастчоҳ":"Кухистони Мастчох",
-"Мастчоҳ":"Мастчох",
-"Шаҳристон":"Шахристан",
-"Ҷаббор Расулов":"Джаббор Расулов",
-"Кӯлоб":"Куляб",
-"Левакант":"Леваканд",
-"Норак":"Нурек",
-"Ёвон":"Явон",
-"Восеъ":"Восе",
-"Данғара":"Дангара",
-"Дӯстӣ":"Дусти",
-"Ҷайҳун":"Джайхун",
-"Ҷалолиддини Румӣ":"Джалолиддини Руми",
-"Ҷомӣ":"Джами",
-"Кӯшониён":"Кушониён",
-"Қубодиён":"Кубодиён",
-"Муъминобод":"Муминабад",
-"Панҷ":"Пяндж",
-"Шаҳритус":"Шахритус",
-"Шамсиддин Шоҳин":"Шамсиддин Шохин",
-"Балҷувон":"Бальджуван",
-"Ҳамадонӣ":"Хамадони",
-"Хоруғ":"Хорог",
-"Дарвоз":"Дарваз",
-"Ванҷ":"Ванч",
-"Ишкошим":"Ишкашим",
-"Рӯшон":"Рушан",
-"Роштқалъа":"Роштколъа",
-"Шуғнон":"Шугнан",
-"Мурғоб":"Мургаб",
-"Ҳисор":"Гиссар",
-"Рӯдакӣ":"Рудаки",
-"Шаҳринав":"Шахринав",
-"Нуробод":"Нурабад",
-"Тоҷикобод":"Таджикабад",
-"Ваҳдат":"Вахдат",
-"Ҷиргатол":"Джиргаталь",
-"Файзобод":"Файзабад"
-};
-Object.assign(RU, {
-  'Ҳисобро нест кардан':'Удалить аккаунт','Сиёсати махфият':'Политика конфиденциальности','Парол барои тасдиқ':'Пароль для подтверждения',
-  'Ҳисоби шумо ва ҳамаи маълумоти шумо (паёмҳо, эълонҳо, суратҳо) якбора нест мешавад. Давом диҳем?':'Ваш аккаунт и все данные (сообщения, объявления, фото) будут удалены без возможности восстановления. Продолжить?',
-  'Ҳисоби шумо нест карда шуд.':'Ваш аккаунт удалён.'
-});
-Object.assign(RU, {
-  '👥 Иштирокчиён':'👥 Участники','Бастан':'Закрыть','💬 Шахсӣ нависед':'💬 Написать лично'
-});
-Object.assign(RU, {
-  '🔍 Ноҳия, деҳа ё ном...':'🔍 Район, деревня или имя...','Ҷустуҷӯ дар чат...':'Поиск в чате...','Деҳаҳо':'Деревни','Одамон':'Люди',
-  'Ҳеҷ чиз ёфт нашуд':'Ничего не найдено','Ин паём дар таърихи кӯҳна аст':'Это сообщение из старой истории','Ҷустуҷӯ':'Поиск','💬 Лично':'💬 Лично'
-});
-const RX = [
-  [/^(.*): паёми нав$/, '$1: новое сообщение'],
-  [/^(.*): аъзоён$/, '$1: участники'],
-  [/^(.*) манъ карда шавад\? Паёмҳояш барои шумо намоён нест\.$/, '$1 будет заблокирован. Вы не увидите его сообщений.'],
-  [/^Барнома иҷозат намедиҳад \((.*)\)\. Барномаро аз Chrome насб кунед\.$/, 'Приложению не разрешён доступ ($1). Установите приложение из Chrome.'],
-  [/^Ин барнома барои синни аз (\d+) боло аст$/, 'Приложение предназначено для возраста от $1 лет']
-];
-RX.push([/^(\d+) нафар · (\d+) онлайн$/, '$1 чел. · $2 онлайн']);
-function tr(s){
-  if (LANG !== 'ru' || !s) return s;
-  const k = String(s);
-  if (RU[k]) return RU[k];
-  for (const [re, to] of RX) if (re.test(k)) return k.replace(re, to);
-  const m = /^([^\p{L}\p{N}]*)([\s\S]*?)([^\p{L}\p{N}]*)$/u.exec(k);
-  if (m && m[2] && m[2] !== k){
-    if (RU[m[2]]) return m[1] + RU[m[2]] + m[3];
-    for (const [re, to] of RX) if (re.test(m[2])) return m[1] + m[2].replace(re, to) + m[3];
-  }
-  const p = /^(.*?) \((.*)\)$/.exec(k);
-  if (p && (RU[p[1]] || RU[p[2]])) return (RU[p[1]] || p[1]) + ' (' + (RU[p[2]] || p[2]) + ')';
-  return s;
+/* ---------- Firebase (FCM) барои барномаи Android ---------- */
+let FB = null;
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) FB = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} catch (e) {
+  console.error('FIREBASE_SERVICE_ACCOUNT нодуруст аст', e.message);
 }
-function trNode(n){
-  if (n.nodeType === 3){
-    const v = n.nodeValue, t0 = v.trim();
-    if (t0){ const t = tr(t0); if (t !== t0) n.nodeValue = v.replace(t0, t); }
-  } else if (n.nodeType === 1){
-    if (n.tagName === 'SCRIPT' || n.tagName === 'STYLE' || n.hasAttribute('data-nt')) return;
-    for (const a of ['placeholder', 'aria-label', 'title']){
-      if (n.hasAttribute(a)){ const v = n.getAttribute(a), t = tr(v); if (t !== v) n.setAttribute(a, t); }
-    }
-    n.childNodes.forEach(trNode);
-  }
-}
-if (LANG === 'ru'){
-  const trM = (s) => String(s).split('\n').map(tr).join('\n');
-  const _al = window.alert.bind(window), _cf = window.confirm.bind(window), _pr = window.prompt.bind(window);
-  window.alert = (m) => _al(trM(m));
-  window.confirm = (m) => _cf(trM(m));
-  window.prompt = (m, d) => _pr(trM(m), d);
-  trNode(document.body);
-  new MutationObserver((ms) => {
-    for (const m of ms){
-      if (m.type === 'childList') m.addedNodes.forEach(trNode);
-      else trNode(m.target);
-    }
-  }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'aria-label', 'title'] });
-}
-function toggleLang(){
-  localStorage.setItem('lang', LANG === 'ru' ? 'tg' : 'ru');
-  location.reload();
-}
-
-const $ = (id) => document.getElementById(id);
-const CATS = { cow: 'Гов', sheep: 'Гӯсфанд', other: 'Дигар' };
-let mode = 'login', socket = null, tok = '', myUid = '', room = '';
-let places = { districts: [], villages: [] }, prof = {}, social = { incoming: [], contacts: [] };
-let nav = { v: 'home' }, members = { village: '', list: [] };
-const CALLS = true;
-let blocked = new Set(), blockedList = [];
-let adsData = [], adFilter = 'all', adFile = null, roomList = [];
-let rec = null, chunks = [], recTimer = null, recStart = 0, recCancel = false, stream = null;
-let replyTo = null, menuMsg = null, pushKey = '';
-
-/* ---------- паёмҳои нахондашуда ---------- */
-let unreadMap = {};
-function badge(n){
-  if (!n) return null;
-  const b = document.createElement('b');
-  b.textContent = n > 99 ? '99+' : String(n);
-  b.style.cssText = 'background:#1fa855;color:#fff;border-radius:12px;min-width:22px;padding:2px 7px;font-size:13px;text-align:center;margin-left:8px;display:inline-block';
-  return b;
-}
-function totalUnread(){
-  let t = 0;
-  for (const k in unreadMap) t += unreadMap[k] || 0;
-  return t;
-}
-function updUnread(){
-  const n = totalUnread(), el = $('nbadge');
-  if (el){ el.textContent = n > 99 ? '99+' : String(n); el.style.display = n ? 'block' : 'none'; }
-  try {
-    if (navigator.setAppBadge){
-      if (n) navigator.setAppBadge(n).catch(() => {});
-      else navigator.clearAppBadge().catch(() => {});
-    }
-  } catch (e) {}
-}
-function seen(){
-  if (socket && room && (unreadMap[room] || 0) > 0 && document.visibilityState === 'visible') socket.emit('seen', { room });
-}
-
-/* ---------- садои паём ва занг ---------- */
-let actx = null, fbAudio = null, msgAudio = null, ringAudio = null;
-function initAudio(){
-  try {
-    if (!msgAudio){ msgAudio = new Audio('/msg.wav'); msgAudio.preload = 'auto'; }
-    if (!ringAudio){ ringAudio = new Audio('/ring.wav'); ringAudio.preload = 'auto'; ringAudio.loop = true; }
-  } catch (e) {}
-}
-function makeWav(){
-  const sr = 22050, n = Math.floor(sr * 0.4);
-  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
-  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
-  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
-  w(36, 'data'); v.setUint32(40, n * 2, true);
-  for (let i = 0; i < n; i++){
-    const t = i / sr, f = t < 0.2 ? 880 : 1175, t0 = t < 0.2 ? t : t - 0.2;
-    const env = Math.min(1, t0 * 80) * (1 - t0 / 0.2);
-    v.setInt16(44 + i * 2, Math.sin(2 * Math.PI * f * t) * env * 0.5 * 32767, true);
-  }
-  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
-}
-function unlockSound(){
-  try {
-    initAudio();
-    if (!actx){
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) actx = new AC();
-    }
-    if (actx && actx.state !== 'running') actx.resume().catch(() => {});
-    if (!fbAudio){ fbAudio = new Audio(makeWav()); fbAudio.preload = 'auto'; }
-  } catch (e) {}
-}
-['click', 'touchend', 'pointerup', 'keydown'].forEach((ev) => document.addEventListener(ev, unlockSound, { passive: true }));
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') unlockSound(); });
-
-function tones(){
-  const t = actx.currentTime;
-  [[880, 0], [1175, 0.15]].forEach(([f, d]) => {
-    const o = actx.createOscillator(), g = actx.createGain();
-    o.type = 'sine'; o.frequency.value = f;
-    g.gain.setValueAtTime(0.0001, t + d);
-    g.gain.exponentialRampToValueAtTime(0.4, t + d + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.25);
-    o.connect(g); g.connect(actx.destination);
-    o.start(t + d); o.stop(t + d + 0.3);
+let fbTok = { t: 0, v: '' };
+const b64u = (x) => Buffer.from(x).toString('base64url');
+async function fbAccess() {
+  if (fbTok.v && Date.now() < fbTok.t) return fbTok.v;
+  const now = Math.floor(Date.now() / 1000);
+  const head = b64u(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const body = b64u(
+    JSON.stringify({
+      iss: FB.client_email,
+      scope: 'https://www.googleapis.com/auth/firebase.messaging',
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: now,
+      exp: now + 3600,
+    })
+  );
+  const sig = crypto.createSign('RSA-SHA256').update(head + '.' + body).sign(FB.private_key).toString('base64url');
+  const r = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + head + '.' + body + '.' + sig,
   });
+  const j = await r.json();
+  if (!j.access_token) throw new Error('fcm auth ' + JSON.stringify(j).slice(0, 200));
+  fbTok = { v: j.access_token, t: Date.now() + ((j.expires_in || 3600) - 120) * 1000 };
+  return fbTok.v;
 }
-async function beep(){
-  try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) {}
-  try {
-    initAudio();
-    msgAudio.currentTime = 0;
-    await msgAudio.play();
-    return;
-  } catch (e) {}
-  let ok = false;
-  try {
-    if (!actx) unlockSound();
-    if (actx && actx.state !== 'running') await actx.resume();
-    if (actx && actx.state === 'running'){ tones(); ok = true; }
-  } catch (e) {}
-  if (ok) return;
-  try {
-    if (!fbAudio) fbAudio = new Audio(makeWav());
-    fbAudio.currentTime = 0;
-    await fbAudio.play();
-  } catch (e) {}
+async function fcmSend(tokens, data, ttl) {
+  if (!FB || !tokens.length) return;
+  const acc = await fbAccess();
+  const d = {};
+  for (const k of Object.keys(data || {})) d[k] = String(data[k]);
+  if (!d.type) d.type = 'msg';
+  await Promise.all(
+    tokens.map(async (t) => {
+      try {
+        const r = await fetch('https://fcm.googleapis.com/v1/projects/' + FB.project_id + '/messages:send', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + acc, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: { token: t, data: d, android: { priority: 'HIGH', ttl: (ttl || 60) + 's' } } }),
+        });
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          const st = j.error && j.error.status;
+          if (r.status === 404 || st === 'NOT_FOUND' || st === 'UNREGISTERED') await fcm.deleteOne({ token: t });
+          else console.error('fcm', r.status, JSON.stringify(j).slice(0, 300));
+        }
+      } catch (e) {
+        console.error('fcm send', e);
+      }
+    })
+  );
+}
+async function fcmOnly(uids, data, ttl) {
+  if (!FB || !uids.length) return;
+  const ft = await fcm.find({ uid: { $in: uids } }).toArray();
+  await fcmSend(ft.map((x) => x.token), data, ttl);
 }
 
-/* ---------- огоҳинома (push), вақте барнома пӯшида аст ---------- */
-function pushOK(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
-function b64(s){
-  const p = '='.repeat((4 - s.length % 4) % 4);
-  const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/'));
-  return Uint8Array.from(r, (c) => c.charCodeAt(0));
+const AUDIO_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4'];
+const HEX24 = /^[0-9a-f]{24}$/;
+const SEED = {
+  'Душанбе': ['Душанбе', 'Исмоили Сомонӣ', 'Сино', 'Шоҳмансур', 'Фирдавсӣ'],
+  'Суғд': ['Хуҷанд', 'Бӯстон', 'Исфара', 'Истаравшан', 'Конибодом', 'Панҷакент', 'Айнӣ', 'Ашт', 'Бобоҷон Ғафуров', 'Деваштич', 'Зафаробод', 'Кӯҳистони Мастчоҳ', 'Мастчоҳ', 'Спитамен', 'Шаҳристон', 'Ҷаббор Расулов'],
+  'Хатлон': ['Бохтар', 'Кӯлоб', 'Левакант', 'Норак', 'Ёвон', 'Восеъ', 'Ховалинг', 'Данғара', 'Дӯстӣ', 'Ҷайҳун', 'Ҷалолиддини Румӣ', 'Ҷомӣ', 'Кӯшониён', 'Қубодиён', 'Муъминобод', 'Носири Хусрав', 'Панҷ', 'Фархор', 'Хуросон', 'Шаҳритус', 'Шамсиддин Шоҳин', 'Темурмалик', 'Балҷувон', 'Ҳамадонӣ'],
+  'Бадахшон': ['Хоруғ', 'Дарвоз', 'Ванҷ', 'Ишкошим', 'Рӯшон', 'Роштқалъа', 'Шуғнон', 'Мурғоб'],
+  'НТҶ': ['Ҳисор', 'Рӯдакӣ', 'Шаҳринав', 'Турсунзода', 'Варзоб', 'Файзобод', 'Рашт', 'Лахш', 'Нуробод', 'Рогун', 'Тоҷикобод', 'Ваҳдат', 'Сангвор', 'Ҷиргатол'],
+};
+const escRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+async function resolveVillage(b) {
+  const vid = String(b.village || '');
+  if (HEX24.test(vid)) return places.findOne({ _id: new ObjectId(vid), type: 'v' });
+  const did = String(b.district || '');
+  const name = String(b.vname || '').trim().slice(0, 40);
+  if (!name || !HEX24.test(did) || !(await places.findOne({ _id: new ObjectId(did), type: 'd' }))) return null;
+  const ex = await places.findOne({ type: 'v', parent: did, name: { $regex: '^' + escRe(name) + '$', $options: 'i' } });
+  if (ex) return ex;
+  const r = await places.insertOne({ type: 'v', name, parent: did });
+  return { _id: r.insertedId, type: 'v', name, parent: did };
 }
-function updNotif(){
-  $('notif').style.display = (pushOK() && Notification.permission !== 'granted') ? 'flex' : 'none';
-}
-async function subscribePush(){
-  try {
-    if (!pushOK()) return 'браузер дастгирӣ намекунад';
-    if (Notification.permission !== 'granted') return 'иҷозат нест: ' + Notification.permission;
-    const reg = await navigator.serviceWorker.register('/sw.js');
-    await navigator.serviceWorker.ready;
-    if (!pushKey){
-      const r = await fetch('/api/vapid');
-      pushKey = (await r.json()).key;
+const CONTACT = String(process.env.CONTACT_EMAIL || '').trim();
+const MIN_AGE = Number(process.env.MIN_AGE) || 13;
+const ADMIN_PHONES = String(process.env.ADMIN_PHONES || '').split(',').map((x) => x.replace(/\D/g, '')).filter(Boolean);
+const isAdmin = (m, u) => (!!u && u.admin === true) || (!!m && String(m.password || '').trim() === ADMIN);
+
+/* ---------- нишона ва manifest (барои насби барнома) ---------- */
+const CRC = (() => {
+  const t = [];
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+const crc32 = (b) => {
+  let c = 0xffffffff;
+  for (const x of b) c = CRC[(c ^ x) & 255] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+};
+const pngChunk = (type, data) => {
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(data.length);
+  const td = Buffer.concat([Buffer.from(type), data]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(td));
+  return Buffer.concat([len, td, crc]);
+};
+function makeIcon(n) {
+  const row = n * 3 + 1;
+  const raw = Buffer.alloc(row * n);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const u = x / n, v = y / n;
+      let c = 0x2f6b3a;
+      if (v > 0.75) c = 0x27500a;
+      if ((u - 0.68) ** 2 + (v - 0.3) ** 2 < 0.0081) c = 0xfac775;
+      if (u >= 0.33 && u <= 0.67 && v >= 0.5 && v <= 0.75) c = 0xf5c4b3;
+      if (v >= 0.3 && v < 0.5 && Math.abs(u - 0.5) <= ((v - 0.3) / 0.2) * 0.23) c = 0x993c1d;
+      if (u >= 0.46 && u <= 0.54 && v >= 0.6 && v <= 0.75) c = 0x712b13;
+      const o = y * row + 1 + x * 3;
+      raw[o] = c >> 16;
+      raw[o + 1] = (c >> 8) & 255;
+      raw[o + 2] = c & 255;
     }
-    if (!pushKey) return 'калид нест';
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(pushKey) });
-    if (socket) socket.emit('pushsub', sub.toJSON());
-    return 'ok';
-  } catch (e) { return 'хато: ' + ((e && e.message) || e); }
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(n, 0);
+  ihdr.writeUInt32BE(n, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    pngChunk('IHDR', ihdr),
+    pngChunk('IDAT', zlib.deflateSync(raw)),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ]);
 }
-async function testPush(){
-  const st = await subscribePush();
-  if (st !== 'ok'){ alert('Обуна нашуд: ' + st); return; }
-  await new Promise((r) => setTimeout(r, 1500));
-  try {
-    const r = await fetch('/api/pushtest', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: tok })
-    });
-    const d = await r.json();
-    alert('Обунаҳо дар сервер: ' + d.subs + '\nДар 10 сонияи оянда огоҳинома меояд. Ҳозир барномаро пӯшед (ба экрани асосӣ равед).');
-  } catch (e) { alert('Хато: ' + e.message); }
-}
-async function enablePush(){
-  if (!pushOK()){ alert('Браузери шумо огоҳиномаро дастгирӣ намекунад'); return; }
-  const p = await Notification.requestPermission();
-  if (p === 'granted') await subscribePush();
-  else alert('Огоҳинома манъ шуд. Дар танзимоти браузер (Site settings → Notifications) иҷозат диҳед.');
-  updNotif();
-}
+const ICONS = {};
+const MANIFEST = JSON.stringify({
+  name: 'Деҳа',
+  short_name: 'Деҳа',
+  id: '/',
+  description: 'Чат, бозор ва хабарҳои деҳа',
+  categories: ['social'],
+  orientation: 'portrait',
+  start_url: '/',
+  scope: '/',
+  display: 'standalone',
+  background_color: '#2f6b3a',
+  theme_color: '#2f6b3a',
+  lang: 'tg',
+  icons: [
+    { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+  ],
+});
 
-function toggleMode(){
-  mode = mode === 'login' ? 'register' : 'login';
-  const reg = mode === 'register';
-  $('rname').style.display = $('rsur').style.display = $('rage').style.display = reg ? 'block' : 'none';
-  $('rdist').style.display = $('rvil').style.display = reg ? 'block' : 'none';
-  if (reg && $('rvil').onchange) $('rvil').onchange(); else $('rviln').style.display = 'none';
-  $('atitle').textContent = reg ? 'Сабти ном' : 'Воридшавӣ';
-  $('abtn').textContent = reg ? 'Сабти ном кардан' : 'Ворид шудан';
-  $('alink').textContent = reg ? 'Ҳисоб дорам? Ворид шавед' : 'Ҳисоб надоред? Сабти ном кунед';
-  $('aerr').textContent = '';
-}
-
-async function submitAuth(){
-  $('aerr').textContent = 'Интизор шавед...';
+/* ---------- занг (WebRTC) ---------- */
+const callPairs = new Map();
+const pendingCalls = new Map();
+const pairKey = (a, b) => [a, b].sort().join(':');
+const OPEN_RELAY = [
+  { urls: 'stun:openrelay.metered.ca:80' },
+  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+];
+let iceCache = { t: 0, v: null };
+async function iceServers() {
+  if (iceCache.v && Date.now() - iceCache.t < 1800000) return iceCache.v;
+  let v = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
   try {
-    const r = await fetch('/api/' + mode, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lang: LANG, name: $('rname').value, surname: $('rsur').value, age: $('rage').value, phone: $('phone').value, password: $('pass').value, village: $('rvil').value === '__new' ? '' : $('rvil').value, district: $('rdist').value, vname: $('rviln').value })
-    });
-    const d = await r.json();
-    if (!r.ok){ $('aerr').textContent = d.error || 'Хато'; return; }
-    localStorage.setItem('token', d.token);
-    start(d.token);
+    if (process.env.ICE_JSON) {
+      v = v.concat(JSON.parse(process.env.ICE_JSON));
+    } else if (process.env.METERED_DOMAIN && process.env.METERED_KEY) {
+      const r = await fetch(
+        'https://' + process.env.METERED_DOMAIN + '/api/v1/turn/credentials?apiKey=' + encodeURIComponent(process.env.METERED_KEY)
+      );
+      const j = await r.json();
+      if (Array.isArray(j) && j.length) v = j.concat(v);
+      else v = v.concat(OPEN_RELAY);
+    } else {
+      v = v.concat(OPEN_RELAY);
+    }
   } catch (e) {
-    $('aerr').textContent = 'Пайваст нашуд. Дубора кӯшиш кунед.';
+    console.error('ice', e);
+  }
+  iceCache = { t: Date.now(), v };
+  return v;
+}
+
+/* ---------- ҷойҳо (ноҳия ва деҳа) ва ҳуқуқи дастрасӣ ---------- */
+const vOf = (r) => {
+  const p = String(r).split(':');
+  return p[0] === 'v' ? { vid: p[1] || '', sub: p[2] || '' } : null;
+};
+const dmPair = (a, b) => 'dm:' + [a, b].sort().join(':');
+async function canEnter(u, r) {
+  r = String(r);
+  const v = vOf(r);
+  if (v) {
+    if (!v.vid || u.village !== v.vid) return false;
+    return !v.sub || v.sub === 'football' || (v.sub === 'women' && u.gender === 'f');
+  }
+  const p = r.split(':');
+  if (p[0] === 'dm' && HEX24.test(p[1] || '') && HEX24.test(p[2] || '')) {
+    const me = String(u._id);
+    if (me !== p[1] && me !== p[2]) return false;
+    return !!(await reqs.findOne({
+      status: 'accepted',
+      $or: [{ from: p[1], to: p[2] }, { from: p[2], to: p[1] }],
+    }));
+  }
+  return false;
+}
+const myRooms = (u) => {
+  if (!u.village) return [];
+  const b = 'v:' + u.village;
+  const l = [{ id: b, title: 'Деҳа' }];
+  if (u.gender === 'f') l.push({ id: b + ':women', title: 'Занҳо' });
+  l.push({ id: b + ':football', title: 'Футболистон' });
+  return l;
+};
+const profOf = (u) => ({ name: u.name || '', village: u.village || '', district: u.district || '', gender: u.gender || '', avatar: u.avatar || '', admin: !!u.admin, first: u.first || u.name || '', surname: u.surname || '', age: u.age || '' });
+const placesOut = async () => {
+  const all = await places.find({}).sort({ ord: 1, name: 1 }).toArray();
+  return {
+    districts: all.filter((x) => x.type === 'd').map((x) => ({ id: String(x._id), name: x.name, region: x.region || '' })),
+    villages: all
+      .filter((x) => x.type === 'v')
+      .map((x) => ({ id: String(x._id), name: x.name, district: x.parent })),
+  };
+};
+const adOut = (a, u) => ({
+  id: String(a._id),
+  uid: a.uid,
+  name: a.name,
+  phone: u && (a.uid === String(u._id) || (a.village && a.village === u.village)) ? a.phone : '',
+  title: a.title,
+  price: a.price,
+  desc: a.desc,
+  cat: a.cat,
+  photo: a.photo || '',
+  time: a.time,
+});
+const chatOut = (d) => {
+  const { _id, ...rest } = d;
+  return { ...rest, id: String(_id) };
+};
+const previewOf = (o, l) =>
+  o.kind === 'image'
+    ? l === 'ru' ? '📷 Фото' : '📷 Расм'
+    : o.kind === 'audio'
+    ? l === 'ru' ? '🎤 Голосовое сообщение' : '🎤 Паёми овозӣ'
+    : String(o.text || '').slice(0, 80);
+
+app.use(express.json());
+app.use(
+  express.static('public', {
+    setHeaders: (res, p) => {
+      if (p.endsWith('.html') || p.endsWith('sw.js')) res.set('Cache-Control', 'no-cache');
+    },
+  })
+);
+
+const cleanPhone = (p) => String(p || '').replace(/[^\d]/g, '');
+const fail = (res, code, error) => res.status(code).json({ error });
+
+/* ---------- сиёсати махфият, нест кардани ҳисоб, assetlinks (барои Play Market) ---------- */
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const shell = (title, inner) =>
+  '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' +
+  esc(title) +
+  '</title><style>body{font-family:system-ui,sans-serif;max-width:720px;margin:0 auto;padding:18px;line-height:1.55;color:#222;background:#fff}h1{color:#2f6b3a;font-size:26px}h2{font-size:19px;margin-top:26px;color:#2f6b3a}li{margin:4px 0}input,button{font-size:16px;padding:12px;margin:6px 0;width:100%;box-sizing:border-box;border:1px solid #bbb;border-radius:10px}button{background:#b00020;color:#fff;border:0}.ok{color:#2f6b3a;font-weight:600}.err{color:#b00020}hr{margin:30px 0;border:0;border-top:1px solid #ddd}.nav a{margin-right:14px;color:#2f6b3a}</style></head><body>' +
+  inner +
+  '</body></html>';
+const POLICY = {
+  en: ['Privacy Policy', 'Last updated: October 2026', [
+    ['About', ['Деҳа (Deha) is a community app for villages in Tajikistan: village chat, private chats, a marketplace and news.', 'This policy explains what data the app collects, how it is used and how it can be deleted.']],
+    ['Data we collect', ['Account data: first name, surname, age, phone number, password (stored only as a hash), the district and village you choose, and your language.', 'Optional: gender and profile photo.', 'Content you create: chat messages, photos, voice messages, marketplace ads, and your reports and blocks.', 'Technical: a push-notification token, so that notifications can be delivered to your device.']],
+    ['How we use it', ['To create your account and show you your village chat, marketplace and news.', 'To deliver notifications about new messages and chat requests.', 'To keep the community safe: reports, blocking and moderation.']],
+    ['Who can see your data', ['Your name, photo and messages are visible to the people in the chats where you write.', 'Your phone number is visible only to people from your own village (for the call button in the marketplace). It is not shown to anyone else.', 'A private chat with a person from another village starts only after that person accepts your request.']],
+    ['Sharing', ['We do not sell your data and we do not show ads.', 'Service providers process data on our behalf: hosting (Render), database (MongoDB Atlas) and push delivery (your browser vendor, for example Google). Data may therefore be processed outside Tajikistan.']],
+    ['Retention', ['Text messages: 90 days. Photos and voice messages: 14 days. Marketplace ads: 90 days.', 'Account data is kept until you delete your account.']],
+    ['Security', ['Data is sent over an encrypted HTTPS connection. Passwords are stored only as hashes.']],
+    ['Children', ['The app is not intended for children under 13. We do not knowingly collect data from them. Age is entered at registration.']],
+    ['Your rights and account deletion', ['You can edit your name, surname, age, village and photo in Settings.', 'You can delete your account in the app (Settings → Delete account) or on the page /delete-account. Deletion removes your account, messages, photos, voice messages, ads and notification tokens.']],
+  ], 'Contact'],
+  ru: ['Политика конфиденциальности', 'Обновлено: октябрь 2026', [
+    ['О приложении', ['Деҳа (Деха) — приложение для сельских общин Таджикистана: чат деревни, личные чаты, рынок объявлений и новости.', 'Здесь описано, какие данные собирает приложение, как они используются и как их удалить.']],
+    ['Какие данные мы собираем', ['Данные аккаунта: имя, фамилия, возраст, номер телефона, пароль (хранится только в виде хэша), выбранные район и деревня, язык.', 'По желанию: пол и фото профиля.', 'Ваш контент: сообщения в чатах, фото, голосовые сообщения, объявления на рынке, ваши жалобы и блокировки.', 'Технические данные: токен push-уведомлений для доставки уведомлений на ваше устройство.']],
+    ['Как мы их используем', ['Чтобы создать аккаунт и показывать чат вашей деревни, рынок и новости.', 'Чтобы доставлять уведомления о новых сообщениях и запросах на чат.', 'Чтобы поддерживать безопасность: жалобы, блокировка и модерация.']],
+    ['Кто видит ваши данные', ['Ваше имя, фото и сообщения видят участники чатов, в которых вы пишете.', 'Ваш номер телефона видят только жители вашей деревни (кнопка звонка на рынке). Другим он не показывается.', 'Личный чат с жителем другой деревни начинается только после того, как он примет ваш запрос.']],
+    ['Передача данных', ['Мы не продаём данные и не показываем рекламу.', 'Данные обрабатывают наши поставщики услуг: хостинг (Render), база данных (MongoDB Atlas) и доставка push (производитель браузера, например Google). Поэтому данные могут обрабатываться за пределами Таджикистана.']],
+    ['Сроки хранения', ['Текстовые сообщения — 90 дней. Фото и голосовые сообщения — 14 дней. Объявления — 90 дней.', 'Данные аккаунта хранятся, пока вы не удалите аккаунт.']],
+    ['Безопасность', ['Данные передаются по защищённому соединению HTTPS. Пароли хранятся только в виде хэшей.']],
+    ['Дети', ['Приложение не предназначено для детей младше 13 лет. Мы сознательно не собираем их данные. Возраст указывается при регистрации.']],
+    ['Ваши права и удаление аккаунта', ['Имя, фамилию, возраст, деревню и фото можно изменить в «Настройках».', 'Аккаунт можно удалить в приложении («Настройки» → «Удалить аккаунт») или на странице /delete-account. При удалении стираются аккаунт, сообщения, фото, голосовые, объявления и токены уведомлений.']],
+  ], 'Контакты'],
+  tg: ['Сиёсати махфият', 'Навсозӣ: октябри 2026', [
+    ['Дар бораи барнома', ['Деҳа — барнома барои деҳаҳои Тоҷикистон: чати деҳа, чатҳои шахсӣ, бозори эълонҳо ва хабарҳо.', 'Дар ин ҷо навишта шудааст, ки барнома кадом маълумотро ҷамъ мекунад, чӣ тавр истифода мебарад ва чӣ тавр нест кардан мумкин аст.']],
+    ['Кадом маълумотро ҷамъ мекунем', ['Маълумоти ҳисоб: ном, насаб, синну сол, рақами телефон, парол (танҳо ҳамчун хэш нигоҳ дошта мешавад), ноҳия ва деҳаи интихобшуда, забон.', 'Ихтиёрӣ: ҷинс ва сурати профил.', 'Мундариҷаи шумо: паёмҳо дар чат, суратҳо, паёмҳои овозӣ, эълонҳо дар бозор, шикоят ва манъҳои шумо.', 'Техникӣ: токени огоҳиномаҳо барои расонидани огоҳинома ба дастгоҳи шумо.']],
+    ['Чӣ тавр истифода мебарем', ['Барои сохтани ҳисоб ва нишон додани чати деҳа, бозор ва хабарҳо.', 'Барои расонидани огоҳинома дар бораи паёмҳои нав ва дархостҳои чат.', 'Барои амнияти ҷамъият: шикоят, манъ ва назорат.']],
+    ['Кӣ маълумотро мебинад', ['Номи шумо, сурат ва паёмҳоятонро иштирокчиёни чатҳое мебинанд, ки дар онҳо менависед.', 'Рақами телефони шумо танҳо барои одамони деҳаи худатон намоён аст (тугмаи занг дар бозор). Ба дигарон нишон дода намешавад.', 'Чати шахсӣ бо одами деҳаи дигар танҳо баъд аз он оғоз мешавад, ки ӯ дархости шуморо қабул кунад.']],
+    ['Додани маълумот', ['Мо маълумотро намефурӯшем ва реклама нишон намедиҳем.', 'Маълумотро хидматрасонҳо коркард мекунанд: ҳостинг (Render), база (MongoDB Atlas) ва расонидани push (истеҳсолкунандаи браузер, масалан Google). Бинобар ин маълумот метавонад берун аз Тоҷикистон коркард шавад.']],
+    ['Мӯҳлати нигоҳдорӣ', ['Паёмҳои матнӣ: 90 рӯз. Суратҳо ва паёмҳои овозӣ: 14 рӯз. Эълонҳо: 90 рӯз.', 'Маълумоти ҳисоб то нест кардани ҳисоб нигоҳ дошта мешавад.']],
+    ['Бехатарӣ', ['Маълумот тавассути пайвасти рамзгузоришудаи HTTPS ирсол мешавад. Паролҳо танҳо ҳамчун хэш нигоҳ дошта мешаванд.']],
+    ['Кӯдакон', ['Барнома барои кӯдакони аз 13 хурд нест. Мо маълумоти онҳоро ҷамъ намекунем. Синну сол ҳангоми сабти ном навишта мешавад.']],
+    ['Ҳуқуқи шумо ва нест кардани ҳисоб', ['Ном, насаб, синну сол, деҳа ва суратро дар «Танзимот» тағйир додан мумкин аст.', 'Ҳисобро дар барнома («Танзимот» → «Ҳисобро нест кардан») ё дар саҳифаи /delete-account нест кардан мумкин аст. Ҳангоми нест кардан ҳисоб, паёмҳо, суратҳо, паёмҳои овозӣ, эълонҳо ва токени огоҳиномаҳо нест мешаванд.']],
+  ], 'Тамос'],
+};
+app.get('/privacy', (req, res) => {
+  const lang = POLICY[req.query.lang] ? req.query.lang : 'en';
+  const [title, upd, sections, contact] = POLICY[lang];
+  let h = '<p class="nav"><a href="?lang=en">English</a><a href="?lang=ru">Русский</a><a href="?lang=tg">Тоҷикӣ</a><a href="/delete-account">Delete account</a></p><h1>' + esc(title) + ' · Деҳа</h1><p>' + esc(upd) + '</p>';
+  sections.forEach(([hd, items]) => {
+    h += '<h2>' + esc(hd) + '</h2><ul>' + items.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>';
+  });
+  h += '<h2>' + esc(contact) + '</h2><p>' + (CONTACT ? esc(CONTACT) : '—') + '</p>';
+  res.send(shell(title + ' · Деҳа', h));
+});
+app.get('/delete-account', (req, res) => {
+  const h = `<p class="nav"><a href="/privacy">Privacy Policy</a></p>
+<h1>Деҳа — Delete account / Удалить аккаунт / Нест кардани ҳисоб</h1>
+<p>EN: Enter your phone number and password to permanently delete your account and all your data (messages, photos, voice messages, ads).</p>
+<p>RU: Введите номер телефона и пароль, чтобы навсегда удалить аккаунт и все ваши данные (сообщения, фото, голосовые, объявления).</p>
+<p>TG: Рақами телефон ва паролро нависед, то ҳисоб ва ҳамаи маълумоти шумо (паёмҳо, суратҳо, овозҳо, эълонҳо) якбора нест шавад.</p>
+<input id="p" type="tel" placeholder="+992...">
+<input id="w" type="password" placeholder="Password / Пароль / Парол">
+<button id="b">Delete / Удалить / Нест кардан</button>
+<p id="m"></p>
+<script>
+document.getElementById('b').onclick = async function(){
+  var m = document.getElementById('m'); m.className = ''; m.textContent = '...';
+  try {
+    var r = await fetch('/api/delete-account', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: document.getElementById('p').value, password: document.getElementById('w').value }) });
+    var d = await r.json();
+    if (r.ok){ m.className = 'ok'; m.textContent = 'OK: account deleted / Аккаунт удалён / Ҳисоб нест шуд'; }
+    else { m.className = 'err'; m.textContent = d.error || 'Error'; }
+  } catch (e) { m.className = 'err'; m.textContent = 'Error / Ошибка / Хато'; }
+};
+</script>`;
+  res.send(shell('Delete account · Деҳа', h));
+});
+app.post('/api/delete-account', async (req, res) => {
+  try {
+    const u = await users.findOne({ phone: cleanPhone(req.body.phone) });
+    const ok = u && (await bcrypt.compare(String(req.body.password || ''), u.hash));
+    if (!ok) return fail(res, 401, 'Wrong phone or password / Неверный номер или пароль / Рақам ё парол нодуруст аст');
+    await deleteUser(u);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    fail(res, 500, 'Server error / Ошибка сервера / Хатои сервер');
+  }
+});
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  const pkg = String(process.env.ANDROID_PACKAGE || '').trim();
+  const fp = String(process.env.ANDROID_SHA256 || '').split(',').map((x) => x.trim()).filter(Boolean);
+  res.type('application/json').send(
+    JSON.stringify(
+      pkg && fp.length
+        ? [{ relation: ['delegate_permission/common.handle_all_urls'], target: { namespace: 'android_app', package_name: pkg, sha256_cert_fingerprints: fp } }]
+        : []
+    )
+  );
+});
+app.get('/health', (req, res) => res.type('text/plain').send('ok'));
+app.get('/manifest.json', (req, res) => res.type('application/manifest+json').send(MANIFEST));
+app.get('/icon-:s.png', (req, res) => {
+  const n = req.params.s;
+  if (n !== '192' && n !== '512') return res.status(404).end();
+  if (!ICONS[n]) ICONS[n] = makeIcon(Number(n));
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.type('image/png').send(ICONS[n]);
+});
+app.get('/api/ice', async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.query.t || '') });
+    if (!u) return res.status(401).end();
+    res.json({ iceServers: await iceServers() });
+  } catch (e) {
+    res.status(500).end();
+  }
+});
+app.get('/api/vapid', (req, res) => res.json({ key: VAPID_PUBLIC }));
+app.get('/api/places', async (req, res) => {
+  try {
+    res.json(await placesOut());
+  } catch (e) {
+    res.json({ districts: [], villages: [] });
+  }
+});
+
+app.post('/api/unpush', async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.body.token || '') });
+    if (u && typeof req.body.endpoint === 'string') {
+      await subs.deleteOne({ endpoint: req.body.endpoint, uid: String(u._id) });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.json({ ok: false });
+  }
+});
+
+/* ---------- барномаи Android: токени FCM ва рад кардани занг аз огоҳинома ---------- */
+app.post('/api/fcm', async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.body.token || '') });
+    const t = String(req.body.fcm || '');
+    if (!u || t.length < 20 || t.length > 400) return res.status(400).json({ ok: false });
+    await fcm.updateOne({ token: t }, { $set: { uid: String(u._id), token: t, time: Date.now() } }, { upsert: true });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.post('/api/calldecline', async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.body.token || '') });
+    if (!u) return res.status(401).json({ ok: false });
+    const uid = String(u._id);
+    const to = String(req.body.to || '');
+    if (!callPairs.has(pairKey(uid, to))) return res.json({ ok: false });
+    const p = pendingCalls.get(uid);
+    if (p && p.from === to) pendingCalls.delete(uid);
+    io.to('u:' + to).emit('callanswer', { from: uid, accept: false, busy: false });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.post('/api/pushtest', async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.body.token || '') });
+    if (!u) return fail(res, 401, 'auth');
+    const list = await subs.find({ uid: String(u._id) }).toArray();
+    res.json({ subs: list.length });
+    setTimeout(() => {
+      list.forEach(async (x) => {
+        try {
+          await webpush.sendNotification(
+            { endpoint: x.endpoint, keys: x.keys },
+            JSON.stringify({ title: 'Деҳа', body: 'Санҷиши огоҳинома ✔', tag: 'test' }),
+            { TTL: 60, urgency: 'high' }
+          );
+          console.log('test push ok');
+        } catch (e) {
+          console.error('test push fail', e.statusCode, e.body);
+        }
+      });
+    }, 10000);
+  } catch (e) {
+    console.error(e);
+    fail(res, 500, 'Хатои сервер');
+  }
+});
+
+app.post('/api/register', async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim().slice(0, 30);
+    const surname = String(req.body.surname || '').trim().slice(0, 30);
+    const age = parseInt(req.body.age, 10);
+    const phone = cleanPhone(req.body.phone);
+    const password = String(req.body.password || '');
+    const gender = req.body.gender === 'f' ? 'f' : req.body.gender === 'm' ? 'm' : '';
+    if (!name || !surname) return fail(res, 400, 'Ном ва насабро нависед');
+    if (!(age >= 5 && age <= 100)) return fail(res, 400, 'Синну солро дуруст нависед');
+    if (age < MIN_AGE) return fail(res, 400, 'Ин барнома барои синни аз ' + MIN_AGE + ' боло аст');
+    if (phone.length < 9 || phone.length > 15 || password.length < 6) {
+      return fail(res, 400, 'Рақам ё парол нодуруст аст (парол камаш 6 аломат)');
+    }
+    const vil = await resolveVillage(req.body);
+    if (!vil) return fail(res, 400, 'Ноҳия ва деҳаро интихоб кунед');
+    if (await users.findOne({ phone })) {
+      return fail(res, 409, 'Ин рақам аллакай сабт шудааст');
+    }
+    const token = crypto.randomBytes(24).toString('hex');
+    await users.insertOne({
+      name: name + ' ' + surname,
+      first: name,
+      surname,
+      age,
+      phone,
+      gender,
+      village: String(vil._id),
+      district: vil.parent,
+      hash: await bcrypt.hash(password, 10),
+      token,
+      lang: req.body.lang === 'ru' ? 'ru' : 'tg',
+      created: Date.now(),
+    });
+    io.emit('places', await placesOut());
+    res.json({ token, name: name + ' ' + surname });
+  } catch (e) {
+    console.error(e);
+    fail(res, 500, 'Хатои сервер');
+  }
+});
+
+app.post('/api/login', async (req, res) => {
+  try {
+    const phone = cleanPhone(req.body.phone);
+    const u = await users.findOne({ phone });
+    const ok = u && (await bcrypt.compare(String(req.body.password || ''), u.hash));
+    if (!ok) return fail(res, 401, 'Рақам ё парол нодуруст аст');
+    if (u.banned) return fail(res, 403, 'Ҳисоби шумо манъ шудааст');
+    res.json({ token: u.token, name: u.name });
+  } catch (e) {
+    console.error(e);
+    fail(res, 500, 'Хатои сервер');
+  }
+});
+
+app.get('/media/:id', async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.query.t || '') });
+    if (!u) return res.status(401).end();
+    if (!HEX24.test(req.params.id)) return res.status(404).end();
+    const m = await media.findOne({ _id: new ObjectId(req.params.id) });
+    if (!m) return res.status(404).end();
+    res.set('Content-Type', m.type);
+    res.set('Cache-Control', 'private, max-age=31536000');
+    res.send(Buffer.from(m.data.buffer));
+  } catch (e) {
+    console.error(e);
+    res.status(500).end();
+  }
+});
+
+/* ---------- огоҳиномаи push ---------- */
+// opts.ttl — мӯҳлати push бо сонияҳо (барои занг кӯтоҳ мешавад)
+async function pushTo(uids, mk, opts) {
+  if (!uids.length) return;
+  const ttl = (opts && opts.ttl) || 3600;
+  const ids = uids.filter((x) => HEX24.test(x)).map((x) => new ObjectId(x));
+  const us = await users.find({ _id: { $in: ids } }, { projection: { lang: 1 } }).toArray();
+  const lang = {};
+  us.forEach((u) => (lang[String(u._id)] = u.lang === 'ru' ? 'ru' : 'tg'));
+  // барномаи Android: push тавассути FCM; ин корбарон push-и браузерро намегиранд
+  const have = new Set();
+  if (FB) {
+    try {
+      const ft = await fcm.find({ uid: { $in: uids } }).toArray();
+      const byLang = {};
+      ft.forEach((x) => {
+        have.add(x.uid);
+        const l = lang[x.uid] || 'tg';
+        (byLang[l] = byLang[l] || []).push(x.token);
+      });
+      for (const l of Object.keys(byLang)) await fcmSend(byLang[l], typeof mk === 'function' ? mk(l) : mk, ttl);
+    } catch (e) {
+      console.error('fcm', e);
+    }
+  }
+  if (!VAPID_PUBLIC) return;
+  const list = await subs.find({ uid: { $in: uids.filter((x) => !have.has(x)) } }).toArray();
+  const cache = {};
+  await Promise.all(
+    list.map(async (x) => {
+      const l = lang[x.uid] || 'tg';
+      if (!cache[l]) cache[l] = JSON.stringify(typeof mk === 'function' ? mk(l) : mk);
+      try {
+        await webpush.sendNotification({ endpoint: x.endpoint, keys: x.keys }, cache[l], {
+          TTL: ttl,
+          urgency: 'high',
+        });
+      } catch (e) {
+        if (e.statusCode === 404 || e.statusCode === 410) await subs.deleteOne({ endpoint: x.endpoint });
+      }
+    })
+  );
+}
+async function pushMsg(msg, roomId) {
+  try {
+    let targets = [];
+    const v = vOf(roomId);
+    if (v) {
+      const q = { village: v.vid };
+      if (v.sub === 'women') q.gender = 'f';
+      targets = (await users.find(q, { projection: { _id: 1, blocked: 1 } }).toArray())
+        .filter((x) => !(x.blocked || []).includes(msg.uid))
+        .map((x) => String(x._id));
+    } else {
+      const p = roomId.split(':');
+      targets = [p[1] === msg.uid ? p[2] : p[1]];
+    }
+    const inRoom = await io.in('r:' + roomId).fetchSockets();
+    const skip = new Set(inRoom.filter((x) => x.data && x.data.vis !== false).map((x) => x.data.uid));
+    skip.add(msg.uid);
+    await pushTo(
+      targets.filter((t) => !skip.has(t)),
+      (l) => {
+        const ru = l === 'ru';
+        const sub = v && v.sub ? (v.sub === 'women' ? (ru ? ' · Женщины' : ' · Занҳо') : ru ? ' · Футболисты' : ' · Футболистон') : '';
+        return { title: msg.name + sub, body: previewOf(msg, l), tag: 'room-' + roomId, type: 'msg', room: roomId };
+      }
+    );
+  } catch (e) {
+    console.error(e);
   }
 }
 
-async function logout(){
+/* ---------- шумораи паёмҳои нахондашуда ---------- */
+async function bump(msg, roomId) {
   try {
-    if (pushOK()){
-      const reg = await navigator.serviceWorker.getRegistration();
-      const sub = reg && await reg.pushManager.getSubscription();
-      if (sub){
-        await fetch('/api/unpush', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: tok, endpoint: sub.endpoint })
+    let targets = [];
+    const v = vOf(roomId);
+    if (v) {
+      const q = { village: v.vid };
+      if (v.sub === 'women') q.gender = 'f';
+      targets = (await users.find(q, { projection: { _id: 1, blocked: 1 } }).toArray())
+        .filter((x) => !(x.blocked || []).includes(msg.uid))
+        .map((x) => String(x._id));
+    } else {
+      const p = roomId.split(':');
+      targets = [p[1] === msg.uid ? p[2] : p[1]];
+    }
+    const inRoom = await io.in('r:' + roomId).fetchSockets();
+    const here = new Set(inRoom.filter((x) => x.data && x.data.vis !== false).map((x) => x.data.uid));
+    targets = targets.filter((t) => t !== msg.uid && !here.has(t));
+    if (!targets.length) return;
+    await unread.bulkWrite(
+      targets.map((u) => ({
+        updateOne: { filter: { uid: u, room: roomId }, update: { $inc: { n: 1 } }, upsert: true },
+      }))
+    );
+    targets.forEach((u) => io.to('u:' + u).emit('unread', { room: roomId, inc: 1 }));
+  } catch (e) {
+    console.error('bump', e);
+  }
+}
+
+/* ---------- дархостҳо ва сӯҳбатҳои шахсӣ ---------- */
+async function deleteUser(u) {
+  const uid = String(u._id);
+  const msgs = await chat.find({ uid }, { projection: { media: 1 } }).toArray();
+  const myAds = await ads.find({ uid }).toArray();
+  const mids = msgs.map((d) => d.media).concat(myAds.map((a) => a.photo), [u.avatar]).filter((x) => HEX24.test(String(x || ''))).map((x) => new ObjectId(x));
+  if (mids.length) await media.deleteMany({ _id: { $in: mids } });
+  await chat.deleteMany({ uid });
+  await ads.deleteMany({ uid });
+  await subs.deleteMany({ uid });
+  await unread.deleteMany({ uid });
+  await fcm.deleteMany({ uid });
+  await reqs.deleteMany({ $or: [{ from: uid }, { to: uid }] });
+  await reports.deleteMany({ $or: [{ by: uid }, { msgUid: uid }] });
+  await users.updateMany({ blocked: uid }, { $pull: { blocked: uid } });
+  await users.deleteOne({ _id: u._id });
+  myAds.forEach((a) => io.emit('addel', String(a._id)));
+  io.in('u:' + uid).emit('deleted');
+  io.in('u:' + uid).disconnectSockets(true);
+}
+async function sendSocial(uid) {
+  try {
+    const rq = await reqs.find({ $or: [{ from: uid }, { to: uid }] }).toArray();
+    const ids = [...new Set(rq.map((q) => (q.from === uid ? q.to : q.from)))];
+    const us = await users
+      .find({ _id: { $in: ids.map((i) => new ObjectId(i)) } }, { projection: { name: 1, village: 1, avatar: 1 } })
+      .toArray();
+    const info = {};
+    us.forEach((x) => (info[String(x._id)] = { name: x.name, village: x.village || '', av: x.avatar || '' }));
+    const out = { incoming: [], contacts: [] };
+    rq.forEach((q) => {
+      const o = q.from === uid ? q.to : q.from;
+      const i = info[o];
+      if (!i) return;
+      if (q.status === 'accepted') out.contacts.push({ uid: o, name: i.name, village: i.village, av: i.av, room: dmPair(uid, o) });
+      else if (q.status === 'pending' && q.to === uid)
+        out.incoming.push({ id: String(q._id), uid: o, name: i.name, village: i.village, av: i.av });
+    });
+    io.to('u:' + uid).emit('social', out);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function sendBlocks(s) {
+  try {
+    const ids = (s.user.blocked || []).filter((x) => HEX24.test(x));
+    const us = ids.length
+      ? await users.find({ _id: { $in: ids.map((i) => new ObjectId(i)) } }, { projection: { name: 1 } }).toArray()
+      : [];
+    s.emit('blocks', ids.map((id) => ({ uid: id, name: (us.find((x) => String(x._id) === id) || {}).name || '—' })));
+  } catch (e) {
+    console.error(e);
+  }
+}
+async function sendReports(s) {
+  const list = await reports.find({ status: 'new' }).sort({ time: -1 }).limit(50).toArray();
+  s.emit(
+    'reports',
+    list.map((r) => ({
+      id: String(r._id),
+      targetName: r.targetName,
+      reporterName: r.reporterName,
+      text: r.text,
+      time: r.time,
+    }))
+  );
+}
+async function cleanup() {
+  try {
+    const now = Date.now();
+    const D = 86400000;
+    const tOld = now - (Number(process.env.KEEP_TEXT_DAYS) || 90) * D;
+    const mOld = now - (Number(process.env.KEEP_MEDIA_DAYS) || 14) * D;
+    const olds = await chat
+      .find(
+        { $or: [{ kind: 'text', time: { $lt: tOld } }, { kind: { $in: ['image', 'audio'] }, time: { $lt: mOld } }] },
+        { projection: { media: 1 } }
+      )
+      .limit(3000)
+      .toArray();
+    if (olds.length) {
+      const mids = olds.map((d) => d.media).filter((x) => HEX24.test(String(x))).map((x) => new ObjectId(x));
+      if (mids.length) await media.deleteMany({ _id: { $in: mids } });
+      await chat.deleteMany({ _id: { $in: olds.map((d) => d._id) } });
+      console.log('cleanup', olds.length);
+    }
+    await reports.deleteMany({ status: { $ne: 'new' }, time: { $lt: now - 90 * D } });
+  } catch (e) {
+    console.error('cleanup', e);
+  }
+}
+
+io.use(async (socket, next) => {
+  try {
+    const token = String((socket.handshake.auth || {}).token || '');
+    if (!token) return next(new Error('auth'));
+    const u = await users.findOne({ token });
+    if (!u) return next(new Error('auth'));
+    if (u.banned) return next(new Error('banned'));
+    if (ADMIN_PHONES.includes(String(u.phone))) u.admin = true;
+    const lang = (socket.handshake.auth || {}).lang === 'ru' ? 'ru' : 'tg';
+    if (u.lang !== lang) {
+      users.updateOne({ _id: u._id }, { $set: { lang } }).catch(() => {});
+      u.lang = lang;
+    }
+    socket.user = u;
+    socket.data.uid = String(u._id);
+    socket.data.vis = true;
+    next();
+  } catch (e) {
+    next(new Error('auth'));
+  }
+});
+
+io.on('connection', (s) => {
+  const uid = String(s.user._id);
+  s.join('u:' + uid);
+  if (s.user.village) s.join('vil:' + s.user.village);
+  s.emit('me', uid);
+  s.emit('profile', profOf(s.user));
+  s.emit('rooms', myRooms(s.user));
+  if (!s.user.gender) s.emit('needgender');
+  const pc0 = pendingCalls.get(uid);
+  if (pc0 && Date.now() - pc0.time < 45000) s.emit('callincoming', pc0);
+
+  unread
+    .find({ uid })
+    .toArray()
+    .then((l) => {
+      const o = {};
+      l.forEach((x) => (o[x.room] = x.n));
+      s.emit('unreadall', o);
+    })
+    .catch(console.error);
+
+  const enter = async (r) => {
+    r = String(r);
+    if (!(await canEnter(s.user, r))) return s.emit('err', 'Ба ин гурӯҳ дастрасӣ нест');
+    [...s.rooms].filter((x) => x.startsWith('r:')).forEach((x) => s.leave(x));
+    s.join('r:' + r);
+    unread.deleteOne({ uid, room: r }).catch(() => {});
+    s.emit('unread', { room: r, set: 0 });
+    const list = await chat.find({ room: r }).sort({ time: -1 }).limit(100).toArray();
+    s.emit('history', { room: r, chat: list.reverse().map(chatOut) });
+  };
+
+  (async () => {
+    try {
+      const allNews = await news
+        .find({}, { projection: { _id: 0 } })
+        .sort({ time: -1 })
+        .limit(100)
+        .toArray();
+      const adList = await ads.find({}).sort({ time: -1 }).limit(100).toArray();
+      s.emit('init', { news: allNews, ads: adList.map((a) => adOut(a, s.user)) });
+      s.emit('places', await placesOut());
+      if (!s.user.village) s.emit('needplace');
+      sendSocial(uid);
+      sendBlocks(s);
+    } catch (e) {
+      console.error(e);
+    }
+  })();
+
+  s.on('vis', (v) => {
+    s.data.vis = !!v;
+  });
+
+  s.on('seen', async (m) => {
+    try {
+      const room = String((m && m.room) || '');
+      if (!room || !(await canEnter(s.user, room))) return;
+      await unread.deleteOne({ uid, room });
+      s.emit('unread', { room, set: 0 });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('fcmtoken', async (t) => {
+    try {
+      t = String(t || '');
+      if (t.length < 20 || t.length > 400) return;
+      await fcm.updateOne({ token: t }, { $set: { uid, token: t, time: Date.now() } }, { upsert: true });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('fcmoff', async (t) => {
+    try {
+      await fcm.deleteOne({ token: String(t || ''), uid });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('pushsub', async (sub) => {
+    try {
+      if (
+        !sub ||
+        typeof sub.endpoint !== 'string' ||
+        !sub.endpoint.startsWith('https://') ||
+        !sub.keys ||
+        typeof sub.keys.p256dh !== 'string' ||
+        typeof sub.keys.auth !== 'string'
+      ) {
+        return;
+      }
+      await subs.updateOne(
+        { endpoint: sub.endpoint },
+        {
+          $set: {
+            uid,
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth },
+            time: Date.now(),
+          },
+        },
+        { upsert: true }
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('setgender', async (g) => {
+    try {
+      if (s.user.gender) return;
+      if (g !== 'm' && g !== 'f') return;
+      await users.updateOne({ _id: s.user._id }, { $set: { gender: g } });
+      s.user.gender = g;
+      s.emit('profile', profOf(s.user));
+      s.emit('rooms', myRooms(s.user));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('setplace', async (m) => {
+    try {
+      if (s.user.village) return;
+      const v = await resolveVillage(m || {});
+      if (!v) return;
+      const vid = String(v._id);
+      await users.updateOne({ _id: s.user._id }, { $set: { village: vid, district: v.parent } });
+      s.user.village = vid;
+      s.user.district = v.parent;
+      s.join('vil:' + vid);
+      io.emit('places', await placesOut());
+      s.emit('profile', profOf(s.user));
+      s.emit('rooms', myRooms(s.user));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('settings', async (m) => {
+    try {
+      if (!m) return;
+      const set = {};
+      const first = String(m.name || '').trim().slice(0, 30);
+      if (first) set.first = first;
+      if (m.surname !== undefined) set.surname = String(m.surname || '').trim().slice(0, 30);
+      const ag = parseInt(m.age, 10);
+      if (ag >= MIN_AGE && ag <= 100) set.age = ag;
+      if (set.first !== undefined || set.surname !== undefined) {
+        const f = set.first !== undefined ? set.first : s.user.first || s.user.name || '';
+        const sn = set.surname !== undefined ? set.surname : s.user.surname || '';
+        set.name = (f + ' ' + sn).trim();
+      }
+      if (m.gender === 'm' || m.gender === 'f') set.gender = m.gender;
+      if (m.avatar !== undefined) {
+        const a = String(m.avatar || '');
+        if (!a) set.avatar = '';
+        else if (HEX24.test(a) && (await media.findOne({ _id: new ObjectId(a), avatar: true }, { projection: { _id: 1 } }))) set.avatar = a;
+      }
+      let v = null;
+      if (m.village || m.vname) {
+        v = await resolveVillage(m);
+        if (!v) return s.emit('err', 'Деҳаро интихоб кунед');
+        set.village = String(v._id);
+        set.district = v.parent;
+      }
+      if (!Object.keys(set).length) return;
+      await users.updateOne({ _id: s.user._id }, { $set: set });
+      const oldV = s.user.village;
+      Object.assign(s.user, set);
+      if (v && oldV !== set.village) {
+        if (oldV) s.leave('vil:' + oldV);
+        s.join('vil:' + set.village);
+        [...s.rooms].filter((x) => x.startsWith('r:')).forEach((x) => s.leave(x));
+        await ads.updateMany({ uid }, { $set: { village: set.village } });
+        io.emit('places', await placesOut());
+      }
+      s.emit('profile', profOf(s.user));
+      s.emit('rooms', myRooms(s.user));
+      s.emit('settingsok');
+      sendSocial(uid);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('callinvite', async (m) => {
+    try {
+      const to = String((m && m.to) || '');
+      if (!HEX24.test(to) || to === uid) return;
+      const ok = await reqs.findOne({ status: 'accepted', $or: [{ from: uid, to }, { from: to, to: uid }] });
+      if (!ok) return s.emit('err', 'Аввал запрос лозим аст');
+      const now = Date.now();
+      for (const [k, t] of callPairs) if (now - t > 3600000) callPairs.delete(k);
+      callPairs.set(pairKey(uid, to), now);
+      const info = { from: uid, name: s.user.name, video: !!m.video, time: now };
+      pendingCalls.set(to, info);
+      io.to('u:' + to).emit('callincoming', info);
+      pushTo(
+        [to],
+        {
+          title: (m.video ? '🎥 ' : '📞 ') + 'Занг',
+          body: s.user.name + ' занг мезанад',
+          tag: 'call',
+          type: 'call',
+          from: uid,
+          name: s.user.name,
+          video: m.video ? '1' : '0',
+          requireInteraction: true,
+          renotify: true,
+          vibrate: [400, 200, 400, 200, 400, 200, 400],
+        },
+        { ttl: 30 }
+      );
+      setTimeout(() => {
+        const p = pendingCalls.get(to);
+        if (p && p.time === now) pendingCalls.delete(to);
+      }, 50000);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('callanswer', (m) => {
+    const to = String((m && m.to) || '');
+    if (!callPairs.has(pairKey(uid, to))) return;
+    const p = pendingCalls.get(uid);
+    if (p && p.from === to) pendingCalls.delete(uid);
+    io.to('u:' + to).emit('callanswer', { from: uid, accept: !!m.accept, busy: !!m.busy });
+  });
+
+  s.on('callsig', (m) => {
+    const to = String((m && m.to) || '');
+    if (!callPairs.has(pairKey(uid, to)) || !m.data || typeof m.data !== 'object') return;
+    io.to('u:' + to).emit('callsig', { from: uid, data: m.data });
+  });
+
+  s.on('callend', (m) => {
+    const to = String((m && m.to) || '');
+    if (!callPairs.has(pairKey(uid, to))) return;
+    const p = pendingCalls.get(to);
+    if (p && p.from === uid) pendingCalls.delete(to);
+    const q = pendingCalls.get(uid);
+    if (q && q.from === to) pendingCalls.delete(uid);
+    io.to('u:' + to).emit('callend', { from: uid });
+    fcmOnly([to], { type: 'callend' }, 10).catch(() => {});
+  });
+
+  s.on('delaccount', async (m) => {
+    try {
+      const ok = m && (await bcrypt.compare(String(m.password || ''), s.user.hash));
+      if (!ok) return s.emit('err', 'Парол нодуруст');
+      await deleteUser(s.user);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('makeadmin', async (m) => {
+    try {
+      if (!(m && String(m.password || '').trim() === ADMIN)) return s.emit('err', 'Парол нодуруст');
+      await users.updateOne({ _id: s.user._id }, { $set: { admin: true } });
+      s.user.admin = true;
+      s.emit('profile', profOf(s.user));
+      s.emit('err', '✔ Ҳисоби шумо акнун админ аст. Парол дигар лозим нест.');
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('block', async (u) => {
+    try {
+      u = String(u);
+      if (!HEX24.test(u) || u === uid) return;
+      await users.updateOne({ _id: s.user._id }, { $addToSet: { blocked: u } });
+      s.user.blocked = [...new Set([...(s.user.blocked || []), u])];
+      sendBlocks(s);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('unblock', async (u) => {
+    try {
+      u = String(u);
+      await users.updateOne({ _id: s.user._id }, { $pull: { blocked: u } });
+      s.user.blocked = (s.user.blocked || []).filter((x) => x !== u);
+      sendBlocks(s);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('report', async (m) => {
+    try {
+      const id = String((m && m.id) || '');
+      if (!HEX24.test(id)) return;
+      const doc = await chat.findOne({ _id: new ObjectId(id) });
+      if (!doc || doc.uid === uid || !(await canEnter(s.user, doc.room))) return;
+      if (!(await reports.findOne({ msg: id, reporter: uid }))) {
+        await reports.insertOne({
+          msg: id,
+          room: doc.room,
+          reporter: uid,
+          reporterName: s.user.name,
+          target: doc.uid,
+          targetName: doc.name,
+          text: previewOf(doc),
+          time: Date.now(),
+          status: 'new',
         });
       }
-    }
-  } catch (e) {}
-  try { if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {}); } catch (e) {}
-  localStorage.removeItem('token');
-  location.reload();
-}
-
-function tab(n){
-  for (let i = 1; i <= 4; i++){
-    $('s' + i).classList.toggle('on', i === n);
-    $('b' + i).classList.toggle('on', i === n);
-  }
-  if (n === 1) scrollDown();
-}
-
-function hhmm(t){ return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
-function scrollDown(){ const b = $('msgs'); b.scrollTop = b.scrollHeight; }
-function mediaUrl(id){ return '/media/' + id + '?t=' + tok; }
-function openImg(src){ $('lbimg').className = ''; $('lbcap').textContent = ''; $('lbimg').src = src; $('lb').style.display = 'flex'; }
-function openAvatar(av, name){ $('lbimg').className = 'big'; $('lbcap').textContent = name || ''; $('lbimg').src = mediaUrl(av); $('lb').style.display = 'flex'; }
-
-function setGender(g){
-  if (socket) socket.emit('setgender', g);
-  $('gform').style.display = 'none';
-}
-
-/* ---------- чат ---------- */
-function prevText(m){
-  return m.kind === 'image' ? '📷 Расм' : m.kind === 'audio' ? '🎤 Паёми овозӣ' : (m.text || '');
-}
-function setReply(m){
-  replyTo = m ? { id: m.id, name: m.uid === myUid ? 'Шумо' : m.name, text: prevText(m) } : null;
-  $('rpl').style.display = replyTo ? 'flex' : 'none';
-  if (replyTo){
-    $('rpln').textContent = replyTo.name;
-    $('rplt').textContent = replyTo.text;
-  }
-}
-function takeReply(){
-  const id = replyTo ? replyTo.id : '';
-  setReply(null);
-  return id;
-}
-function openMenu(m){
-  menuMsg = m;
-  $('mpv').textContent = (m.uid === myUid ? 'Шумо' : m.name) + ': ' + prevText(m);
-  $('mdel').style.display = (m.uid === myUid || prof.admin || $('pw').value.trim()) ? 'block' : 'none';
-  $('mrpt').style.display = $('mblk').style.display = (m.uid !== myUid) ? 'block' : 'none';
-  $('mdm').style.display = (m.uid !== myUid && room.startsWith('v:')) ? 'block' : 'none';
-  $('menu').style.display = 'flex';
-}
-function closeMenu(){ $('menu').style.display = 'none'; menuMsg = null; }
-$('mrep').onclick = () => {
-  const m = menuMsg; closeMenu();
-  if (!m) return;
-  setReply(m); $('text').focus();
-};
-$('mdel').onclick = () => {
-  const m = menuMsg; closeMenu();
-  if (!m || !socket) return;
-  if (confirm('Паём нест шавад?')) socket.emit('msgdel', { id: m.id, password: $('pw').value });
-};
-
-$('mrpt').onclick = () => {
-  const m = menuMsg; closeMenu();
-  if (m && socket && confirm('Ин паём ба админ шикоят карда шавад?')) socket.emit('report', { id: m.id });
-};
-$('mblk').onclick = () => {
-  const m = menuMsg; closeMenu();
-  if (m && socket && confirm(m.name + ' манъ карда шавад? Паёмҳояш барои шумо намоён нест.')) socket.emit('block', m.uid);
-};
-/* ---------- иштирокчиён, чати шахсӣ, «хонда шуд» ---------- */
-let pendingDM = '', vinfo = null;
-function startDM(uid, name){
-  const c = social.contacts.find((x) => x.uid === uid);
-  if (c){ $('mem').style.display = 'none'; showChat(c.room, c.name); return; }
-  pendingDM = uid;
-  clearTimeout(startDM.t); startDM.t = setTimeout(() => { pendingDM = ''; }, 6000);
-  socket.emit('reqsend', uid);
-}
-function openMembers(){
-  if (!socket || !room.startsWith('v:')) return;
-  $('memlist').innerHTML = ''; $('mem').style.display = 'flex'; socket.emit('vinfo');
-}
-function closeMembers(){ $('mem').style.display = 'none'; }
-function renderMembers(){
-  const box = $('memlist'); box.innerHTML = '';
-  if (!vinfo) return;
-  box.append(hd(vinfo.total + ' нафар · ' + vinfo.online + ' онлайн'));
-  vinfo.list.filter((u) => !blocked.has(u.uid)).forEach((u) => {
-    const r = item(u.me ? u.name + ' (Шумо)' : u.name, '', null, u.av || '');
-    if (u.on){ const d = document.createElement('i'); d.className = 'dot'; r.querySelector('span').append(d); }
-    if (!u.me) r.append(mini('💬', '', () => startDM(u.uid, u.name)));
-    box.append(r);
-  });
-}
-function markRead(){
-  if (socket && room.startsWith('dm:') && document.visibilityState === 'visible') socket.emit('markread', { room });
-}
-setInterval(() => { if (socket && prof.village && room === 'v:' + prof.village) socket.emit('vinfo'); }, 30000);
-$('mdm').onclick = () => { const m = menuMsg; closeMenu(); if (m && socket) startDM(m.uid, m.name); };
-const NAMECOL = ['#1fa855', '#d4452f', '#a05bd0', '#cf7d00', '#0a8ea6', '#c24a8e', '#5b7fcf', '#7a8f00'];
-function nameColor(k){ let h = 0; for (const c of String(k)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return NAMECOL[h % NAMECOL.length]; }
-function msgEl(m){
-  const mine = m.uid && m.uid === myUid;
-  const d = document.createElement('div');
-  d.className = 'b ' + (mine ? 'me' : 'ot');
-  d.dataset.id = m.id || '';
-  d.dataset.uid = m.uid || '';
-  if (!mine){
-    const n = document.createElement('div'); n.className = 'nm';
-    const nt = document.createElement('span'); nt.textContent = m.name; nt.style.color = nameColor(m.uid || m.name);
-    n.append(avEl(m.av, m.name, 20), nt); d.append(n);
-  }
-  if (m.reply){
-    const q = document.createElement('div'); q.className = 'rq';
-    const qn = document.createElement('b'); qn.textContent = m.reply.uid === myUid ? 'Шумо' : m.reply.name;
-    const qt = document.createElement('span'); qt.textContent = m.reply.text;
-    q.append(qn, qt);
-    q.onclick = (e) => {
-      e.stopPropagation();
-      const t = document.querySelector('[data-id="' + m.reply.id + '"]');
-      if (t){
-        t.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        t.classList.remove('hl'); void t.offsetWidth; t.classList.add('hl');
-      }
-    };
-    d.append(q);
-  }
-  if (m.kind === 'image'){
-    const im = document.createElement('img');
-    im.loading = 'lazy'; im.src = mediaUrl(m.media); im.onload = scrollDown;
-    im.onclick = (e) => { e.stopPropagation(); openImg(im.src); };
-    d.append(im);
-  } else if (m.kind === 'audio'){
-    const a = document.createElement('audio');
-    a.controls = true; a.preload = 'none'; a.src = mediaUrl(m.media);
-    d.append(a);
-  } else {
-    const p = document.createElement('div'); p.textContent = m.text || ''; d.append(p);
-  }
-  const t = document.createElement('div'); t.className = 'tm'; t.textContent = hhmm(m.time);
-  if (mine && m.room && m.room.startsWith('dm:')){
-    const k = document.createElement('span'); k.className = 'tk' + (m.rd ? ' rd' : ''); k.textContent = m.rd ? ' ✓✓' : ' ✓'; t.append(k);
-  }
-  d.append(t);
-  d.onclick = (e) => {
-    if (!m.id || e.target.closest('audio,img,.rq')) return;
-    openMenu(m);
-  };
-  return d;
-}
-function addChat(m){ if (blocked.has(m.uid)) return; $('msgs').append(msgEl(m)); scrollDown(); }
-
-function renderRooms(){
-  const box = $('rooms'); box.innerHTML = ''; box.style.display = room.startsWith('dm:') ? 'none' : 'flex';
-  roomList.forEach((r) => {
-    const b = document.createElement('button');
-    b.className = 'chip' + (r.id === room ? ' on' : '');
-    const n = r.id === room ? 0 : (unreadMap[r.id] || 0);
-    b.textContent = r.title + (n ? ' (' + (n > 99 ? '99+' : n) + ')' : '');
-    b.onclick = () => selectRoom(r.id);
-    box.append(b);
-  });
-}
-function selectRoom(id){
-  room = id; $('msgs').innerHTML = ''; renderRooms(); setReply(null);
-  if (socket) socket.emit('join', id);
-}
-
-/* ---------- ноҳия, деҳа, дархостҳо ---------- */
-function toast(t){
-  const e = $('toast'); e.textContent = t; e.style.display = 'block';
-  clearTimeout(toast.t); toast.t = setTimeout(() => { e.style.display = 'none'; }, 3500);
-}
-function vname(id){ const v = places.villages.find((x) => x.id === id); return v ? v.name : ''; }
-function dname(id){ const d = places.districts.find((x) => x.id === id); return d ? d.name : ''; }
-function fillPlace(dId, vId){
-  const d = $(dId), v = $(vId), n = $(vId + 'n'), cur = d.value, curv = v.value;
-  d.innerHTML = '';
-  places.districts.forEach((x) => d.add(new Option(x.name + (x.region ? ' (' + x.region + ')' : ''), x.id)));
-  if (cur) d.value = cur;
-  const sn = () => { n.style.display = (v.value === '__new' && v.style.display !== 'none') ? 'block' : 'none'; };
-  const fv = () => {
-    v.innerHTML = '';
-    places.villages.filter((x) => x.district === d.value).forEach((x) => v.add(new Option(x.name, x.id)));
-    v.add(new Option('➕ Деҳаи дигар (худам менависам)', '__new'));
-    sn();
-  };
-  d.onchange = fv; v.onchange = sn; fv();
-  if (curv && [...v.options].some((o) => o.value === curv)){ v.value = curv; sn(); }
-}
-function fillAdminPlaces(){}
-function savePlace(){
-  const v = $('pvil').value;
-  const m = v === '__new' ? { district: $('pdist').value, vname: $('pviln').value.trim() } : { village: v };
-  if (!v || (v === '__new' && !m.vname)){ alert('Деҳаро интихоб кунед ё номашро нависед'); return; }
-  socket.emit('setplace', m);
-  $('pform').style.display = 'none';
-}
-function addPlace(t){
-  if (!socket) return;
-  const inp = t === 'd' ? $('dn') : $('vn');
-  const name = inp.value.trim();
-  if (!name) return;
-  socket.emit('placeadd', { password: $('pw').value, type: t, name, parent: t === 'v' ? $('av').value : '' });
-  inp.value = '';
-}
-function wipeChat(){
-  if (socket && confirm('Ҳамаи паёмҳо нест шаванд?')) socket.emit('wipechat', { password: $('pw').value });
-}
-function item(title, sub, fn, av){
-  const b = document.createElement('button'); b.className = 'item';
-  if (av !== undefined) b.append(avEl(av, title, 34));
-  const s = document.createElement('span'); s.textContent = title; b.append(s);
-  if (sub){ const m = document.createElement('small'); m.textContent = sub; b.append(m); }
-  if (fn) b.onclick = fn;
-  return b;
-}
-function hd(t){ const d = document.createElement('div'); d.className = 'sh'; d.textContent = t; return d; }
-function mini(t, cls, fn){
-  const b = document.createElement('button'); b.className = 'mini ' + (cls || ''); b.textContent = t;
-  b.onclick = (e) => { e.stopPropagation(); fn(); };
-  return b;
-}
-function renderHome(){
-  const box = $('hbody'); box.innerHTML = '';
-  $('dsrch').style.display = nav.v === 'districts' ? 'block' : 'none';
-  if (nav.v === 'home' && $('dsq').value){ $('dsq').value = ''; peopleRes = { q: '', list: [] }; }
-  if (nav.v === 'home'){
-    if (prof.village){
-      box.append(hd('Деҳаи ман'));
-      const vr = item('🏠 ' + vname(prof.village), dname(prof.district), openVillage);
-      const vb = badge(unreadMap['v:' + prof.village]);
-      if (vb) vr.append(vb);
-      box.append(vr);
-    } else {
-      box.append(item('⚠ Деҳаи худро интихоб кунед', '', () => { fillPlace('pdist', 'pvil'); $('pform').style.display = 'flex'; }));
-    }
-    if (social.incoming.length){
-      box.append(hd('Дархостҳо'));
-      social.incoming.forEach((q) => {
-        const r = item(q.name, vname(q.village), null, q.av);
-        r.append(mini('Қабул', '', () => socket.emit('reqans', { id: q.id, accept: true })));
-        r.append(mini('Рад', 'r', () => socket.emit('reqans', { id: q.id, accept: false })));
-        box.append(r);
-      });
-    }
-    if (social.contacts.length){
-      box.append(hd('Сӯҳбатҳои шахсӣ'));
-      social.contacts.forEach((c) => {
-        const r = item(c.name, vname(c.village), () => showChat(c.room, c.name), c.av);
-        const cb = badge(unreadMap[c.room]);
-        if (cb) r.append(cb);
-        box.append(r);
-      });
-    }
-    box.append(item('🗺 Ҳамаи ноҳияҳо', 'Одамони деҳаҳои дигарро ёбед', () => { nav = { v: 'districts' }; renderHome(); }));
-  } else if (nav.v === 'districts'){
-    box.append(item('← Бозгашт', '', () => { nav = { v: 'home' }; renderHome(); }));
-    searchView(box);
-  } else if (nav.v === 'district'){
-    box.append(item('← Ба ноҳияҳо', '', () => { nav = { v: 'districts' }; renderHome(); }));
-    box.append(hd(dname(nav.id)));
-    const vl = places.villages.filter((x) => x.district === nav.id);
-    if (!vl.length) box.append(item('Ҳоло деҳа нест', ''));
-    vl.forEach((v) => {
-      const mine = v.id === prof.village;
-      box.append(item('🏘 ' + v.name, mine ? 'Деҳаи шумо' : '', () => {
-        if (mine) openVillage();
-        else { nav = { v: 'members', id: v.id, d: v.district }; members = { village: '', list: [] }; socket.emit('members', v.id); renderHome(); }
-      }));
-    });
-  } else {
-    box.append(item('← Ба деҳаҳо', '', () => { nav = { v: 'district', id: nav.d }; renderHome(); }));
-    box.append(hd(vname(nav.id) + ': аъзоён'));
-    const list = (members.village === nav.id ? members.list : []).filter((x) => !blocked.has(x.uid));
-    if (!list.length) box.append(item('Ҳоло касе нест', ''));
-    list.forEach((m) => {
-      const r = item(m.name, '', null, m.av);
-      if (m.state === 'none') r.append(mini('Запрос', '', () => socket.emit('reqsend', m.uid)));
-      else if (m.state === 'accepted'){
-        const c = social.contacts.find((x) => x.uid === m.uid);
-        r.append(mini('Гап задан', '', () => { if (c) showChat(c.room, c.name); }));
-      } else {
-        const t = m.state === 'sent' ? 'Фиристода шуд' : m.state === 'incoming' ? 'Дархост омадааст' : 'Рад шуд';
-        const b = mini(t, 'r', () => {}); b.style.opacity = '.6'; r.append(b);
-      }
-      box.append(r);
-    });
-  }
-}
-function openDistricts(){
-  tab(1);
-  if ($('chatv').style.display === 'flex') goHome();
-  nav = { v: 'districts' }; renderHome();
-}
-function openSettings(){
-  $('sav').innerHTML = ''; $('sav').append(avEl(prof.avatar, prof.name, 72));
-  renderBlocks();
-  $('sname').value = prof.first || prof.name || '';
-  $('ssur').value = prof.surname || '';
-  $('sage').value = prof.age || '';
-  $('sgen').value = prof.gender || '';
-  fillPlace('sdist', 'svil');
-  if (prof.district){ $('sdist').value = prof.district; $('sdist').onchange(); }
-  if (prof.village) $('svil').value = prof.village;
-  $('svil').onchange();
-  $('sform').style.display = 'flex';
-}
-function saveSettings(){
-  const v = $('svil').value;
-  const m = { name: $('sname').value.trim(), surname: $('ssur').value.trim(), age: $('sage').value, gender: $('sgen').value };
-  if (v === '__new'){
-    m.district = $('sdist').value; m.vname = $('sviln').value.trim();
-    if (!m.vname){ alert('Номи деҳаро нависед'); return; }
-  } else if (v) m.village = v;
-  socket.emit('settings', m);
-  $('sform').style.display = 'none';
-}
-function openVillage(){ if (prof.village) showChat('v:' + prof.village, vname(prof.village)); }
-function showChat(r, title){
-  $('home').style.display = 'none'; $('chatv').style.display = 'flex';
-  $('ctitle').textContent = title; $('csub').textContent = '';
-  $('sbar').style.display = 'none'; $('sq').value = ''; showSearch(false);
-  $('cb1').style.display = $('cb2').style.display = (CALLS && r.startsWith('dm:')) ? 'inline-block' : 'none';
-  room = r; $('msgs').innerHTML = ''; renderRooms(); setReply(null);
-  socket.emit('join', r);
-  if (r === 'v:' + prof.village) socket.emit('vinfo');
-}
-function goHome(){
-  room = ''; $('chatv').style.display = 'none'; $('home').style.display = 'block';
-  setReply(null); if (socket) socket.emit('leave');
-  renderHome();
-}
-
-/* ---------- занг (видео ва овоз) ---------- */
-let pc = null, lstream = null, callPeer = '', callName = '', callVideo = false, callRole = '';
-let pendingIce = [], ringT = null, ringI = null, timerI = null, iceList = null;
-let callStarting = 0, connT = null, cand = { host: 0, srflx: 0, relay: 0 };
-function dbg(){
-  if (!pc) return;
-  $('cdbg').textContent = 'ice: ' + pc.iceConnectionState + ' · sig: ' + pc.signalingState + ' · host ' + cand.host + ' srflx ' + cand.srflx + ' relay ' + cand.relay;
-}
-async function getIce(){
-  if (!iceList){
-    try { iceList = (await (await fetch('/api/ice?t=' + tok)).json()).iceServers; }
-    catch (e) { iceList = [{ urls: 'stun:stun.l.google.com:19302' }]; }
-  }
-  return iceList;
-}
-function showCall(status, incoming){
-  $('call').style.display = 'flex';
-  $('cname').textContent = callName; $('cst').textContent = status;
-  $('cin').style.display = incoming ? 'flex' : 'none';
-  $('cout').style.display = incoming ? 'none' : 'flex';
-  $('btcam').style.display = callVideo ? 'inline-block' : 'none';
-  $('lv').style.display = callVideo ? 'block' : 'none';
-  $('btmic').classList.remove('off'); $('btcam').classList.remove('off');
-}
-function stopRing(){
-  clearInterval(ringI); ringI = null;
-  try { if (ringAudio){ ringAudio.pause(); ringAudio.currentTime = 0; } } catch (e) {}
-  try { if (navigator.vibrate) navigator.vibrate(0); } catch (e) {}
-}
-function startRing(){
-  stopRing();
-  try {
-    initAudio();
-    ringAudio.currentTime = 0;
-    ringAudio.play().catch(() => { beep(); });
-  } catch (e) { beep(); }
-  try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {}
-  ringI = setInterval(() => { try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {} }, 2000);
-}
-function gum(c, ms){
-  const once = () => new Promise((resolve, reject) => {
-    let done = false;
-    const t = setTimeout(() => { done = true; reject(new Error('timeout')); }, ms);
-    navigator.mediaDevices.getUserMedia(c).then(
-      (s) => { clearTimeout(t); if (done) s.getTracks().forEach((x) => x.stop()); else resolve(s); },
-      (e) => { clearTimeout(t); if (!done) reject(e); }
-    );
-  });
-  return once().catch(async (e) => {
-    if (e && e.name === 'NotReadableError'){ await new Promise((r) => setTimeout(r, 800)); return once(); }
-    throw e;
-  });
-}
-function micErr(e){
-  const n = (e && e.name) || '';
-  if (n === 'NotReadableError') return 'Микрофон банд аст. Барномаҳои дигарро (Chrome, WhatsApp, Instagram) пӯшед ва дубора кӯшиш кунед.';
-  if (n === 'NotAllowedError' || n === 'SecurityError') return 'Иҷозати микрофон ё камера дода нашудааст.';
-  if (n === 'NotFoundError') return 'Микрофон ё камера ёфт нашуд.';
-  return 'Барнома иҷозат намедиҳад (' + (n || e) + '). Барномаро аз Chrome насб кунед.';
-}
-async function openMedia(){
-  if (lstream){ lstream.getTracks().forEach((t) => t.stop()); lstream = null; }
-  const tries = callVideo
-    ? [{ audio: true, video: { facingMode: 'user' } }, { audio: true, video: false }]
-    : [{ audio: true, video: false }];
-  let err = null;
-  for (const c of tries){
-    try {
-      lstream = await gum(c, 8000);
-      if (!c.video && callVideo){ callVideo = false; toast('Камера кор намекунад, занг бо овоз мешавад'); }
-      $('lv').srcObject = lstream;
-      return true;
-    } catch (e) { err = e; }
-  }
-  const env = /; wv\)/.test(navigator.userAgent) ? 'WebView (барномаи APK)' : 'Chrome';
-  alert(micErr(err) + '\n\nМуҳит: ' + env);
-  return false;
-}
-async function makePc(){
-  pc = new RTCPeerConnection({ iceServers: await getIce() });
-  lstream.getTracks().forEach((t) => pc.addTrack(t, lstream));
-  cand = { host: 0, srflx: 0, relay: 0 };
-  pc.onicecandidate = (e) => {
-    if (!e.candidate) return;
-    const m = / typ (host|srflx|relay|prflx)/.exec(e.candidate.candidate || '');
-    if (m && cand[m[1]] !== undefined) cand[m[1]]++;
-    dbg();
-    if (callPeer) socket.emit('callsig', { to: callPeer, data: { ice: e.candidate } });
-  };
-  pc.oniceconnectionstatechange = dbg;
-  pc.onsignalingstatechange = dbg;
-  clearTimeout(connT);
-  connT = setTimeout(() => {
-    if (pc && pc.connectionState !== 'connected'){
-      $('cst').textContent = 'Пайваст нашуд';
-      toast('Пайваст нашуд. Шабака манъ мекунад.');
-      setTimeout(() => { if (pc && pc.connectionState !== 'connected') endCall(true); }, 8000);
-    }
-  }, 25000);
-  pc.ontrack = (e) => { $('rv').srcObject = e.streams[0]; $('rv').play().catch(() => {}); };
-  pc.onconnectionstatechange = () => {
-    if (!pc) return;
-    const st = pc.connectionState;
-    if (st === 'connected'){
-      clearInterval(timerI);
-      const t0 = Date.now();
-      timerI = setInterval(() => { $('cst').textContent = fmt(Math.floor((Date.now() - t0) / 1000)); }, 1000);
-    } else if (st === 'failed'){
-      toast('Пайваст нашуд'); endCall(true);
-    } else if (st === 'disconnected'){
-      setTimeout(() => { if (pc && pc.connectionState === 'disconnected') endCall(true); }, 6000);
-    }
-  };
-}
-function resetCall(){
-  clearTimeout(ringT); clearTimeout(connT); clearInterval(timerI); stopRing();
-  $('cdbg').textContent = '';
-  if (pc){ try { pc.close(); } catch (e) {} pc = null; }
-  if (lstream){ lstream.getTracks().forEach((t) => t.stop()); lstream = null; }
-  $('rv').srcObject = null; $('lv').srcObject = null;
-  callPeer = ''; callRole = ''; pendingIce = [];
-  $('call').style.display = 'none';
-}
-function endCall(notify){
-  if (notify && callPeer && socket) socket.emit('callend', { to: callPeer });
-  resetCall();
-}
-async function startCall(video){
-  if ($('call').style.display === 'flex' || (callStarting && Date.now() - callStarting < 25000)){ toast('Шумо дар занг ҳастед'); return; }
-  resetCall();
-  const p = room.split(':');
-  if (p[0] !== 'dm') return;
-  callPeer = p[1] === myUid ? p[2] : p[1];
-  callName = $('ctitle').textContent; callVideo = video; callRole = 'caller';
-  callStarting = Date.now();
-  if (!(await openMedia())){ callStarting = 0; resetCall(); return; }
-  callStarting = 0;
-  showCall('Занг мезанем...', false);
-  socket.emit('callinvite', { to: callPeer, video });
-  clearTimeout(ringT);
-  ringT = setTimeout(() => { if (callRole === 'caller' && !pc){ toast('Ҷавоб нашуд'); endCall(true); } }, 45000);
-}
-async function acceptCall(){
-  stopRing();
-  if (!(await openMedia())){ socket.emit('callanswer', { to: callPeer, accept: false }); resetCall(); return; }
-  showCall('Пайваст мешавад...', false);
-  await makePc();
-  socket.emit('callanswer', { to: callPeer, accept: true });
-}
-function declineCall(){
-  socket.emit('callanswer', { to: callPeer, accept: false });
-  resetCall();
-}
-function toggleMic(){
-  if (!lstream) return;
-  const t = lstream.getAudioTracks(), on = !(t[0] && t[0].enabled);
-  t.forEach((x) => { x.enabled = on; });
-  $('btmic').classList.toggle('off', !on);
-}
-function toggleCam(){
-  if (!lstream) return;
-  const t = lstream.getVideoTracks(), on = !(t[0] && t[0].enabled);
-  t.forEach((x) => { x.enabled = on; });
-  $('btcam').classList.toggle('off', !on);
-}
-
-/* ---------- сурат, манъ, модератсия ---------- */
-function avEl(av, name, sz){
-  const d = document.createElement('span'); d.className = 'avt';
-  d.style.width = d.style.height = sz + 'px'; d.style.fontSize = Math.round(sz * 0.5) + 'px';
-  if (av){
-    const im = document.createElement('img'); im.alt = ''; im.src = mediaUrl(av); d.append(im);
-    d.style.cursor = 'pointer';
-    d.onclick = (e) => { e.stopPropagation(); openAvatar(av, name); };
-  }
-  else d.textContent = String(name || '?').trim().charAt(0).toUpperCase();
-  return d;
-}
-async function shrinkSq(file, n){
-  const bmp = await createImageBitmap(file);
-  const k = Math.min(bmp.width, bmp.height);
-  const c = document.createElement('canvas'); c.width = c.height = n;
-  c.getContext('2d').drawImage(bmp, (bmp.width - k) / 2, (bmp.height - k) / 2, k, k, 0, 0, n, n);
-  const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.8));
-  return blob.arrayBuffer();
-}
-$('avfile').onchange = async () => {
-  const f = $('avfile').files[0]; $('avfile').value = '';
-  if (!f || !socket) return;
-  try {
-    const id = await upload('image/jpeg', await shrinkSq(f, 384), true);
-    socket.emit('settings', { avatar: id });
-  } catch (e) { alert('Сурат фиристода нашуд'); }
-};
-function renderBlocks(){
-  const box = $('sblk'); box.innerHTML = '';
-  if (!blockedList.length) return;
-  box.append(hd('Манъшудагон'));
-  blockedList.forEach((b) => {
-    const r = item(b.name, '');
-    r.append(mini('Кушодан', '', () => socket.emit('unblock', b.uid)));
-    box.append(r);
-  });
-}
-function loadReports(){ if (socket) socket.emit('reports', { password: $('pw').value }); }
-function repAct(id, act){ socket.emit('repact', { password: $('pw').value, id, act }); }
-function unban(){
-  const p = $('unph').value.trim();
-  if (socket && p) socket.emit('unban', { password: $('pw').value, phone: p });
-}
-function loadStats(){ if (socket) socket.emit('stats', { password: $('pw').value }); }
-
-/* ---------- ҷустуҷӯ ---------- */
-let srT = null, dsT = null, peopleRes = { q: '', list: [] };
-function showSearch(on){ $('sres').style.display = on ? 'block' : 'none'; $('msgs').style.display = on ? 'none' : ''; }
-function toggleSearch(){
-  const on = $('sbar').style.display !== 'flex';
-  $('sbar').style.display = on ? 'flex' : 'none';
-  $('sq').value = ''; showSearch(false);
-  if (on) $('sq').focus();
-}
-function hl(text, q){
-  const f = document.createDocumentFragment(), lt = text.toLowerCase(), lq = q.toLowerCase();
-  let i = 0, j;
-  while ((j = lt.indexOf(lq, i)) !== -1){
-    f.append(document.createTextNode(text.slice(i, j)));
-    const mk = document.createElement('mark'); mk.textContent = text.slice(j, j + q.length); f.append(mk);
-    i = j + q.length;
-  }
-  f.append(document.createTextNode(text.slice(i)));
-  return f;
-}
-function jumpTo(id){
-  toggleSearch();
-  const el = document.querySelector('#msgs [data-id="' + id + '"]');
-  if (el){ el.scrollIntoView({ block: 'center' }); el.classList.remove('hl'); void el.offsetWidth; el.classList.add('hl'); }
-  else toast('Ин паём дар таърихи кӯҳна аст');
-}
-$('sq').addEventListener('input', () => {
-  clearTimeout(srT);
-  const q = $('sq').value.trim();
-  if (q.length < 2){ showSearch(false); return; }
-  srT = setTimeout(() => { if (socket) socket.emit('search', { room, q }); }, 300);
-});
-function personRow(m){
-  const r = item(m.name, vname(m.village), null, m.av || '');
-  if (m.state === 'accepted'){
-    const c = social.contacts.find((x) => x.uid === m.uid);
-    r.append(mini('Гап задан', '', () => { if (c) showChat(c.room, c.name); }));
-  } else if (m.state === 'declined'){
-    const b = mini('Рад шуд', 'r', () => {}); b.style.opacity = '.6'; r.append(b);
-  } else {
-    const same = m.village && m.village === prof.village;
-    r.append(mini(same ? '💬 Лично' : 'Запрос', '', () => { startDM(m.uid, m.name); if (!same) toast('Дархост фиристода шуд'); }));
-  }
-  return r;
-}
-function searchView(box){
-  const q = $('dsq').value.trim().toLowerCase();
-  const ml = (x) => (x.name + ' ' + (RU[x.name] || '')).toLowerCase();
-  const openD = (d) => () => { nav = { v: 'district', id: d.id }; renderHome(); };
-  if (!q){
-    box.append(hd('Ноҳияҳо'));
-    if (!places.districts.length) box.append(item('Ҳоло ноҳия нест', ''));
-    places.districts.forEach((d) => box.append(item('📍 ' + d.name, d.region || '', openD(d))));
-    return;
-  }
-  const ds = places.districts.filter((d) => ml(d).includes(q));
-  const vs = places.villages.filter((v) => ml(v).includes(q)).slice(0, 30);
-  const pp = peopleRes.q.toLowerCase() === q ? peopleRes.list : [];
-  if (ds.length){ box.append(hd('Ноҳияҳо')); ds.forEach((d) => box.append(item('📍 ' + d.name, d.region || '', openD(d)))); }
-  if (vs.length){
-    box.append(hd('Деҳаҳо'));
-    vs.forEach((v) => box.append(item('🏘 ' + v.name, dname(v.district), () => {
-      if (v.id === prof.village) openVillage();
-      else { nav = { v: 'members', id: v.id, d: v.district }; members = { village: '', list: [] }; socket.emit('members', v.id); renderHome(); }
-    })));
-  }
-  if (pp.length){ box.append(hd('Одамон')); pp.forEach((m) => box.append(personRow(m))); }
-  if (!ds.length && !vs.length && !pp.length) box.append(item('Ҳеҷ чиз ёфт нашуд', ''));
-}
-$('dsq').addEventListener('input', () => {
-  clearTimeout(dsT);
-  const q = $('dsq').value.trim();
-  renderHome();
-  if (q.length >= 2) dsT = setTimeout(() => { if (socket) socket.emit('findpeople', { q }); }, 300);
-  else peopleRes = { q: '', list: [] };
-});
-
-/* ---------- бозор ---------- */
-function renderAdChips(){
-  const box = $('adchips'); box.innerHTML = '';
-  [['all', 'Ҳама'], ['cow', 'Гов'], ['sheep', 'Гӯсфанд'], ['other', 'Дигар']].forEach(([k, t]) => {
-    const b = document.createElement('button');
-    b.className = 'chip' + (adFilter === k ? ' on' : '');
-    b.textContent = t;
-    b.onclick = () => { adFilter = k; renderAdChips(); renderAds(); };
-    box.append(b);
-  });
-}
-function adEl(a){
-  const c = document.createElement('div'); c.className = 'card';
-  if (a.photo){
-    const im = document.createElement('img');
-    im.loading = 'lazy'; im.src = mediaUrl(a.photo); im.alt = a.title;
-    im.onclick = () => openImg(im.src);
-    c.append(im);
-  }
-  const h = document.createElement('b'); h.textContent = a.title; c.append(h);
-  if (a.price){ const p = document.createElement('div'); p.className = 'price'; p.textContent = a.price; c.append(p); }
-  if (a.desc){ const d = document.createElement('div'); d.textContent = a.desc; c.append(d); }
-  const w = document.createElement('div'); w.className = 'd';
-  w.textContent = (CATS[a.cat] || '') + ' · ' + a.name + ' · ' + new Date(a.time).toLocaleDateString();
-  c.append(w);
-  const acts = document.createElement('div'); acts.className = 'acts';
-  if (a.phone){
-    const tel = document.createElement('a'); tel.href = 'tel:+' + a.phone; tel.textContent = '📞 Занг задан';
-    acts.append(tel);
-  } else if (a.uid !== myUid){
-    const rq = document.createElement('button'); rq.textContent = '💬 Запрос барои сӯҳбат';
-    rq.style.background = '#dcf0d2'; rq.style.color = '#27500A';
-    rq.onclick = () => { socket.emit('reqsend', a.uid); toast('Дархост фиристода шуд'); };
-    acts.append(rq);
-  }
-  if (a.uid === myUid){
-    const del = document.createElement('button'); del.textContent = '🗑 Нест кардан';
-    del.onclick = () => { if (confirm('Эълон нест шавад?')) socket.emit('addel', a.id); };
-    acts.append(del);
-  }
-  c.append(acts);
-  return c;
-}
-function renderAds(){
-  const box = $('ads'); box.innerHTML = '';
-  const list = adsData.filter((a) => adFilter === 'all' || a.cat === adFilter);
-  if (!list.length){
-    const e = document.createElement('div'); e.className = 'card'; e.textContent = 'Ҳоло эълон нест. Аввалин шумо гузоред!';
-    box.append(e); return;
-  }
-  list.forEach((a) => box.append(adEl(a)));
-}
-function openAd(){ $('adform').style.display = 'flex'; }
-function closeAd(){ $('adform').style.display = 'none'; }
-$('adphoto').onchange = () => {
-  adFile = $('adphoto').files[0] || null;
-  $('adpn').textContent = adFile ? '✔ ' + adFile.name : 'Расм интихоб нашудааст';
-};
-async function submitAd(){
-  const title = $('adt').value.trim();
-  if (!title){ alert('Сарлавҳа нависед'); return; }
-  $('adsend').disabled = true; $('adsend').textContent = 'Интизор шавед...';
-  try {
-    let photo = '';
-    if (adFile) photo = await upload('image/jpeg', await shrink(adFile));
-    socket.emit('ad', { cat: $('adc').value, title, price: $('adp').value, desc: $('add').value, photo });
-    $('adt').value = ''; $('adp').value = ''; $('add').value = '';
-    adFile = null; $('adphoto').value = ''; $('adpn').textContent = 'Расм интихоб нашудааст';
-    closeAd();
-  } catch (e) {
-    alert('Фиристода нашуд. Дубора кӯшиш кунед.');
-  }
-  $('adsend').disabled = false; $('adsend').textContent = 'Нашр кардан';
-}
-
-/* ---------- хабарҳо ---------- */
-function addNews(n, top){
-  const c = document.createElement('div'); c.className = 'card';
-  const h = document.createElement('b'); h.textContent = n.title;
-  const p = document.createElement('div'); p.textContent = n.text;
-  const d = document.createElement('div'); d.className = 'd'; d.textContent = new Date(n.time).toLocaleDateString();
-  c.append(h, p, d);
-  top ? $('news').prepend(c) : $('news').append(c);
-}
-
-/* ---------- пайвастшавӣ ---------- */
-function start(token){
-  tok = token;
-  $('auth').style.display = 'none';
-  $('app').style.display = 'flex';
-  renderAdChips();
-  socket = io({ auth: { token, lang: LANG } });
-  socket.on('connect', () => { $('net').style.display = 'none'; });
-  socket.on('disconnect', () => { $('net').style.display = 'block'; });
-  socket.on('connect_error', () => { $('net').style.display = 'block'; });
-  setTimeout(() => { if (socket && !socket.connected) $('net').style.display = 'block'; }, 1200);
-  socket.on('connect', () => socket.emit('vis', document.visibilityState === 'visible'));
-  socket.on('connect_error', (e) => {
-    if (e && e.message === 'banned'){ alert('Ҳисоби шумо манъ шудааст'); logout(); }
-    else if (e && e.message === 'auth') logout();
-  });
-  socket.on('me', (id) => { myUid = id; });
-  socket.on('needgender', () => { $('gform').style.display = 'flex'; });
-  socket.on('rooms', (list) => { roomList = list; renderRooms(); });
-  socket.on('profile', (p) => { prof = p; renderHome(); updAdmin(); });
-  socket.on('places', (p) => {
-    places = p; fillPlace('pdist', 'pvil'); fillPlace('rdist', 'rvil'); renderHome();
-  });
-  socket.on('needplace', () => { if (places.districts.length) $('pform').style.display = 'flex'; });
-  socket.on('unreadall', (m) => {
-    unreadMap = m || {};
-    if (room) delete unreadMap[room];
-    updUnread(); renderHome(); renderRooms();
-  });
-  socket.on('unread', (d) => {
-    if (!d || !d.room) return;
-    if (d.set !== undefined) unreadMap[d.room] = d.set;
-    else unreadMap[d.room] = (unreadMap[d.room] || 0) + (d.inc || 1);
-    if (!unreadMap[d.room]) delete unreadMap[d.room];
-    updUnread(); renderHome(); renderRooms();
-  });
-  socket.on('social', (s) => {
-    social = s;
-    if (pendingDM){
-      const c = s.contacts.find((x) => x.uid === pendingDM);
-      if (c){ pendingDM = ''; $('mem').style.display = 'none'; showChat(c.room, c.name); }
-    }
-    if (nav.v === 'members') socket.emit('members', nav.id);
-    if (nav.v === 'districts' && $('dsq').value.trim().length >= 2) socket.emit('findpeople', { q: $('dsq').value.trim() });
-    renderHome();
-  });
-  socket.on('members', (d) => { members = d; renderHome(); });
-  socket.on('vinfo', (d) => {
-    vinfo = d;
-    if (room === 'v:' + prof.village) $('csub').textContent = d.total + ' нафар · ' + d.online + ' онлайн';
-    if ($('mem').style.display === 'flex') renderMembers();
-  });
-  socket.on('read', (d) => {
-    if (d.room !== room) return;
-    document.querySelectorAll('#msgs .b.me .tk').forEach((k) => { k.className = 'tk rd'; k.textContent = ' ✓✓'; });
-  });
-  socket.on('newmsg', (m) => {
-    if (m.room !== room){ beep(); toast('💬 ' + m.name + ': паёми нав'); }
-  });
-  socket.on('wiped', () => { $('msgs').innerHTML = ''; unreadMap = {}; updUnread(); renderHome(); renderRooms(); });
-  socket.on('settingsok', () => { toast('✔ Сабт шуд'); nav = { v: 'home' }; goHome(); });
-  socket.on('init', (d) => {
-    $('news').innerHTML = '';
-    d.news.forEach((n) => addNews(n, false));
-    adsData = d.ads; renderAds();
-  });
-  socket.on('history', (d) => {
-    if (d.room !== room) return;
-    $('msgs').innerHTML = '';
-    d.chat.forEach(addChat);
-    markRead();
-  });
-  socket.on('chat', (m) => {
-    if (m.room !== room || blocked.has(m.uid)) return;
-    if (m.uid !== myUid) beep();
-    addChat(m);
-    if (m.uid !== myUid) markRead();
-  });
-  socket.on('msgdel', (id) => {
-    const el = document.querySelector('[data-id="' + id + '"]');
-    if (el) el.remove();
-  });
-  socket.on('callincoming', (m) => {
-    if (callPeer === m.from && callRole === 'callee') return;
-    if (callPeer){ socket.emit('callanswer', { to: m.from, accept: false, busy: true }); return; }
-    callPeer = m.from; callName = m.name; callVideo = !!m.video; callRole = 'callee';
-    showCall((m.video ? '🎥 ' : '📞 ') + 'Занг мезанад...', true);
-    startRing();
-  });
-  socket.on('callanswer', async (m) => {
-    if (m.from !== callPeer || callRole !== 'caller') return;
-    clearTimeout(ringT);
-    if (!m.accept){ toast(m.busy ? 'Банд аст' : 'Занг рад шуд'); resetCall(); return; }
-    $('cst').textContent = 'Пайваст мешавад...';
-    try {
-      await makePc();
-      const off = await pc.createOffer();
-      await pc.setLocalDescription(off);
-      socket.emit('callsig', { to: callPeer, data: { sdp: { type: off.type, sdp: off.sdp } } });
-    } catch (e) { toast('Хато дар занг'); endCall(true); }
-  });
-  socket.on('callsig', async (m) => {
-    if (m.from !== callPeer || !pc || !m.data) return;
-    const d = m.data;
-    try {
-      if (d.sdp){
-        await pc.setRemoteDescription(d.sdp);
-        if (d.sdp.type === 'offer'){
-          const ans = await pc.createAnswer();
-          await pc.setLocalDescription(ans);
-          socket.emit('callsig', { to: callPeer, data: { sdp: { type: ans.type, sdp: ans.sdp } } });
-        }
-        for (const c of pendingIce) await pc.addIceCandidate(c).catch(() => {});
-        pendingIce = [];
-      } else if (d.ice){
-        if (pc.remoteDescription) await pc.addIceCandidate(d.ice).catch(() => {});
-        else pendingIce.push(d.ice);
-      }
-    } catch (e) {}
-  });
-  socket.on('callend', (m) => {
-    if (m.from !== callPeer) return;
-    toast('Занг тамом шуд'); resetCall();
-  });
-  getIce();
-  socket.on('blocks', (l) => {
-    blockedList = l; blocked = new Set(l.map((x) => x.uid));
-    document.querySelectorAll('#msgs .b').forEach((e) => { if (blocked.has(e.dataset.uid)) e.remove(); });
-    renderBlocks(); renderHome();
-  });
-  socket.on('reported', () => toast('✔ Шикоят фиристода шуд'));
-  socket.on('reports', (l) => {
-    const box = $('rlist'); box.innerHTML = '';
-    if (!l.length){ box.append(item('Шикоят нест ✔', '')); return; }
-    l.forEach((r) => {
-      const c = document.createElement('div'); c.className = 'card';
-      const t = document.createElement('div'); t.textContent = r.targetName + ': ' + r.text;
-      const w = document.createElement('div'); w.className = 'd'; w.textContent = 'Шикоят аз: ' + r.reporterName;
-      const a = document.createElement('div'); a.className = 'acts';
-      [['🗑 Паём', 'delete'], ['⛔ Манъ', 'ban'], ['Рад', 'dismiss']].forEach(([txt, act]) => {
-        const b = document.createElement('button'); b.textContent = txt; b.onclick = () => repAct(r.id, act); a.append(b);
-      });
-      c.append(t, w, a); box.append(c);
-    });
-  });
-  socket.on('stats', (d) => alert('База: ' + d.mb + ' MB (бепул: 512 MB)\nПаём: ' + d.msgs + '\nФайл: ' + d.files + '\nКорбар: ' + d.users));
-  socket.on('deleted', () => { localStorage.removeItem('token'); alert('Ҳисоби шумо нест карда шуд.'); location.reload(); });
-  socket.on('people', (d) => { peopleRes = d; renderHome(); });
-  socket.on('searchres', (d) => {
-    if (d.room !== room || d.q !== $('sq').value.trim()) return;
-    const box = $('sres'); box.innerHTML = '';
-    const list = d.list.filter((m) => !blocked.has(m.uid));
-    if (!list.length){ const e = document.createElement('div'); e.className = 'sr'; e.textContent = 'Ҳеҷ чиз ёфт нашуд'; box.append(e); }
-    list.forEach((m) => {
-      const c = document.createElement('div'); c.className = 'sr';
-      const n = document.createElement('b'); n.textContent = m.uid === myUid ? 'Шумо' : m.name;
-      const t = document.createElement('span'); t.className = 'd'; t.textContent = ' · ' + new Date(m.time).toLocaleString();
-      const x = document.createElement('div'); x.append(hl(m.text || '', d.q));
-      c.append(n, t, x); c.onclick = () => jumpTo(m.id); box.append(c);
-    });
-    showSearch(true);
-  });
-  socket.on('news', (n) => addNews(n, true));
-  socket.on('ad', (a) => { adsData.unshift(a); renderAds(); });
-  socket.on('addel', (id) => { adsData = adsData.filter((a) => a.id !== id); renderAds(); });
-  socket.on('err', (e) => alert(e));
-  updNotif();
-  subscribePush();
-}
-document.addEventListener('visibilitychange', () => {
-  if (socket) socket.emit('vis', document.visibilityState === 'visible');
-  if (document.visibilityState === 'visible'){ markRead(); seen(); }
-});
-
-function upload(type, buf, avatar){
-  return new Promise((resolve, reject) => {
-    socket.timeout(25000).emit('upload', { type, data: buf, avatar: !!avatar }, (err, r) => {
-      if (err || !r || r.error) reject(new Error((r && r.error) || 'timeout'));
-      else resolve(r.id);
-    });
-  });
-}
-
-function sendChat(){
-  const text = $('text').value.trim();
-  if (!text || !socket) return;
-  socket.emit('chat', { room, kind: 'text', text, reply: takeReply() });
-  $('text').value = '';
-  upd();
-}
-function upd(){ $('sbtn').textContent = $('text').value.trim() ? '➤' : '🎤'; }
-$('text').addEventListener('input', upd);
-$('text').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
-$('sbtn').onclick = () => { if ($('text').value.trim()) sendChat(); else startRec(); };
-
-$('pbtn').onclick = () => $('pfile').click();
-$('pfile').onchange = () => { sendPhoto($('pfile').files[0]); $('pfile').value = ''; };
-
-async function shrink(file){
-  const bmp = await createImageBitmap(file);
-  const k = Math.min(1, 1100 / Math.max(bmp.width, bmp.height));
-  const c = document.createElement('canvas');
-  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
-  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-  const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.75));
-  return blob.arrayBuffer();
-}
-async function sendPhoto(file){
-  if (!file || !socket) return;
-  try {
-    const id = await upload('image/jpeg', await shrink(file));
-    socket.emit('chat', { room, kind: 'image', media: id, reply: takeReply() });
-  } catch (e) {
-    alert('Расм фиристода нашуд');
-  }
-}
-
-function fmt(s){ return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
-
-async function startRec(){
-  if (!socket || (rec && rec.state === 'recording')) return;
-  try {
-    if (stream) stream.getTracks().forEach((t) => t.stop());
-    stream = await gum({ audio: true }, 8000);
-  } catch (e) {
-    alert(micErr(e));
-    return;
-  }
-  const mt = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
-    .find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
-  const opts = mt ? { mimeType: mt, audioBitsPerSecond: 24000 } : { audioBitsPerSecond: 24000 };
-  rec = new MediaRecorder(stream, opts);
-  chunks = []; recCancel = false;
-  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-  rec.onstop = async () => {
-    clearInterval(recTimer);
-    stream.getTracks().forEach((t) => t.stop());
-    $('rec').style.display = 'none'; $('bar').style.display = 'flex';
-    if (recCancel) return;
-    const dur = Math.round((Date.now() - recStart) / 1000);
-    if (dur < 1) return;
-    const mime = rec.mimeType || 'audio/webm';
-    const buf = await new Blob(chunks, { type: mime }).arrayBuffer();
-    if (buf.byteLength > 1900000){ alert('Паём аз ҳад дароз аст'); return; }
-    try {
-      const id = await upload(mime.split(';')[0], buf);
-      socket.emit('chat', { room, kind: 'audio', media: id, dur, reply: takeReply() });
+      s.emit('reported');
     } catch (e) {
-      alert('Овоз фиристода нашуд');
+      console.error(e);
     }
-  };
-  rec.start();
-  recStart = Date.now();
-  $('bar').style.display = 'none'; $('rec').style.display = 'flex';
-  $('rt').textContent = '● 0:00';
-  recTimer = setInterval(() => {
-    const s = Math.floor((Date.now() - recStart) / 1000);
-    $('rt').textContent = '● ' + fmt(s);
-    if (s >= 60) stopRec(false);
-  }, 300);
-}
-function stopRec(cancel){
-  recCancel = cancel;
-  if (rec && rec.state !== 'inactive') rec.stop();
-}
-$('rsend').onclick = () => stopRec(false);
-$('rcancel').onclick = () => stopRec(true);
+  });
+  s.on('reports', async (m) => {
+    try {
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+      await sendReports(s);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('repact', async (m) => {
+    try {
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+      const id = String(m.id || '');
+      if (!HEX24.test(id)) return;
+      const r = await reports.findOne({ _id: new ObjectId(id) });
+      if (!r) return;
+      if (m.act === 'delete') {
+        const doc = await chat.findOne({ _id: new ObjectId(r.msg) });
+        if (doc) {
+          await chat.deleteOne({ _id: doc._id });
+          if (doc.media && HEX24.test(doc.media)) await media.deleteOne({ _id: new ObjectId(doc.media) }).catch(() => {});
+          io.emit('msgdel', r.msg);
+        }
+      }
+      if (m.act === 'ban' && HEX24.test(r.target)) {
+        await users.updateOne({ _id: new ObjectId(r.target) }, { $set: { banned: true } });
+        io.in('u:' + r.target).disconnectSockets(true);
+      }
+      await reports.updateOne({ _id: r._id }, { $set: { status: m.act === 'dismiss' ? 'dismissed' : 'done' } });
+      await sendReports(s);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('unban', async (m) => {
+    try {
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+      const r = await users.updateOne({ phone: cleanPhone(m.phone) }, { $set: { banned: false } });
+      s.emit('err', r.matchedCount ? 'Манъ кушода шуд' : 'Чунин рақам нест');
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('stats', async (m) => {
+    try {
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+      const st = await dbh.command({ dbStats: 1, scale: 1048576 });
+      s.emit(
+        'stats',
+        {
+          mb: Math.round(st.storageSize * 10) / 10,
+          msgs: await chat.estimatedDocumentCount(),
+          files: await media.estimatedDocumentCount(),
+          users: await users.estimatedDocumentCount(),
+        }
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
-function sendNews(){
-  if (!socket) return;
-  socket.emit('news', { password: $('pw').value, title: $('nt').value, text: $('nx').value });
-  $('nt').value = ''; $('nx').value = '';
-}
+  s.on('placeadd', async (m) => {
+    try {
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+      const name = String(m.name || '').trim().slice(0, 40);
+      if (!name) return;
+      const type = m.type === 'v' ? 'v' : 'd';
+      let parent = '';
+      if (type === 'v') {
+        parent = String(m.parent || '');
+        if (!HEX24.test(parent) || !(await places.findOne({ _id: new ObjectId(parent), type: 'd' }))) {
+          return s.emit('err', 'Ноҳияро интихоб кунед');
+        }
+      }
+      await places.insertOne({ type, name, parent });
+      io.emit('places', await placesOut());
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
-let adminPeek = false;
-function updAdmin(){
-  const a = !!prof.admin;
-  $('b4').style.display = (a || adminPeek) ? '' : 'none';
-  $('pw').style.display = a ? 'none' : '';
-  $('mkadm').style.display = a ? 'none' : '';
-  $('admnote').style.display = a ? 'block' : 'none';
-}
-let tapN = 0, tapT = null;
-document.querySelector('#hdr .t').addEventListener('click', () => {
-  tapN++; clearTimeout(tapT); tapT = setTimeout(() => { tapN = 0; }, 1500);
-  if (tapN >= 5){ tapN = 0; adminPeek = true; updAdmin(); tab(4); }
+  s.on('wipechat', async (m) => {
+    try {
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+      const docs = await chat.find({ media: { $exists: true } }, { projection: { media: 1 } }).toArray();
+      const ids = docs
+        .map((d) => d.media)
+        .filter((x) => HEX24.test(String(x)))
+        .map((x) => new ObjectId(x));
+      if (ids.length) await media.deleteMany({ _id: { $in: ids } });
+      await chat.deleteMany({});
+      await unread.deleteMany({});
+      io.emit('wiped');
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('members', async (vid) => {
+    try {
+      vid = String(vid);
+      if (!HEX24.test(vid)) return;
+      const list = await users
+        .find({ village: vid, _id: { $ne: s.user._id } }, { projection: { name: 1, avatar: 1, blocked: 1 } })
+        .limit(300)
+        .toArray();
+      const rq = await reqs.find({ $or: [{ from: uid }, { to: uid }] }).toArray();
+      const st = (id) => {
+        const x = rq.find((q) => q.from === id || q.to === id);
+        if (!x) return 'none';
+        if (x.status === 'accepted') return 'accepted';
+        if (x.status === 'pending') return x.from === uid ? 'sent' : 'incoming';
+        return x.from === uid ? 'declined' : 'none';
+      };
+      s.emit('members', {
+        village: vid,
+        list: list
+          .filter((x) => !(x.blocked || []).includes(uid))
+          .map((x) => ({ uid: String(x._id), name: x.name, av: x.avatar || '', state: st(String(x._id)) })),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('search', async (m) => {
+    try {
+      const room = String((m && m.room) || '');
+      const q = String((m && m.q) || '').trim().slice(0, 50);
+      if (q.length < 2 || !(await canEnter(s.user, room))) return;
+      const list = await chat
+        .find({ room, kind: 'text', text: { $regex: escRe(q), $options: 'i' } })
+        .sort({ time: -1 })
+        .limit(50)
+        .toArray();
+      s.emit('searchres', { room, q, list: list.map(chatOut) });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('findpeople', async (m) => {
+    try {
+      const q = String((m && m.q) || '').trim().slice(0, 40);
+      if (q.length < 2) return;
+      const bl = (s.user.blocked || []).filter((b) => HEX24.test(b)).map((b) => new ObjectId(b));
+      const list = await users
+        .find(
+          { name: { $regex: escRe(q), $options: 'i' }, _id: { $ne: s.user._id, $nin: bl }, blocked: { $ne: uid }, banned: { $ne: true } },
+          { projection: { name: 1, avatar: 1, village: 1 } }
+        )
+        .limit(30)
+        .toArray();
+      const rq = await reqs.find({ $or: [{ from: uid }, { to: uid }] }).toArray();
+      const st = (id) => {
+        const x = rq.find((r) => r.from === id || r.to === id);
+        if (!x) return 'none';
+        if (x.status === 'accepted') return 'accepted';
+        if (x.status === 'pending') return x.from === uid ? 'sent' : 'incoming';
+        return x.from === uid ? 'declined' : 'none';
+      };
+      s.emit('people', {
+        q,
+        list: list.map((x) => ({ uid: String(x._id), name: x.name, av: x.avatar || '', village: x.village || '', state: st(String(x._id)) })),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('vinfo', async () => {
+    try {
+      const vid = s.user.village;
+      if (!vid) return;
+      const bl = (s.user.blocked || []).filter((b) => HEX24.test(b)).map((b) => new ObjectId(b));
+      const list = await users
+        .find({ village: vid, banned: { $ne: true }, blocked: { $ne: uid }, _id: { $nin: bl } }, { projection: { name: 1, avatar: 1 } })
+        .limit(500)
+        .toArray();
+      const socks = await io.in('vil:' + vid).fetchSockets();
+      const on = new Set(socks.map((x) => x.data && x.data.uid));
+      s.emit('vinfo', {
+        village: vid,
+        total: list.length,
+        online: list.filter((x) => on.has(String(x._id))).length,
+        list: list.map((x) => ({ uid: String(x._id), name: x.name, av: x.avatar || '', on: on.has(String(x._id)), me: String(x._id) === uid })),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('markread', async (m) => {
+    try {
+      const room = String((m && m.room) || '');
+      if (!room.startsWith('dm:') || !(await canEnter(s.user, room))) return;
+      const r = await chat.updateMany({ room, uid: { $ne: uid }, rd: { $ne: true } }, { $set: { rd: true } });
+      if (r.modifiedCount) {
+        const p = room.split(':');
+        io.to('u:' + (p[1] === uid ? p[2] : p[1])).emit('read', { room });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('reqsend', async (to) => {
+    try {
+      to = String(to);
+      if (!HEX24.test(to) || to === uid) return;
+      const other = await users.findOne({ _id: new ObjectId(to) });
+      if (!other) return;
+      if ((other.blocked || []).includes(uid)) return s.emit('err', 'Дархост фиристода нашуд');
+      const same = !!(other.village && other.village === s.user.village);
+      const ex = await reqs.findOne({ $or: [{ from: uid, to }, { from: to, to: uid }] });
+      if (ex) {
+        if (same && ex.status !== 'accepted') {
+          await reqs.updateOne({ _id: ex._id }, { $set: { status: 'accepted' } });
+        } else if (ex.status === 'pending' && ex.from === to) {
+          await reqs.updateOne({ _id: ex._id }, { $set: { status: 'accepted' } });
+        } else if (ex.status === 'declined' && ex.from === to) {
+          await reqs.updateOne({ _id: ex._id }, { $set: { from: uid, to, status: 'pending', time: Date.now() } });
+          pushTo([to], (l) => ({ title: 'Деҳа', body: l === 'ru' ? s.user.name + ' хочет написать вам' : s.user.name + ' мехоҳад бо шумо гап занад', tag: 'req' }));
+        } else {
+          return s.emit(
+            'err',
+            ex.status === 'accepted'
+              ? 'Шумо аллакай гап зада метавонед'
+              : ex.status === 'pending'
+              ? 'Дархост аллакай фиристода шудааст'
+              : 'Дархост рад шудааст'
+          );
+        }
+      } else {
+        await reqs.insertOne({ from: uid, to, status: same ? 'accepted' : 'pending', time: Date.now() });
+        if (!same) pushTo([to], (l) => ({ title: 'Деҳа', body: l === 'ru' ? s.user.name + ' хочет написать вам' : s.user.name + ' мехоҳад бо шумо гап занад', tag: 'req' }));
+      }
+      sendSocial(uid);
+      sendSocial(to);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('reqans', async (m) => {
+    try {
+      if (!m || !HEX24.test(String(m.id))) return;
+      const q = await reqs.findOne({ _id: new ObjectId(String(m.id)), to: uid, status: 'pending' });
+      if (!q) return;
+      await reqs.updateOne({ _id: q._id }, { $set: { status: m.accept ? 'accepted' : 'declined' } });
+      sendSocial(uid);
+      sendSocial(q.from);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('join', (r) => {
+    enter(r).catch(console.error);
+  });
+  s.on('leave', () => {
+    [...s.rooms].filter((x) => x.startsWith('r:')).forEach((x) => s.leave(x));
+  });
+
+  s.on('upload', async (m, cb) => {
+    if (typeof cb !== 'function') return;
+    try {
+      const type = String((m && m.type) || '').split(';')[0];
+      const ok = type === 'image/jpeg' || AUDIO_TYPES.includes(type);
+      if (!ok || !m.data || !m.data.length || m.data.length > 2000000) {
+        return cb({ error: 'Файл нодуруст аст' });
+      }
+      const r = await media.insertOne({ type, data: Buffer.from(m.data), time: Date.now(), ...(m.avatar ? { avatar: true } : {}) });
+      cb({ id: String(r.insertedId) });
+    } catch (e) {
+      console.error(e);
+      cb({ error: 'Хатои сервер' });
+    }
+  });
+
+  s.on('chat', async (m) => {
+    try {
+      if (!m) return;
+      const room = String(m.room || '');
+      if (!(await canEnter(s.user, room))) return;
+      if (!vOf(room)) {
+        const pp = room.split(':');
+        const oth = await users.findOne({ _id: new ObjectId(pp[1] === uid ? pp[2] : pp[1]) }, { projection: { blocked: 1 } });
+        if (oth && (oth.blocked || []).includes(uid)) return;
+      }
+      const kind = ['text', 'image', 'audio'].includes(m.kind) ? m.kind : 'text';
+      const msg = { uid, name: s.user.name, av: s.user.avatar || '', room, kind, time: Date.now() };
+      if (kind === 'text') {
+        msg.text = String(m.text || '').trim().slice(0, 500);
+        if (!msg.text) return;
+      } else {
+        msg.media = String(m.media || '');
+        if (!HEX24.test(msg.media)) return;
+        msg.dur = Math.min(Number(m.dur) || 0, 120);
+      }
+      const rid = String(m.reply || '');
+      if (HEX24.test(rid)) {
+        const o = await chat.findOne({ _id: new ObjectId(rid) });
+        if (o && o.room === room) {
+          msg.reply = { id: rid, uid: o.uid, name: o.name, text: previewOf(o) };
+        }
+      }
+      const r = await chat.insertOne({ ...msg });
+      msg.id = String(r.insertedId);
+      io.to('r:' + room).emit('chat', msg);
+      const v = vOf(room);
+      if (v && !v.sub) {
+        s.to('vil:' + v.vid).emit('newmsg', { room, name: msg.name });
+      } else if (!v) {
+        const p = room.split(':');
+        io.to('u:' + (p[1] === uid ? p[2] : p[1])).emit('newmsg', { room, name: msg.name });
+      }
+      bump(msg, room);
+      pushMsg(msg, room);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('msgdel', async (m) => {
+    try {
+      const id = String((m && m.id) || '');
+      if (!HEX24.test(id)) return;
+      const admin = isAdmin(m, s.user);
+      const _id = new ObjectId(id);
+      const doc = await chat.findOne(admin ? { _id } : { _id, uid });
+      if (!doc) return s.emit('err', 'Нест кардан мумкин нест');
+      await chat.deleteOne({ _id });
+      if (doc.media && HEX24.test(doc.media)) {
+        await media.deleteOne({ _id: new ObjectId(doc.media) }).catch(() => {});
+      }
+      io.emit('msgdel', id);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('ad', async (m) => {
+    try {
+      if (!m) return;
+      const title = String(m.title || '').trim().slice(0, 100);
+      if (!title) return s.emit('err', 'Сарлавҳа нависед');
+      const a = {
+        uid,
+        name: s.user.name,
+        phone: s.user.phone,
+        village: s.user.village || '',
+        title,
+        price: String(m.price || '').trim().slice(0, 40),
+        desc: String(m.desc || '').trim().slice(0, 500),
+        cat: ['cow', 'sheep', 'other'].includes(m.cat) ? m.cat : 'other',
+        photo: HEX24.test(String(m.photo || '')) ? String(m.photo) : '',
+        time: Date.now(),
+      };
+      const r = await ads.insertOne({ ...a });
+      const full = { ...a, _id: r.insertedId };
+      for (const sk of io.sockets.sockets.values()) {
+        if (sk.user) sk.emit('ad', adOut(full, sk.user));
+      }
+    } catch (e) {
+      console.error(e);
+      s.emit('err', 'Эълон нашр нашуд');
+    }
+  });
+
+  s.on('addel', async (id) => {
+    try {
+      id = String(id);
+      if (!HEX24.test(id)) return;
+      const r = await ads.deleteOne({ _id: new ObjectId(id), uid });
+      if (r.deletedCount) io.emit('addel', id);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('news', async (m) => {
+    try {
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+      const n = {
+        title: String(m.title || '').slice(0, 100),
+        text: String(m.text || '').slice(0, 2000),
+        time: Date.now(),
+      };
+      await news.insertOne({ ...n });
+      io.emit('news', n);
+    } catch (e) {
+      console.error(e);
+    }
+  });
 });
-function delAccount(){
-  const i = $('dpass');
-  if (i.style.display === 'none'){ i.style.display = 'block'; i.focus(); return; }
-  if (!i.value) return;
-  if (!confirm('Ҳисоби шумо ва ҳамаи маълумоти шумо (паёмҳо, эълонҳо, суратҳо) якбора нест мешавад. Давом диҳем?')) return;
-  if (socket) socket.emit('delaccount', { password: i.value });
-}
-function makeAdmin(){
-  if (!$('pw').value.trim()){ alert('Аввал пароли админро нависед'); return; }
-  if (socket) socket.emit('makeadmin', { password: $('pw').value });
-}
 
-/* ---------- тугмаи бозгашти телефон ---------- */
-let guard = false, ignorePop = false;
-function isOpen(id){ return $(id).style.display === 'flex'; }
-function atRoot(){
-  if ($('app').style.display !== 'flex') return true;
-  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('mem') || isOpen('call')
-    || $('chatv').style.display === 'flex' || nav.v !== 'home' || !$('s1').classList.contains('on'));
-}
-function appBack(){
-  if ($('app').style.display !== 'flex') return false;
-  if (isOpen('lb')){ $('lb').style.display = 'none'; return true; }
-  if (isOpen('menu')){ closeMenu(); return true; }
-  for (const id of ['sform', 'pform', 'gform', 'adform', 'mem']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
-  if (isOpen('call')) return true;
-  if (isOpen('sbar')){ toggleSearch(); return true; }
-  if ($('chatv').style.display === 'flex'){ goHome(); return true; }
-  if (nav.v === 'members'){ nav = { v: 'district', id: nav.d }; renderHome(); return true; }
-  if (nav.v === 'district'){ nav = { v: 'districts' }; renderHome(); return true; }
-  if (nav.v === 'districts'){ nav = { v: 'home' }; renderHome(); return true; }
-  if (!$('s1').classList.contains('on')){ tab(1); return true; }
-  return false;
-}
-function syncGuard(){
-  const root = atRoot();
-  if (!root && !guard){ history.pushState({ g: 1 }, ''); guard = true; }
-  else if (root && guard){ guard = false; ignorePop = true; history.back(); }
-}
-window.addEventListener('popstate', () => {
-  if (ignorePop){ ignorePop = false; return; }
-  guard = false;
-  appBack();
-  syncGuard();
-});
-setInterval(syncGuard, 250);
+(async () => {
+  try {
+    await client.connect();
+    const db = client.db('deha');
+    users = db.collection('users');
+    chat = db.collection('chat');
+    news = db.collection('news');
+    media = db.collection('media');
+    ads = db.collection('ads');
+    subs = db.collection('subs');
+    config = db.collection('config');
+    places = db.collection('places');
+    reqs = db.collection('reqs');
+    reports = db.collection('reports');
+    unread = db.collection('unread');
+    fcm = db.collection('fcm');
+    dbh = db;
+    await users.createIndex({ phone: 1 }, { unique: true });
+    await subs.createIndex({ endpoint: 1 }, { unique: true });
+    await subs.createIndex({ uid: 1 });
+    await chat.createIndex({ room: 1, time: -1 });
+    await reqs.createIndex({ from: 1 });
+    await reqs.createIndex({ to: 1 });
+    await reports.createIndex({ status: 1, time: -1 });
+    await unread.createIndex({ uid: 1, room: 1 }, { unique: true });
+    await fcm.createIndex({ token: 1 }, { unique: true });
+    await fcm.createIndex({ uid: 1 });
+    let ord = 0;
+    for (const [region, names] of Object.entries(SEED)) {
+      for (const name of names) {
+        await places.updateOne({ type: 'd', name }, { $set: { region, ord: ++ord }, $setOnInsert: { parent: '' } }, { upsert: true });
+      }
+    }
 
-if ('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
-  navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.updated) $('upd').style.display = 'block'; });
-}
-$('lang').textContent = LANG === 'ru' ? '🌐 Тоҷикӣ' : '🌐 Русский';
-fetch('/api/places').then((r) => r.json()).then((p) => { places = p; fillPlace('rdist', 'rvil'); }).catch(() => {});
+    let v = await config.findOne({ _id: 'vapid' });
+    if (!v) {
+      const k = webpush.generateVAPIDKeys();
+      v = { _id: 'vapid', publicKey: k.publicKey, privateKey: k.privateKey };
+      await config.insertOne(v);
+    }
+    webpush.setVapidDetails('mailto:admin@example.com', v.publicKey, v.privateKey);
+    VAPID_PUBLIC = v.publicKey;
 
-const saved = localStorage.getItem('token');
-if (saved) start(saved);
-else toggleMode();
-</script>
-</body>
-</html>
+    server.listen(process.env.PORT || 3000, () => console.log('Деҳа кор мекунад'));
+    setInterval(cleanup, 6 * 3600 * 1000);
+    setTimeout(cleanup, 60000);
+  } catch (e) {
+    console.error('Хатои база:', e);
+    process.exit(1);
+  }
+})();
