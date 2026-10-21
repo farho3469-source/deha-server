@@ -395,6 +395,13 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
   );
 });
 app.get('/health', (req, res) => res.type('text/plain').send('ok'));
+app.get('/fcm-status', async (req, res) => {
+  try {
+    res.json({ firebase: !!FB, project: FB ? FB.project_id : '', tokens: fcm ? await fcm.estimatedDocumentCount() : 0 });
+  } catch (e) {
+    res.json({ firebase: !!FB, error: String(e.message || e) });
+  }
+});
 app.get('/manifest.json', (req, res) => res.type('application/manifest+json').send(MANIFEST));
 app.get('/icon-:s.png', (req, res) => {
   const n = req.params.s;
