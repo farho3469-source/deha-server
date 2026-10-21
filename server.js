@@ -16,8 +16,74 @@ const MONGO_URI = String(process.env.MONGODB_URI || '')
   .replace(/[^\x21-\x7E]/g, '')
   .replace(/["'<>]/g, '');
 const client = new MongoClient(MONGO_URI);
-let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, dbh;
+let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, dbh;
 let VAPID_PUBLIC = '';
+
+/* ---------- Firebase (FCM) барои барномаи Android ---------- */
+let FB = null;
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) FB = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} catch (e) {
+  console.error('FIREBASE_SERVICE_ACCOUNT нодуруст аст', e.message);
+}
+let fbTok = { t: 0, v: '' };
+const b64u = (x) => Buffer.from(x).toString('base64url');
+async function fbAccess() {
+  if (fbTok.v && Date.now() < fbTok.t) return fbTok.v;
+  const now = Math.floor(Date.now() / 1000);
+  const head = b64u(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const body = b64u(
+    JSON.stringify({
+      iss: FB.client_email,
+      scope: 'https://www.googleapis.com/auth/firebase.messaging',
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: now,
+      exp: now + 3600,
+    })
+  );
+  const sig = crypto.createSign('RSA-SHA256').update(head + '.' + body).sign(FB.private_key).toString('base64url');
+  const r = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + head + '.' + body + '.' + sig,
+  });
+  const j = await r.json();
+  if (!j.access_token) throw new Error('fcm auth ' + JSON.stringify(j).slice(0, 200));
+  fbTok = { v: j.access_token, t: Date.now() + ((j.expires_in || 3600) - 120) * 1000 };
+  return fbTok.v;
+}
+async function fcmSend(tokens, data, ttl) {
+  if (!FB || !tokens.length) return;
+  const acc = await fbAccess();
+  const d = {};
+  for (const k of Object.keys(data || {})) d[k] = String(data[k]);
+  if (!d.type) d.type = 'msg';
+  await Promise.all(
+    tokens.map(async (t) => {
+      try {
+        const r = await fetch('https://fcm.googleapis.com/v1/projects/' + FB.project_id + '/messages:send', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + acc, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: { token: t, data: d, android: { priority: 'HIGH', ttl: (ttl || 60) + 's' } } }),
+        });
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          const st = j.error && j.error.status;
+          if (r.status === 404 || st === 'NOT_FOUND' || st === 'UNREGISTERED') await fcm.deleteOne({ token: t });
+          else console.error('fcm', r.status, JSON.stringify(j).slice(0, 300));
+        }
+      } catch (e) {
+        console.error('fcm send', e);
+      }
+    })
+  );
+}
+async function fcmOnly(uids, data, ttl) {
+  if (!FB || !uids.length) return;
+  const ft = await fcm.find({ uid: { $in: uids } }).toArray();
+  await fcmSend(ft.map((x) => x.token), data, ttl);
+}
+
 const AUDIO_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4'];
 const HEX24 = /^[0-9a-f]{24}$/;
 const SEED = {
@@ -368,6 +434,37 @@ app.post('/api/unpush', async (req, res) => {
   }
 });
 
+/* ---------- барномаи Android: токени FCM ва рад кардани занг аз огоҳинома ---------- */
+app.post('/api/fcm', async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.body.token || '') });
+    const t = String(req.body.fcm || '');
+    if (!u || t.length < 20 || t.length > 400) return res.status(400).json({ ok: false });
+    await fcm.updateOne({ token: t }, { $set: { uid: String(u._id), token: t, time: Date.now() } }, { upsert: true });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.post('/api/calldecline', async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.body.token || '') });
+    if (!u) return res.status(401).json({ ok: false });
+    const uid = String(u._id);
+    const to = String(req.body.to || '');
+    if (!callPairs.has(pairKey(uid, to))) return res.json({ ok: false });
+    const p = pendingCalls.get(uid);
+    if (p && p.from === to) pendingCalls.delete(uid);
+    io.to('u:' + to).emit('callanswer', { from: uid, accept: false, busy: false });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
 app.post('/api/pushtest', async (req, res) => {
   try {
     const u = await users.findOne({ token: String(req.body.token || '') });
@@ -469,13 +566,30 @@ app.get('/media/:id', async (req, res) => {
 /* ---------- огоҳиномаи push ---------- */
 // opts.ttl — мӯҳлати push бо сонияҳо (барои занг кӯтоҳ мешавад)
 async function pushTo(uids, mk, opts) {
-  if (!VAPID_PUBLIC || !uids.length) return;
+  if (!uids.length) return;
   const ttl = (opts && opts.ttl) || 3600;
   const ids = uids.filter((x) => HEX24.test(x)).map((x) => new ObjectId(x));
   const us = await users.find({ _id: { $in: ids } }, { projection: { lang: 1 } }).toArray();
   const lang = {};
   us.forEach((u) => (lang[String(u._id)] = u.lang === 'ru' ? 'ru' : 'tg'));
-  const list = await subs.find({ uid: { $in: uids } }).toArray();
+  // барномаи Android: push тавассути FCM; ин корбарон push-и браузерро намегиранд
+  const have = new Set();
+  if (FB) {
+    try {
+      const ft = await fcm.find({ uid: { $in: uids } }).toArray();
+      const byLang = {};
+      ft.forEach((x) => {
+        have.add(x.uid);
+        const l = lang[x.uid] || 'tg';
+        (byLang[l] = byLang[l] || []).push(x.token);
+      });
+      for (const l of Object.keys(byLang)) await fcmSend(byLang[l], typeof mk === 'function' ? mk(l) : mk, ttl);
+    } catch (e) {
+      console.error('fcm', e);
+    }
+  }
+  if (!VAPID_PUBLIC) return;
+  const list = await subs.find({ uid: { $in: uids.filter((x) => !have.has(x)) } }).toArray();
   const cache = {};
   await Promise.all(
     list.map(async (x) => {
@@ -514,7 +628,7 @@ async function pushMsg(msg, roomId) {
       (l) => {
         const ru = l === 'ru';
         const sub = v && v.sub ? (v.sub === 'women' ? (ru ? ' · Женщины' : ' · Занҳо') : ru ? ' · Футболисты' : ' · Футболистон') : '';
-        return { title: msg.name + sub, body: previewOf(msg, l), tag: 'room-' + roomId };
+        return { title: msg.name + sub, body: previewOf(msg, l), tag: 'room-' + roomId, type: 'msg', room: roomId };
       }
     );
   } catch (e) {
@@ -563,6 +677,7 @@ async function deleteUser(u) {
   await ads.deleteMany({ uid });
   await subs.deleteMany({ uid });
   await unread.deleteMany({ uid });
+  await fcm.deleteMany({ uid });
   await reqs.deleteMany({ $or: [{ from: uid }, { to: uid }] });
   await reports.deleteMany({ $or: [{ by: uid }, { msgUid: uid }] });
   await users.updateMany({ blocked: uid }, { $pull: { blocked: uid } });
@@ -731,6 +846,23 @@ io.on('connection', (s) => {
     }
   });
 
+  s.on('fcmtoken', async (t) => {
+    try {
+      t = String(t || '');
+      if (t.length < 20 || t.length > 400) return;
+      await fcm.updateOne({ token: t }, { $set: { uid, token: t, time: Date.now() } }, { upsert: true });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('fcmoff', async (t) => {
+    try {
+      await fcm.deleteOne({ token: String(t || ''), uid });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   s.on('pushsub', async (sub) => {
     try {
       if (
@@ -857,6 +989,9 @@ io.on('connection', (s) => {
           body: s.user.name + ' занг мезанад',
           tag: 'call',
           type: 'call',
+          from: uid,
+          name: s.user.name,
+          video: m.video ? '1' : '0',
           requireInteraction: true,
           renotify: true,
           vibrate: [400, 200, 400, 200, 400, 200, 400],
@@ -894,6 +1029,7 @@ io.on('connection', (s) => {
     const q = pendingCalls.get(uid);
     if (q && q.from === to) pendingCalls.delete(uid);
     io.to('u:' + to).emit('callend', { from: uid });
+    fcmOnly([to], { type: 'callend' }, 10).catch(() => {});
   });
 
   s.on('delaccount', async (m) => {
@@ -1375,6 +1511,7 @@ io.on('connection', (s) => {
     reqs = db.collection('reqs');
     reports = db.collection('reports');
     unread = db.collection('unread');
+    fcm = db.collection('fcm');
     dbh = db;
     await users.createIndex({ phone: 1 }, { unique: true });
     await subs.createIndex({ endpoint: 1 }, { unique: true });
@@ -1384,6 +1521,8 @@ io.on('connection', (s) => {
     await reqs.createIndex({ to: 1 });
     await reports.createIndex({ status: 1, time: -1 });
     await unread.createIndex({ uid: 1, room: 1 }, { unique: true });
+    await fcm.createIndex({ token: 1 }, { unique: true });
+    await fcm.createIndex({ uid: 1 });
     let ord = 0;
     for (const [region, names] of Object.entries(SEED)) {
       for (const name of names) {
