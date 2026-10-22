@@ -16,7 +16,7 @@ const MONGO_URI = String(process.env.MONGODB_URI || '')
   .replace(/[^\x21-\x7E]/g, '')
   .replace(/["'<>]/g, '');
 const client = new MongoClient(MONGO_URI);
-let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, dbh;
+let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, groups, dbh;
 let VAPID_PUBLIC = '';
 
 /* ---------- Firebase (FCM) барои барномаи Android ---------- */
@@ -231,6 +231,9 @@ async function canEnter(u, r) {
     return !v.sub || v.sub === 'football' || (v.sub === 'women' && u.gender === 'f');
   }
   const p = r.split(':');
+  if (p[0] === 'g' && HEX24.test(p[1] || '')) {
+    return !!(await groups.findOne({ _id: new ObjectId(p[1]), members: String(u._id) }, { projection: { _id: 1 } }));
+  }
   if (p[0] === 'dm' && HEX24.test(p[1] || '') && HEX24.test(p[2] || '')) {
     const me = String(u._id);
     if (me !== p[1] && me !== p[2]) return false;
@@ -616,6 +619,7 @@ async function pushTo(uids, mk, opts) {
 async function pushMsg(msg, roomId) {
   try {
     let targets = [];
+    let gname = '';
     const v = vOf(roomId);
     if (v) {
       const q = { village: v.vid };
@@ -623,6 +627,10 @@ async function pushMsg(msg, roomId) {
       targets = (await users.find(q, { projection: { _id: 1, blocked: 1 } }).toArray())
         .filter((x) => !(x.blocked || []).includes(msg.uid))
         .map((x) => String(x._id));
+    } else if (roomId.startsWith('g:')) {
+      const gt = await groupTargets(roomId, msg.uid);
+      gname = gt.name;
+      targets = gt.list;
     } else {
       const p = roomId.split(':');
       targets = [p[1] === msg.uid ? p[2] : p[1]];
@@ -634,7 +642,7 @@ async function pushMsg(msg, roomId) {
       targets.filter((t) => !skip.has(t)),
       (l) => {
         const ru = l === 'ru';
-        const sub = v && v.sub ? (v.sub === 'women' ? (ru ? ' · Женщины' : ' · Занҳо') : ru ? ' · Футболисты' : ' · Футболистон') : '';
+        const sub = v && v.sub ? (v.sub === 'women' ? (ru ? ' · Женщины' : ' · Занҳо') : ru ? ' · Футболисты' : ' · Футболистон') : gname ? ' · ' + gname : '';
         return { title: msg.name + sub, body: previewOf(msg, l), tag: 'room-' + roomId, type: 'msg', room: roomId };
       }
     );
@@ -647,6 +655,7 @@ async function pushMsg(msg, roomId) {
 async function bump(msg, roomId) {
   try {
     let targets = [];
+    let gname = '';
     const v = vOf(roomId);
     if (v) {
       const q = { village: v.vid };
@@ -654,6 +663,10 @@ async function bump(msg, roomId) {
       targets = (await users.find(q, { projection: { _id: 1, blocked: 1 } }).toArray())
         .filter((x) => !(x.blocked || []).includes(msg.uid))
         .map((x) => String(x._id));
+    } else if (roomId.startsWith('g:')) {
+      const gt = await groupTargets(roomId, msg.uid);
+      gname = gt.name;
+      targets = gt.list;
     } else {
       const p = roomId.split(':');
       targets = [p[1] === msg.uid ? p[2] : p[1]];
@@ -673,6 +686,74 @@ async function bump(msg, roomId) {
   }
 }
 
+/* ---------- гурӯҳҳои оилавӣ ва авлодӣ ---------- */
+async function groupsFor(uid) {
+  const gs = await groups.find({ members: uid }).sort({ created: -1 }).toArray();
+  const ids = [...new Set(gs.flatMap((g) => g.members))].filter((x) => HEX24.test(x));
+  const us = ids.length
+    ? await users.find({ _id: { $in: ids.map((i) => new ObjectId(i)) } }, { projection: { name: 1, avatar: 1 } }).toArray()
+    : [];
+  const info = {};
+  us.forEach((x) => (info[String(x._id)] = { name: x.name || '—', av: x.avatar || '' }));
+  return gs.map((g) => ({
+    id: String(g._id),
+    name: g.name,
+    owner: g.owner,
+    members: g.members.map((m) => ({ uid: m, name: (info[m] || {}).name || '—', av: (info[m] || {}).av || '' })),
+  }));
+}
+async function sendGroups(uid) {
+  try {
+    io.to('u:' + uid).emit('groups', await groupsFor(uid));
+  } catch (e) {
+    console.error(e);
+  }
+}
+async function getGroup(id) {
+  id = String(id || '');
+  return HEX24.test(id) ? groups.findOne({ _id: new ObjectId(id) }) : null;
+}
+async function validMembers(ids, by) {
+  if (!ids.length) return [];
+  const us = await users
+    .find({ _id: { $in: ids.map((i) => new ObjectId(i)) }, banned: { $ne: true }, blocked: { $ne: by } }, { projection: { _id: 1 } })
+    .toArray();
+  return us.map((x) => String(x._id));
+}
+async function groupTargets(roomId, senderUid) {
+  const id = String(roomId).split(':')[1] || '';
+  const g = await getGroup(id);
+  if (!g) return { name: '', list: [] };
+  const others = g.members.filter((x) => x !== senderUid && HEX24.test(x));
+  const bl = others.length
+    ? await users.find({ _id: { $in: others.map((i) => new ObjectId(i)) }, blocked: senderUid }, { projection: { _id: 1 } }).toArray()
+    : [];
+  const nb = new Set(bl.map((x) => String(x._id)));
+  return { name: g.name, list: others.filter((x) => !nb.has(x)) };
+}
+async function purgeGroup(g) {
+  const room = 'g:' + String(g._id);
+  const docs = await chat.find({ room, media: { $exists: true } }, { projection: { media: 1 } }).toArray();
+  const mids = docs.map((d) => d.media).filter((x) => HEX24.test(String(x))).map((x) => new ObjectId(x));
+  if (mids.length) await media.deleteMany({ _id: { $in: mids } });
+  await chat.deleteMany({ room });
+  await unread.deleteMany({ room });
+  await groups.deleteOne({ _id: g._id });
+  io.in('r:' + room).socketsLeave('r:' + room);
+  await Promise.all(g.members.map(sendGroups));
+}
+async function dropMember(g, u) {
+  const room = 'g:' + String(g._id);
+  await unread.deleteOne({ uid: u, room }).catch(() => {});
+  const rest = g.members.filter((x) => x !== u);
+  if (!rest.length) return purgeGroup(g);
+  const set = { members: rest };
+  if (g.owner === u) set.owner = rest[0];
+  await groups.updateOne({ _id: g._id }, { $set: set });
+  io.in('u:' + u).socketsLeave('r:' + room);
+  await Promise.all([u, ...rest].map(sendGroups));
+}
+
 /* ---------- дархостҳо ва сӯҳбатҳои шахсӣ ---------- */
 async function deleteUser(u) {
   const uid = String(u._id);
@@ -688,6 +769,8 @@ async function deleteUser(u) {
   await reqs.deleteMany({ $or: [{ from: uid }, { to: uid }] });
   await reports.deleteMany({ $or: [{ by: uid }, { msgUid: uid }] });
   await users.updateMany({ blocked: uid }, { $pull: { blocked: uid } });
+  const gs = await groups.find({ members: uid }).toArray();
+  for (const g of gs) await dropMember(g, uid);
   await users.deleteOne({ _id: u._id });
   myAds.forEach((a) => io.emit('addel', String(a._id)));
   io.in('u:' + uid).emit('deleted');
@@ -798,6 +881,7 @@ io.on('connection', (s) => {
   if (!s.user.gender) s.emit('needgender');
   const pc0 = pendingCalls.get(uid);
   if (pc0 && Date.now() - pc0.time < 45000) s.emit('callincoming', pc0);
+  sendGroups(uid);
 
   unread
     .find({ uid })
@@ -848,6 +932,103 @@ io.on('connection', (s) => {
       if (!room || !(await canEnter(s.user, room))) return;
       await unread.deleteOne({ uid, room });
       s.emit('unread', { room, set: 0 });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('gfind', async (m) => {
+    try {
+      const q = String((m && m.q) || '').trim().slice(0, 40);
+      const bl = (s.user.blocked || []).filter((b) => HEX24.test(b)).map((b) => new ObjectId(b));
+      const base = { _id: { $ne: s.user._id, $nin: bl }, blocked: { $ne: uid }, banned: { $ne: true } };
+      const proj = { projection: { name: 1, avatar: 1, village: 1 } };
+      let list = [];
+      if (q.length >= 2) {
+        list = await users.find({ ...base, name: { $regex: escRe(q), $options: 'i' } }, proj).limit(30).toArray();
+      } else if (s.user.village) {
+        list = await users.find({ ...base, village: s.user.village }, proj).limit(200).toArray();
+      }
+      s.emit('gpeople', {
+        q,
+        list: list.map((x) => ({ uid: String(x._id), name: x.name, av: x.avatar || '', village: x.village || '' })),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('gcreate', async (m) => {
+    try {
+      const name = String((m && m.name) || '').trim().slice(0, 40);
+      if (!name) return s.emit('err', 'Номи гурӯҳро нависед');
+      if ((await groups.countDocuments({ owner: uid })) >= 20) return s.emit('err', 'Гурӯҳҳо аз ҳад зиёданд');
+      const want = [...new Set((Array.isArray(m.members) ? m.members : []).map(String).filter((x) => HEX24.test(x) && x !== uid))].slice(0, 199);
+      const ok = await validMembers(want, uid);
+      const doc = { name, owner: uid, members: [uid, ...ok], created: Date.now() };
+      const r = await groups.insertOne(doc);
+      await Promise.all(doc.members.map((x) => sendGroups(x)));
+      s.emit('gcreated', { id: String(r.insertedId), name });
+      if (ok.length) {
+        pushTo(ok, (l) => ({
+          title: 'Деҳа',
+          body: l === 'ru' ? s.user.name + ' добавил вас в группу «' + name + '»' : s.user.name + ' шуморо ба гурӯҳи «' + name + '» илова кард',
+          tag: 'grp-' + r.insertedId,
+          type: 'msg',
+        })).catch(console.error);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('gadd', async (m) => {
+    try {
+      const g = await getGroup(m && m.id);
+      if (!g || g.owner !== uid) return;
+      const want = [...new Set((Array.isArray(m.members) ? m.members : []).map(String).filter((x) => HEX24.test(x) && !g.members.includes(x)))].slice(0, Math.max(0, 200 - g.members.length));
+      const add = await validMembers(want, uid);
+      if (!add.length) return;
+      await groups.updateOne({ _id: g._id }, { $addToSet: { members: { $each: add } } });
+      await Promise.all([...g.members, ...add].map((x) => sendGroups(x)));
+      pushTo(add, (l) => ({
+        title: 'Деҳа',
+        body: l === 'ru' ? s.user.name + ' добавил вас в группу «' + g.name + '»' : s.user.name + ' шуморо ба гурӯҳи «' + g.name + '» илова кард',
+        tag: 'grp-' + g._id,
+        type: 'msg',
+      })).catch(console.error);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('gremove', async (m) => {
+    try {
+      const g = await getGroup(m && m.id);
+      if (!g || g.owner !== uid) return;
+      const t = String((m && m.uid) || '');
+      if (t === uid || !g.members.includes(t)) return;
+      await dropMember(g, t);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('gleave', async (m) => {
+    try {
+      const g = await getGroup(m && m.id);
+      if (!g || !g.members.includes(uid)) return;
+      await dropMember(g, uid);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('gdel', async (m) => {
+    try {
+      const g = await getGroup(m && m.id);
+      if (!g || g.owner !== uid) return;
+      await purgeGroup(g);
     } catch (e) {
       console.error(e);
     }
@@ -1391,7 +1572,7 @@ io.on('connection', (s) => {
       if (!m) return;
       const room = String(m.room || '');
       if (!(await canEnter(s.user, room))) return;
-      if (!vOf(room)) {
+      if (room.startsWith('dm:')) {
         const pp = room.split(':');
         const oth = await users.findOne({ _id: new ObjectId(pp[1] === uid ? pp[2] : pp[1]) }, { projection: { blocked: 1 } });
         if (oth && (oth.blocked || []).includes(uid)) return;
@@ -1419,9 +1600,12 @@ io.on('connection', (s) => {
       const v = vOf(room);
       if (v && !v.sub) {
         s.to('vil:' + v.vid).emit('newmsg', { room, name: msg.name });
-      } else if (!v) {
+      } else if (room.startsWith('dm:')) {
         const p = room.split(':');
         io.to('u:' + (p[1] === uid ? p[2] : p[1])).emit('newmsg', { room, name: msg.name });
+      } else if (room.startsWith('g:')) {
+        const gt = await groupTargets(room, uid);
+        gt.list.forEach((x) => io.to('u:' + x).emit('newmsg', { room, name: msg.name }));
       }
       bump(msg, room);
       pushMsg(msg, room);
@@ -1519,6 +1703,7 @@ io.on('connection', (s) => {
     reports = db.collection('reports');
     unread = db.collection('unread');
     fcm = db.collection('fcm');
+    groups = db.collection('groups');
     dbh = db;
     await users.createIndex({ phone: 1 }, { unique: true });
     await subs.createIndex({ endpoint: 1 }, { unique: true });
@@ -1530,6 +1715,7 @@ io.on('connection', (s) => {
     await unread.createIndex({ uid: 1, room: 1 }, { unique: true });
     await fcm.createIndex({ token: 1 }, { unique: true });
     await fcm.createIndex({ uid: 1 });
+    await groups.createIndex({ members: 1 });
     let ord = 0;
     for (const [region, names] of Object.entries(SEED)) {
       for (const name of names) {
