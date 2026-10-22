@@ -275,7 +275,7 @@ const adOut = (a, u) => ({
   time: a.time,
 });
 const chatOut = (d) => {
-  const { _id, ...rest } = d;
+  const { _id, hid, ...rest } = d;
   return { ...rest, id: String(_id) };
 };
 const previewOf = (o, l) =>
@@ -900,7 +900,7 @@ io.on('connection', (s) => {
     s.join('r:' + r);
     unread.deleteOne({ uid, room: r }).catch(() => {});
     s.emit('unread', { room: r, set: 0 });
-    const list = await chat.find({ room: r }).sort({ time: -1 }).limit(100).toArray();
+    const list = await chat.find({ room: r, hid: { $ne: uid } }).sort({ time: -1 }).limit(100).toArray();
     s.emit('history', { room: r, chat: list.reverse().map(chatOut) });
   };
 
@@ -1418,7 +1418,7 @@ io.on('connection', (s) => {
       const q = String((m && m.q) || '').trim().slice(0, 50);
       if (q.length < 2 || !(await canEnter(s.user, room))) return;
       const list = await chat
-        .find({ room, kind: 'text', text: { $regex: escRe(q), $options: 'i' } })
+        .find({ room, kind: 'text', hid: { $ne: uid }, text: { $regex: escRe(q), $options: 'i' } })
         .sort({ time: -1 })
         .limit(50)
         .toArray();
@@ -1609,6 +1609,20 @@ io.on('connection', (s) => {
       }
       bump(msg, room);
       pushMsg(msg, room);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  // «Аз худам нест кардан»: паём танҳо барои ҳамин корбар пинҳон мешавад
+  s.on('msghide', async (m) => {
+    try {
+      const id = String((m && m.id) || '');
+      if (!HEX24.test(id)) return;
+      const doc = await chat.findOne({ _id: new ObjectId(id) }, { projection: { room: 1 } });
+      if (!doc || !(await canEnter(s.user, doc.room))) return;
+      await chat.updateOne({ _id: doc._id }, { $addToSet: { hid: uid } });
+      s.emit('msghid', id);
     } catch (e) {
       console.error(e);
     }
