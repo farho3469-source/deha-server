@@ -371,7 +371,8 @@ mark{background:#ffe58f;border-radius:3px}
     <div id="mpv"></div>
     <button class="btn" id="mrep">↩ Ҷавоб додан</button>
     <button class="btn" id="mdm">💬 Шахсӣ нависед</button>
-    <button class="btn" id="mdel" style="background:#b00020">🗑 Нест кардан</button>
+    <button class="btn g" id="mhide">🙈 Аз худам нест кардан</button>
+    <button class="btn" id="mdel" style="background:#b00020">🗑 Аз ҳама нест кардан</button>
     <button class="btn g" id="mrpt">🚩 Шикоят кардан</button>
     <button class="btn g" id="mblk">🚫 Корбарро манъ кардан</button>
     <button class="btn g" onclick="closeMenu()">Бекор кардан</button>
@@ -635,7 +636,8 @@ Object.assign(RU, {
   'Сохтан':'Создать','Илова кардан':'Добавить','Илова кардани одамон':'Добавить людей','Баромадан аз гурӯҳ':'Выйти из группы',
   'Нест кардани гурӯҳ':'Удалить группу','Номи гурӯҳро нависед':'Введите название группы','Шумо дигар аъзои гурӯҳ нестед':'Вы больше не участник группы',
   'Аз гурӯҳ баромада шавад?':'Выйти из группы?','Гурӯҳ бо ҳамаи паёмҳо нест карда шавад?':'Удалить группу со всеми сообщениями?',
-  'Гурӯҳҳо аз ҳад зиёданд':'Слишком много групп'
+  'Гурӯҳҳо аз ҳад зиёданд':'Слишком много групп','Аз худам нест кардан':'Удалить у меня','Аз ҳама нест кардан':'Удалить у всех',
+  'Паём аз ҳама нест карда шавад?':'Удалить сообщение у всех?','Паём танҳо аз назди шумо нест карда шавад?':'Удалить сообщение только у вас?'
 });
 function tr(s){
   if (LANG !== 'ru' || !s) return s;
@@ -962,7 +964,12 @@ $('mrep').onclick = () => {
 $('mdel').onclick = () => {
   const m = menuMsg; closeMenu();
   if (!m || !socket) return;
-  if (confirm('Паём нест шавад?')) socket.emit('msgdel', { id: m.id, password: $('pw').value });
+  if (confirm('Паём аз ҳама нест карда шавад?')) socket.emit('msgdel', { id: m.id, password: $('pw').value });
+};
+$('mhide').onclick = () => {
+  const m = menuMsg; closeMenu();
+  if (!m || !socket) return;
+  if (confirm('Паём танҳо аз назди шумо нест карда шавад?')) socket.emit('msghide', { id: m.id });
 };
 
 $('mrpt').onclick = () => {
@@ -1791,6 +1798,10 @@ function start(token){
     if (m.uid !== myUid) beep();
     addChat(m);
     if (m.uid !== myUid) markRead();
+  });
+  socket.on('msghid', (id) => {
+    const el = document.querySelector('[data-id="' + id + '"]');
+    if (el) el.remove();
   });
   socket.on('msgdel', (id) => {
     const el = document.querySelector('[data-id="' + id + '"]');
