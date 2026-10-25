@@ -53,13 +53,15 @@ async function fbAccess() {
   return fbTok.v;
 }
 async function fcmSend(tokens, data, ttl) {
-  if (!FB || !tokens.length) return;
+  const out = [];
+  if (!FB || !tokens.length) return out;
   const acc = await fbAccess();
   const d = {};
   for (const k of Object.keys(data || {})) d[k] = String(data[k]);
   if (!d.type) d.type = 'msg';
   await Promise.all(
     tokens.map(async (t) => {
+      const tag = String(t).slice(-6);
       try {
         const r = await fetch('https://fcm.googleapis.com/v1/projects/' + FB.project_id + '/messages:send', {
           method: 'POST',
@@ -71,12 +73,17 @@ async function fcmSend(tokens, data, ttl) {
           const st = j.error && j.error.status;
           if (r.status === 404 || st === 'NOT_FOUND' || st === 'UNREGISTERED') await fcm.deleteOne({ token: t });
           else console.error('fcm', r.status, JSON.stringify(j).slice(0, 300));
+          out.push({ token: tag, status: r.status, error: st || '', message: String((j.error && j.error.message) || '').slice(0, 160) });
+        } else {
+          out.push({ token: tag, status: 200 });
         }
       } catch (e) {
         console.error('fcm send', e);
+        out.push({ token: tag, error: String(e.message || e).slice(0, 160) });
       }
     })
   );
+  return out;
 }
 async function fcmOnly(uids, data, ttl) {
   if (!FB || !uids.length) return;
@@ -255,11 +262,26 @@ const myRooms = (u) => {
 const profOf = (u) => ({ name: u.name || '', village: u.village || '', district: u.district || '', gender: u.gender || '', avatar: u.avatar || '', admin: !!u.admin, first: u.first || u.name || '', surname: u.surname || '', age: u.age || '' });
 const placesOut = async () => {
   const all = await places.find({}).sort({ ord: 1, name: 1 }).toArray();
+  // шумораи одамон дар ҳар деҳа ва ноҳия
+  const agg = await users
+    .aggregate([
+      { $match: { village: { $exists: true, $ne: '' } } },
+      { $group: { _id: { v: '$village', d: '$district' }, n: { $sum: 1 } } },
+    ])
+    .toArray();
+  const vc = {}, dc = {};
+  let total = 0;
+  agg.forEach((x) => {
+    vc[x._id.v] = (vc[x._id.v] || 0) + x.n;
+    dc[x._id.d] = (dc[x._id.d] || 0) + x.n;
+    total += x.n;
+  });
   return {
-    districts: all.filter((x) => x.type === 'd').map((x) => ({ id: String(x._id), name: x.name, region: x.region || '' })),
+    total,
+    districts: all.filter((x) => x.type === 'd').map((x) => ({ id: String(x._id), name: x.name, region: x.region || '', count: dc[String(x._id)] || 0 })),
     villages: all
       .filter((x) => x.type === 'v')
-      .map((x) => ({ id: String(x._id), name: x.name, district: x.parent })),
+      .map((x) => ({ id: String(x._id), name: x.name, district: x.parent, count: vc[String(x._id)] || 0 })),
   };
 };
 const adOut = (a, u) => ({
@@ -398,6 +420,52 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
   );
 });
 app.get('/health', (req, res) => res.type('text/plain').send('ok'));
+// Санҷиши push: /fcm-test?key=ПАРОЛИ_АДМИН&phone=РАҚАМ[&type=msg]
+app.get('/fcm-test', async (req, res) => {
+  try {
+    if (String(req.query.key || '') !== ADMIN) return res.status(403).json({ error: 'key' });
+    if (!FB) return res.json({ error: 'firebase нест' });
+    const u = await users.findOne({ phone: cleanPhone(req.query.phone) });
+    if (!u) return res.json({ error: 'чунин рақам нест' });
+    const ft = await fcm.find({ uid: String(u._id) }).toArray();
+    const data =
+      req.query.type === 'msg'
+        ? { type: 'msg', title: 'Деҳа', body: 'Санҷиши паём', tag: 'test' }
+        : { type: 'call', from: String(u._id), name: 'Санҷиш', video: '0' };
+    const acc = await fbAccess();
+    const out = [];
+    for (const t of ft) {
+      const r = await fetch('https://fcm.googleapis.com/v1/projects/' + FB.project_id + '/messages:send', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + acc, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: { token: t.token, data, android: { priority: 'HIGH', ttl: '30s' } } }),
+      });
+      const j = await r.json().catch(() => ({}));
+      out.push({ http: r.status, natija: j.name ? 'ok' : j.error ? j.error.status + ': ' + j.error.message : '?', token: t.token.slice(0, 10) + '...' });
+    }
+    res.json({ tokens: ft.length, sent: out });
+  } catch (e) {
+    res.json({ error: String(e.message || e) });
+  }
+});
+// Санҷиши занг: /fcm-test?key=ПАРОЛИ_АДМИН&phone=РАҚАМ — ба дастгоҳҳои ин корбар push-и «занг» мефиристад
+app.get('/fcm-test', async (req, res) => {
+  try {
+    if (String(req.query.key || '') !== ADMIN) return res.status(403).json({ error: 'key' });
+    if (!FB) return res.json({ error: 'firebase off' });
+    const u = await users.findOne({ phone: cleanPhone(req.query.phone) });
+    if (!u) return res.json({ error: 'корбар ёфт нашуд' });
+    const ft = await fcm.find({ uid: String(u._id) }).toArray();
+    const results = await fcmSend(
+      ft.map((x) => x.token),
+      { type: 'call', from: String(u._id), name: 'Санҷиш', video: '0', title: 'Санҷиш', body: 'Занги санҷишӣ' },
+      30
+    );
+    res.json({ user: u.name, tokens: ft.length, results });
+  } catch (e) {
+    res.json({ error: String(e.message || e).slice(0, 300) });
+  }
+});
 app.get('/fcm-status', async (req, res) => {
   try {
     res.json({ firebase: !!FB, project: FB ? FB.project_id : '', tokens: fcm ? await fcm.estimatedDocumentCount() : 0 });
@@ -1720,6 +1788,7 @@ io.on('connection', (s) => {
     groups = db.collection('groups');
     dbh = db;
     await users.createIndex({ phone: 1 }, { unique: true });
+    await users.createIndex({ village: 1 });
     await subs.createIndex({ endpoint: 1 }, { unique: true });
     await subs.createIndex({ uid: 1 });
     await chat.createIndex({ room: 1, time: -1 });
