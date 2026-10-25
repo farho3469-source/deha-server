@@ -636,7 +636,7 @@ Object.assign(RU, {
   'Сохтан':'Создать','Илова кардан':'Добавить','Илова кардани одамон':'Добавить людей','Баромадан аз гурӯҳ':'Выйти из группы',
   'Нест кардани гурӯҳ':'Удалить группу','Номи гурӯҳро нависед':'Введите название группы','Шумо дигар аъзои гурӯҳ нестед':'Вы больше не участник группы',
   'Аз гурӯҳ баромада шавад?':'Выйти из группы?','Гурӯҳ бо ҳамаи паёмҳо нест карда шавад?':'Удалить группу со всеми сообщениями?',
-  'Гурӯҳҳо аз ҳад зиёданд':'Слишком много групп','Аз худам нест кардан':'Удалить у меня','Аз ҳама нест кардан':'Удалить у всех',
+  'Гурӯҳҳо аз ҳад зиёданд':'Слишком много групп','Ҳамаи одамони барнома':'Все люди в приложении','Аз худам нест кардан':'Удалить у меня','Аз ҳама нест кардан':'Удалить у всех',
   'Паём аз ҳама нест карда шавад?':'Удалить сообщение у всех?','Паём танҳо аз назди шумо нест карда шавад?':'Удалить сообщение только у вас?'
 });
 function tr(s){
@@ -1086,6 +1086,12 @@ function toast(t){
   const e = $('toast'); e.textContent = t; e.style.display = 'block';
   clearTimeout(toast.t); toast.t = setTimeout(() => { e.style.display = 'none'; }, 3500);
 }
+function cntEl(n){
+  const c = document.createElement('small');
+  c.textContent = (n || 0) + ' нафар';
+  c.style.cssText = 'margin-left:8px;font-weight:600;color:#2f6b3a';
+  return c;
+}
 function vname(id){ const v = places.villages.find((x) => x.id === id); return v ? v.name : ''; }
 function dname(id){ const d = places.districts.find((x) => x.id === id); return d ? d.name : ''; }
 function fillPlace(dId, vId){
@@ -1144,6 +1150,8 @@ function renderHome(){
     if (prof.village){
       box.append(hd('Деҳаи ман'));
       const vr = item('🏠 ' + vname(prof.village), dname(prof.district), openVillage);
+      const pvc = (places.villages.find((x) => x.id === prof.village) || {}).count;
+      if (pvc) vr.append(cntEl(pvc));
       const vb = badge(unreadMap['v:' + prof.village]);
       if (vb) vr.append(vb);
       box.append(vr);
@@ -1187,10 +1195,12 @@ function renderHome(){
     if (!vl.length) box.append(item('Ҳоло деҳа нест', ''));
     vl.forEach((v) => {
       const mine = v.id === prof.village;
-      box.append(item('🏘 ' + v.name, mine ? 'Деҳаи шумо' : '', () => {
+      const vr = item('🏘 ' + v.name, mine ? 'Деҳаи шумо' : '', () => {
         if (mine) openVillage();
         else { nav = { v: 'members', id: v.id, d: v.district }; members = { village: '', list: [] }; socket.emit('members', v.id); renderHome(); }
-      }));
+      });
+      vr.append(cntEl(v.count));
+      box.append(vr);
     });
   } else {
     box.append(item('← Ба деҳаҳо', '', () => { nav = { v: 'district', id: nav.d }; renderHome(); }));
@@ -1599,19 +1609,23 @@ function searchView(box){
   if (!q){
     box.append(hd('Ноҳияҳо'));
     if (!places.districts.length) box.append(item('Ҳоло ноҳия нест', ''));
-    places.districts.forEach((d) => box.append(item('📍 ' + d.name, d.region || '', openD(d))));
+    places.districts.forEach((d) => { const dr = item('📍 ' + d.name, d.region || '', openD(d)); dr.append(cntEl(d.count)); box.append(dr); });
     return;
   }
   const ds = places.districts.filter((d) => ml(d).includes(q));
   const vs = places.villages.filter((v) => ml(v).includes(q)).slice(0, 30);
   const pp = peopleRes.q.toLowerCase() === q ? peopleRes.list : [];
-  if (ds.length){ box.append(hd('Ноҳияҳо')); ds.forEach((d) => box.append(item('📍 ' + d.name, d.region || '', openD(d)))); }
+  if (ds.length){ box.append(hd('Ноҳияҳо')); ds.forEach((d) => { const dr = item('📍 ' + d.name, d.region || '', openD(d)); dr.append(cntEl(d.count)); box.append(dr); }); }
   if (vs.length){
     box.append(hd('Деҳаҳо'));
-    vs.forEach((v) => box.append(item('🏘 ' + v.name, dname(v.district), () => {
-      if (v.id === prof.village) openVillage();
-      else { nav = { v: 'members', id: v.id, d: v.district }; members = { village: '', list: [] }; socket.emit('members', v.id); renderHome(); }
-    })));
+    vs.forEach((v) => {
+      const vr = item('🏘 ' + v.name, dname(v.district), () => {
+        if (v.id === prof.village) openVillage();
+        else { nav = { v: 'members', id: v.id, d: v.district }; members = { village: '', list: [] }; socket.emit('members', v.id); renderHome(); }
+      });
+      vr.append(cntEl(v.count));
+      box.append(vr);
+    });
   }
   if (pp.length){ box.append(hd('Одамон')); pp.forEach((m) => box.append(personRow(m))); }
   if (!ds.length && !vs.length && !pp.length) box.append(item('Ҳеҷ чиз ёфт нашуд', ''));
@@ -1897,8 +1911,9 @@ function start(token){
 }
 document.addEventListener('visibilitychange', () => {
   if (socket) socket.emit('vis', document.visibilityState === 'visible');
-  if (document.visibilityState === 'visible'){ markRead(); seen(); }
+  if (document.visibilityState === 'visible'){ if (socket && !socket.connected) socket.connect(); markRead(); seen(); }
 });
+window.addEventListener('online', () => { if (socket && !socket.connected) socket.connect(); });
 
 function upload(type, buf, avatar){
   return new Promise((resolve, reject) => {
