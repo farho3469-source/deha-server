@@ -1607,6 +1607,10 @@ function searchView(box){
   const ml = (x) => (x.name + ' ' + (RU[x.name] || '')).toLowerCase();
   const openD = (d) => () => { nav = { v: 'district', id: d.id }; renderHome(); };
   if (!q){
+    const tot = item('👥 Ҳамаи одамони барнома', '');
+    tot.append(cntEl(places.total));
+    tot.style.background = '#dcf0d2';
+    box.append(tot);
     box.append(hd('Ноҳияҳо'));
     if (!places.districts.length) box.append(item('Ҳоло ноҳия нест', ''));
     places.districts.forEach((d) => { const dr = item('📍 ' + d.name, d.region || '', openD(d)); dr.append(cntEl(d.count)); box.append(dr); });
