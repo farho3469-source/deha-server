@@ -636,7 +636,10 @@ Object.assign(RU, {
   'Сохтан':'Создать','Илова кардан':'Добавить','Илова кардани одамон':'Добавить людей','Баромадан аз гурӯҳ':'Выйти из группы',
   'Нест кардани гурӯҳ':'Удалить группу','Номи гурӯҳро нависед':'Введите название группы','Шумо дигар аъзои гурӯҳ нестед':'Вы больше не участник группы',
   'Аз гурӯҳ баромада шавад?':'Выйти из группы?','Гурӯҳ бо ҳамаи паёмҳо нест карда шавад?':'Удалить группу со всеми сообщениями?',
-  'Гурӯҳҳо аз ҳад зиёданд':'Слишком много групп','Ҳамаи одамони барнома':'Все люди в приложении','Аз худам нест кардан':'Удалить у меня','Аз ҳама нест кардан':'Удалить у всех',
+  'Гурӯҳҳо аз ҳад зиёданд':'Слишком много групп',
+  '📞 Телефони ӯ занг мезанад...':'📞 Его телефон звонит...','📡 Занг ба телефони ӯ мерасад...':'📡 Звонок доходит до его телефона...',
+  '⚠ Интернети ӯ суст аст ё телефон хомӯш аст':'⚠ У него слабый интернет или телефон выключен','🚫 Ӯ дар шабака нест (интернет ё телефон хомӯш)':'🚫 Он не в сети (нет интернета или телефон выключен)',
+  'Ӯ дар шабака нест':'Он не в сети','Ҳамаи одамони барнома':'Все люди в приложении','Аз худам нест кардан':'Удалить у меня','Аз ҳама нест кардан':'Удалить у всех',
   'Паём аз ҳама нест карда шавад?':'Удалить сообщение у всех?','Паём танҳо аз назди шумо нест карда шавад?':'Удалить сообщение только у вас?'
 });
 function tr(s){
@@ -1270,6 +1273,16 @@ function goHome(){
 let pc = null, lstream = null, callPeer = '', callName = '', callVideo = false, callRole = '';
 let pendingIce = [], ringT = null, ringI = null, timerI = null, iceList = null;
 let callStarting = 0, connT = null, cand = { host: 0, srflx: 0, relay: 0 };
+let statT = null, rbAudio = null;
+function startRingback(){
+  try {
+    if (!rbAudio){ rbAudio = new Audio('/ringback.wav'); rbAudio.loop = true; }
+    rbAudio.currentTime = 0; rbAudio.play().catch(() => {});
+  } catch (e) {}
+}
+function stopRingback(){
+  try { if (rbAudio){ rbAudio.pause(); rbAudio.currentTime = 0; } } catch (e) {}
+}
 function dbg(){
   if (!pc) return;
   $('cdbg').textContent = 'ice: ' + pc.iceConnectionState + ' · sig: ' + pc.signalingState + ' · host ' + cand.host + ' srflx ' + cand.srflx + ' relay ' + cand.relay;
@@ -1381,7 +1394,7 @@ async function makePc(){
   };
 }
 function resetCall(){
-  clearTimeout(ringT); clearTimeout(connT); clearInterval(timerI); stopRing();
+  clearTimeout(ringT); clearTimeout(connT); clearInterval(timerI); stopRing(); stopRingback(); clearTimeout(statT);
   $('cdbg').textContent = '';
   if (pc){ try { pc.close(); } catch (e) {} pc = null; }
   if (lstream){ lstream.getTracks().forEach((t) => t.stop()); lstream = null; }
@@ -1405,6 +1418,7 @@ async function startCall(video){
   callStarting = 0;
   showCall('Занг мезанем...', false);
   socket.emit('callinvite', { to: callPeer, video });
+  startRingback();
   clearTimeout(ringT);
   ringT = setTimeout(() => { if (callRole === 'caller' && !pc){ toast('Ҷавоб нашуд'); endCall(true); } }, 45000);
 }
@@ -1833,10 +1847,23 @@ function start(token){
     startRing();
     if (autoAns){ autoAns = false; stopRing(); setTimeout(acceptCall, 400); }
   });
+  socket.on('callstatus', (m) => {
+    if (callRole !== 'caller' || !m || m.peer !== callPeer || pc) return;
+    clearTimeout(statT);
+    if (m.state === 'ringing') $('cst').textContent = '📞 Телефони ӯ занг мезанад...';
+    else if (m.state === 'push'){
+      $('cst').textContent = '📡 Занг ба телефони ӯ мерасад...';
+      statT = setTimeout(() => { if (callRole === 'caller' && !pc) $('cst').textContent = '⚠ Интернети ӯ суст аст ё телефон хомӯш аст'; }, 15000);
+    } else if (m.state === 'offline'){
+      $('cst').textContent = '🚫 Ӯ дар шабака нест (интернет ё телефон хомӯш)';
+      setTimeout(() => { if (callRole === 'caller' && !pc){ toast('Ӯ дар шабака нест'); endCall(true); } }, 6000);
+    }
+  });
   socket.on('callanswer', async (m) => {
     if (m.from !== callPeer || callRole !== 'caller') return;
     clearTimeout(ringT);
     if (!m.accept){ toast(m.busy ? 'Банд аст' : 'Занг рад шуд'); resetCall(); return; }
+    stopRingback(); clearTimeout(statT);
     $('cst').textContent = 'Пайваст мешавад...';
     try {
       await makePc();
@@ -2083,12 +2110,4 @@ if ('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').catch(() => {});
   navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.updated) $('upd').style.display = 'block'; });
 }
-$('lang').textContent = LANG === 'ru' ? '🌐 Тоҷикӣ' : '🌐 Русский';
-fetch('/api/places').then((r) => r.json()).then((p) => { places = p; fillPlace('rdist', 'rvil'); }).catch(() => {});
-
-const saved = localStorage.getItem('token');
-if (saved) start(saved);
-else toggleMode();
-</script>
-</body>
-</html>
+$('lang').textContent = LANG === 'ru' ? '🌐 Тоҷ
