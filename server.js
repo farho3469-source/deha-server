@@ -543,6 +543,22 @@ app.post('/api/calldecline', async (req, res) => {
   }
 });
 
+// Барномаи Android: занг ба дастгоҳ расид (занг мезанад) — ба занггиранда хабар медиҳад
+app.post('/api/callrecv', async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.body.token || '') });
+    if (!u) return res.status(401).json({ ok: false });
+    const uid = String(u._id);
+    const to = String(req.body.to || '');
+    if (!callPairs.has(pairKey(uid, to))) return res.json({ ok: false });
+    io.to('u:' + to).emit('callstatus', { peer: uid, state: 'ringing' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
 app.post('/api/pushtest', async (req, res) => {
   try {
     const u = await users.findOne({ token: String(req.body.token || '') });
@@ -1235,6 +1251,15 @@ io.on('connection', (s) => {
       const now = Date.now();
       for (const [k, t] of callPairs) if (now - t > 3600000) callPairs.delete(k);
       callPairs.set(pairKey(uid, to), now);
+      // ҳолати қабулкунанда барои занггиранда: дар шабака / push / дастрас нест
+      const online = (await io.in('u:' + to).fetchSockets()).length > 0;
+      let cstate = 'ringing';
+      if (!online) {
+        const nf = FB ? await fcm.countDocuments({ uid: to }) : 0;
+        const ns = await subs.countDocuments({ uid: to });
+        cstate = nf + ns > 0 ? 'push' : 'offline';
+      }
+      s.emit('callstatus', { peer: to, state: cstate });
       const info = { from: uid, name: s.user.name, video: !!m.video, time: now };
       pendingCalls.set(to, info);
       io.to('u:' + to).emit('callincoming', info);
