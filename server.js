@@ -296,7 +296,7 @@ const adOut = (a, u) => ({
   photo: a.photo || '',
   time: a.time,
 });
-const newsOut = (d) => ({ id: String(d._id), title: d.title || '', text: d.text || '', photo: d.photo || '', time: d.time });
+const newsOut = (d) => ({ id: String(d._id), uid: d.uid || '', name: d.name || '', title: d.title || '', text: d.text || '', photo: d.photo || '', time: d.time });
 const chatOut = (d) => {
   const { _id, hid, ...rest } = d;
   return { ...rest, id: String(_id) };
@@ -1393,7 +1393,14 @@ io.on('connection', (s) => {
       if (!HEX24.test(id)) return;
       const r = await reports.findOne({ _id: new ObjectId(id) });
       if (!r) return;
-      if (m.act === 'delete') {
+      if (m.act === 'delete' && r.kind === 'news') {
+        const nd = await news.findOne({ _id: new ObjectId(r.msg) });
+        if (nd) {
+          await news.deleteOne({ _id: nd._id });
+          if (nd.photo && HEX24.test(nd.photo)) await media.deleteOne({ _id: new ObjectId(nd.photo) }).catch(() => {});
+          io.emit('newsdel', r.msg);
+        }
+      } else if (m.act === 'delete') {
         const doc = await chat.findOne({ _id: new ObjectId(r.msg) });
         if (doc) {
           await chat.deleteOne({ _id: doc._id });
@@ -1775,15 +1782,19 @@ io.on('connection', (s) => {
     }
   });
 
+  // Ҳар корбар хабар навишта метавонад (пароли админ лозим нест)
   s.on('news', async (m) => {
     try {
-      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+      if (!m) return;
       const title = String(m.title || '').trim().slice(0, 100);
       const text = String(m.text || '').trim().slice(0, 3000);
       let photo = String(m.photo || '');
       if (!HEX24.test(photo) || !(await media.findOne({ _id: new ObjectId(photo) }, { projection: { _id: 1 } }))) photo = '';
       if (!title && !text && !photo) return s.emit('err', 'Сарлавҳа ё матн нависед');
-      const n = { title, text, photo, time: Date.now() };
+      if (!isAdmin(m, s.user) && (await news.countDocuments({ uid, time: { $gt: Date.now() - 86400000 } })) >= 10) {
+        return s.emit('err', 'Имрӯз хабар аз ҳад зиёд нашр кардед. Фардо кӯшиш кунед');
+      }
+      const n = { uid, name: s.user.name, title, text, photo, time: Date.now() };
       const r = await news.insertOne({ ...n });
       io.emit('news', newsOut({ ...n, _id: r.insertedId }));
     } catch (e) {
@@ -1793,14 +1804,40 @@ io.on('connection', (s) => {
 
   s.on('newsdel', async (m) => {
     try {
-      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
       const id = String((m && m.id) || '');
       if (!HEX24.test(id)) return;
       const d = await news.findOne({ _id: new ObjectId(id) });
       if (!d) return;
+      if (!(isAdmin(m, s.user) || d.uid === uid)) return s.emit('err', 'Нест кардан мумкин нест');
       await news.deleteOne({ _id: d._id });
       if (d.photo && HEX24.test(d.photo)) await media.deleteOne({ _id: new ObjectId(d.photo) }).catch(() => {});
       io.emit('newsdel', id);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('newsreport', async (m) => {
+    try {
+      const id = String((m && m.id) || '');
+      if (!HEX24.test(id)) return;
+      const d = await news.findOne({ _id: new ObjectId(id) });
+      if (!d || d.uid === uid) return;
+      if (!(await reports.findOne({ msg: id, reporter: uid }))) {
+        await reports.insertOne({
+          kind: 'news',
+          msg: id,
+          room: 'news',
+          reporter: uid,
+          reporterName: s.user.name,
+          target: d.uid || '',
+          targetName: d.name || '—',
+          text: ('📰 ' + (d.title || d.text || '')).slice(0, 80),
+          time: Date.now(),
+          status: 'new',
+        });
+      }
+      s.emit('reported');
     } catch (e) {
       console.error(e);
     }
