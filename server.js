@@ -296,6 +296,7 @@ const adOut = (a, u) => ({
   photo: a.photo || '',
   time: a.time,
 });
+const newsOut = (d) => ({ id: String(d._id), title: d.title || '', text: d.text || '', photo: d.photo || '', time: d.time });
 const chatOut = (d) => {
   const { _id, hid, ...rest } = d;
   return { ...rest, id: String(_id) };
@@ -990,11 +991,7 @@ io.on('connection', (s) => {
 
   (async () => {
     try {
-      const allNews = await news
-        .find({}, { projection: { _id: 0 } })
-        .sort({ time: -1 })
-        .limit(100)
-        .toArray();
+      const allNews = (await news.find({}).sort({ time: -1 }).limit(100).toArray()).map(newsOut);
       const adList = await ads.find({}).sort({ time: -1 }).limit(100).toArray();
       s.emit('init', { news: allNews, ads: adList.map((a) => adOut(a, s.user)) });
       s.emit('places', await placesOut());
@@ -1781,13 +1778,41 @@ io.on('connection', (s) => {
   s.on('news', async (m) => {
     try {
       if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
-      const n = {
-        title: String(m.title || '').slice(0, 100),
-        text: String(m.text || '').slice(0, 2000),
-        time: Date.now(),
-      };
-      await news.insertOne({ ...n });
-      io.emit('news', n);
+      const title = String(m.title || '').trim().slice(0, 100);
+      const text = String(m.text || '').trim().slice(0, 3000);
+      let photo = String(m.photo || '');
+      if (!HEX24.test(photo) || !(await media.findOne({ _id: new ObjectId(photo) }, { projection: { _id: 1 } }))) photo = '';
+      if (!title && !text && !photo) return s.emit('err', 'Сарлавҳа ё матн нависед');
+      const n = { title, text, photo, time: Date.now() };
+      const r = await news.insertOne({ ...n });
+      io.emit('news', newsOut({ ...n, _id: r.insertedId }));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('newsdel', async (m) => {
+    try {
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+      const id = String((m && m.id) || '');
+      if (!HEX24.test(id)) return;
+      const d = await news.findOne({ _id: new ObjectId(id) });
+      if (!d) return;
+      await news.deleteOne({ _id: d._id });
+      if (d.photo && HEX24.test(d.photo)) await media.deleteOne({ _id: new ObjectId(d.photo) }).catch(() => {});
+      io.emit('newsdel', id);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('newsclean', async (m) => {
+    try {
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+      const empty = (f) => ({ $or: [{ [f]: { $exists: false } }, { [f]: { $in: ['', null] } }] });
+      await news.deleteMany({ $and: [empty('title'), empty('text'), empty('photo')] });
+      const list = (await news.find({}).sort({ time: -1 }).limit(100).toArray()).map(newsOut);
+      io.emit('newslist', list);
     } catch (e) {
       console.error(e);
     }
