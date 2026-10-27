@@ -156,6 +156,9 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
 .sr{background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:8px;box-shadow:0 1px .5px rgba(11,20,26,.13)}
 .sr b{font-size:13px;color:#2f6b3a}
 .sr .d{font-size:11px;color:#667781}
+#nform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:9;flex-direction:column}
+#nform .top{background:#2f6b3a;color:#fff;padding:14px;font-size:18px;font-weight:600;flex:none}
+#nform .body{flex:1;overflow-y:auto;padding:14px}
 mark{background:#ffe58f;border-radius:3px}
 #gpick,#ginfo{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:9;flex-direction:column}
 #gpick .top,#ginfo .top{background:#2f6b3a;color:#fff;padding:14px;font-size:18px;font-weight:600;flex:none}
@@ -240,7 +243,7 @@ mark{background:#ffe58f;border-radius:3px}
       <button class="fab" onclick="openAd()">＋ Эълон</button>
     </div>
 
-    <div class="sec" id="s3"><div class="pad" id="news"></div></div>
+    <div class="sec" id="s3"><div class="pad" id="news" style="flex:1;padding-bottom:80px"></div><button class="fab" id="nfab" style="display:none" onclick="openNews()">＋ Хабар</button></div>
 
     <div class="sec" id="s4">
       <div class="pad">
@@ -290,6 +293,20 @@ mark{background:#ffe58f;border-radius:3px}
     <button class="btn g" style="width:100%;margin-top:8px" onclick="closeAd()">Бекор кардан</button>
   </div>
 </div>
+
+<div id="nform">
+  <div class="top">Хабари нав</div>
+  <div class="body">
+    <input id="ntt" placeholder="Сарлавҳа">
+    <textarea id="ntx" rows="8" placeholder="Матни хабар"></textarea>
+    <button class="btn g" style="width:100%;margin:6px 0" onclick="$('nphoto').click()">📷 Расм интихоб кунед</button>
+    <div id="npn" style="font-size:13px;color:#777;margin-bottom:10px">Расм интихоб нашудааст</div>
+    <button class="btn" id="nsend" style="width:100%" onclick="submitNews()">Нашр кардан</button>
+    <button class="btn g" style="width:100%;margin-top:8px" onclick="closeNews()">Бекор кардан</button>
+    <button class="btn g" style="width:100%;margin-top:22px" onclick="cleanNews()">🧹 Хабарҳои холиро нест кардан</button>
+  </div>
+</div>
+<input type="file" id="nphoto" accept="image/*" style="display:none">
 
 <div id="gform">
   <div class="gbox">
@@ -637,6 +654,8 @@ Object.assign(RU, {
   'Нест кардани гурӯҳ':'Удалить группу','Номи гурӯҳро нависед':'Введите название группы','Шумо дигар аъзои гурӯҳ нестед':'Вы больше не участник группы',
   'Аз гурӯҳ баромада шавад?':'Выйти из группы?','Гурӯҳ бо ҳамаи паёмҳо нест карда шавад?':'Удалить группу со всеми сообщениями?',
   'Гурӯҳҳо аз ҳад зиёданд':'Слишком много групп',
+  'Хабари нав':'Новая новость','＋ Хабар':'＋ Новость','Ҳоло хабар нест':'Новостей пока нет','Сарлавҳа ё матн нависед':'Напишите заголовок или текст',
+  '🧹 Хабарҳои холиро нест кардан':'🧹 Удалить пустые новости','Ҳамаи хабарҳои холӣ нест шаванд?':'Удалить все пустые новости?','Хабар нест шавад?':'Удалить новость?',
   '📞 Телефони ӯ занг мезанад...':'📞 Его телефон звонит...','📡 Занг ба телефони ӯ мерасад...':'📡 Звонок доходит до его телефона...',
   '⚠ Интернети ӯ суст аст ё телефон хомӯш аст':'⚠ У него слабый интернет или телефон выключен','🚫 Ӯ дар шабака нест (интернет ё телефон хомӯш)':'🚫 Он не в сети (нет интернета или телефон выключен)',
   'Ӯ дар шабака нест':'Он не в сети','Ҳамаи одамони барнома':'Все люди в приложении','Аз худам нест кардан':'Удалить у меня','Аз ҳама нест кардан':'Удалить у всех',
@@ -1733,12 +1752,58 @@ async function submitAd(){
 
 /* ---------- хабарҳо ---------- */
 function addNews(n, top){
+  if (!n.title && !n.text && !n.photo) return;
   const c = document.createElement('div'); c.className = 'card';
-  const h = document.createElement('b'); h.textContent = n.title;
-  const p = document.createElement('div'); p.textContent = n.text;
+  if (n.photo){
+    const im = document.createElement('img');
+    im.loading = 'lazy'; im.src = mediaUrl(n.photo); im.alt = '';
+    im.onclick = () => openImg(im.src);
+    c.append(im);
+  }
+  if (n.title){ const h = document.createElement('b'); h.textContent = n.title; c.append(h); }
+  if (n.text){ const p = document.createElement('div'); p.textContent = n.text; p.style.whiteSpace = 'pre-wrap'; c.append(p); }
   const d = document.createElement('div'); d.className = 'd'; d.textContent = new Date(n.time).toLocaleDateString();
-  c.append(h, p, d);
+  c.append(d);
+  if (prof.admin && n.id){
+    const a = document.createElement('div'); a.className = 'acts';
+    const del = document.createElement('button'); del.textContent = '🗑 Нест кардан';
+    del.onclick = () => { if (confirm('Хабар нест шавад?')) socket.emit('newsdel', { id: n.id }); };
+    a.append(del); c.append(a);
+  }
   top ? $('news').prepend(c) : $('news').append(c);
+}
+let newsData = [], nFile = null;
+function renderNews(){
+  const box = $('news'); box.innerHTML = '';
+  newsData.forEach((n) => addNews(n, false));
+  if (!box.children.length){
+    const e = document.createElement('div'); e.className = 'card'; e.textContent = 'Ҳоло хабар нест';
+    box.append(e);
+  }
+}
+function openNews(){ $('nform').style.display = 'flex'; }
+function closeNews(){ $('nform').style.display = 'none'; }
+$('nphoto').onchange = () => {
+  nFile = $('nphoto').files[0] || null;
+  $('npn').textContent = nFile ? '✔ ' + nFile.name : 'Расм интихоб нашудааст';
+};
+async function submitNews(){
+  const title = $('ntt').value.trim(), text = $('ntx').value.trim();
+  if (!title && !text && !nFile){ alert('Сарлавҳа ё матн нависед'); return; }
+  $('nsend').disabled = true; $('nsend').textContent = 'Интизор шавед...';
+  try {
+    let photo = '';
+    if (nFile) photo = await upload('image/jpeg', await shrink(nFile));
+    socket.emit('news', { password: $('pw').value, title, text, photo });
+    $('ntt').value = ''; $('ntx').value = ''; nFile = null; $('nphoto').value = ''; $('npn').textContent = 'Расм интихоб нашудааст';
+    closeNews();
+  } catch (e) {
+    alert('Фиристода нашуд. Дубора кӯшиш кунед.');
+  }
+  $('nsend').disabled = false; $('nsend').textContent = 'Нашр кардан';
+}
+function cleanNews(){
+  if (socket && confirm('Ҳамаи хабарҳои холӣ нест шаванд?')) socket.emit('newsclean', { password: $('pw').value });
 }
 
 /* ---------- пайвастшавӣ ---------- */
@@ -1760,7 +1825,7 @@ function start(token){
   socket.on('me', (id) => { myUid = id; });
   socket.on('needgender', () => { $('gform').style.display = 'flex'; });
   socket.on('rooms', (list) => { roomList = list; renderRooms(); });
-  socket.on('profile', (p) => { prof = p; renderHome(); updAdmin(); });
+  socket.on('profile', (p) => { prof = p; renderHome(); updAdmin(); renderNews(); });
   socket.on('places', (p) => {
     places = p; fillPlace('pdist', 'pvil'); fillPlace('rdist', 'rvil'); renderHome();
   });
@@ -1815,8 +1880,7 @@ function start(token){
   socket.on('wiped', () => { $('msgs').innerHTML = ''; unreadMap = {}; updUnread(); renderHome(); renderRooms(); });
   socket.on('settingsok', () => { toast('✔ Сабт шуд'); nav = { v: 'home' }; goHome(); });
   socket.on('init', (d) => {
-    $('news').innerHTML = '';
-    d.news.forEach((n) => addNews(n, false));
+    newsData = d.news || []; renderNews();
     adsData = d.ads; renderAds();
   });
   socket.on('history', (d) => {
@@ -1933,7 +1997,9 @@ function start(token){
     });
     showSearch(true);
   });
-  socket.on('news', (n) => addNews(n, true));
+  socket.on('news', (n) => { newsData.unshift(n); renderNews(); });
+  socket.on('newsdel', (id) => { newsData = newsData.filter((x) => x.id !== id); renderNews(); });
+  socket.on('newslist', (l) => { newsData = l || []; renderNews(); });
   socket.on('ad', (a) => { adsData.unshift(a); renderAds(); });
   socket.on('addel', (id) => { adsData = adsData.filter((a) => a.id !== id); renderAds(); });
   socket.on('err', (e) => alert(e));
@@ -2042,6 +2108,7 @@ $('rcancel').onclick = () => stopRec(true);
 
 function sendNews(){
   if (!socket) return;
+  if (!$('nt').value.trim() && !$('nx').value.trim()){ alert('Сарлавҳа ё матн нависед'); return; }
   socket.emit('news', { password: $('pw').value, title: $('nt').value, text: $('nx').value });
   $('nt').value = ''; $('nx').value = '';
 }
@@ -2050,6 +2117,7 @@ let adminPeek = false;
 function updAdmin(){
   const a = !!prof.admin;
   $('b4').style.display = (a || adminPeek) ? '' : 'none';
+  $('nfab').style.display = (a || adminPeek) ? 'block' : 'none';
   $('pw').style.display = a ? 'none' : '';
   $('mkadm').style.display = a ? 'none' : '';
   $('admnote').style.display = a ? 'block' : 'none';
@@ -2076,14 +2144,14 @@ let guard = false, ignorePop = false;
 function isOpen(id){ return $(id).style.display === 'flex'; }
 function atRoot(){
   if ($('app').style.display !== 'flex') return true;
-  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('mem') || isOpen('gpick') || isOpen('ginfo') || isOpen('call')
+  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('mem') || isOpen('nform') || isOpen('gpick') || isOpen('ginfo') || isOpen('call')
     || $('chatv').style.display === 'flex' || nav.v !== 'home' || !$('s1').classList.contains('on'));
 }
 function appBack(){
   if ($('app').style.display !== 'flex') return false;
   if (isOpen('lb')){ $('lb').style.display = 'none'; return true; }
   if (isOpen('menu')){ closeMenu(); return true; }
-  for (const id of ['gpick', 'ginfo', 'sform', 'pform', 'gform', 'adform', 'mem']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
+  for (const id of ['nform', 'gpick', 'ginfo', 'sform', 'pform', 'gform', 'adform', 'mem']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
   if (isOpen('call')) return true;
   if (isOpen('sbar')){ toggleSearch(); return true; }
   if ($('chatv').style.display === 'flex'){ goHome(); return true; }
