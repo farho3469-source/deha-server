@@ -243,7 +243,7 @@ mark{background:#ffe58f;border-radius:3px}
       <button class="fab" onclick="openAd()">＋ Эълон</button>
     </div>
 
-    <div class="sec" id="s3"><div class="pad" id="news" style="flex:1;padding-bottom:80px"></div><button class="fab" id="nfab" style="display:none" onclick="openNews()">＋ Хабар</button></div>
+    <div class="sec" id="s3"><div class="pad" id="news" style="flex:1;padding-bottom:80px"></div><button class="fab" id="nfab" onclick="openNews()">＋ Хабар</button></div>
 
     <div class="sec" id="s4">
       <div class="pad">
@@ -303,7 +303,7 @@ mark{background:#ffe58f;border-radius:3px}
     <div id="npn" style="font-size:13px;color:#777;margin-bottom:10px">Расм интихоб нашудааст</div>
     <button class="btn" id="nsend" style="width:100%" onclick="submitNews()">Нашр кардан</button>
     <button class="btn g" style="width:100%;margin-top:8px" onclick="closeNews()">Бекор кардан</button>
-    <button class="btn g" style="width:100%;margin-top:22px" onclick="cleanNews()">🧹 Хабарҳои холиро нест кардан</button>
+    <button class="btn g" id="nclean" style="width:100%;margin-top:22px;display:none" onclick="cleanNews()">🧹 Хабарҳои холиро нест кардан</button>
   </div>
 </div>
 <input type="file" id="nphoto" accept="image/*" style="display:none">
@@ -1762,13 +1762,22 @@ function addNews(n, top){
   }
   if (n.title){ const h = document.createElement('b'); h.textContent = n.title; c.append(h); }
   if (n.text){ const p = document.createElement('div'); p.textContent = n.text; p.style.whiteSpace = 'pre-wrap'; c.append(p); }
-  const d = document.createElement('div'); d.className = 'd'; d.textContent = new Date(n.time).toLocaleDateString();
+  const d = document.createElement('div'); d.className = 'd';
+  d.textContent = (n.name ? n.name + ' · ' : '') + new Date(n.time).toLocaleDateString();
   c.append(d);
-  if (prof.admin && n.id){
+  if (n.id){
     const a = document.createElement('div'); a.className = 'acts';
-    const del = document.createElement('button'); del.textContent = '🗑 Нест кардан';
-    del.onclick = () => { if (confirm('Хабар нест шавад?')) socket.emit('newsdel', { id: n.id }); };
-    a.append(del); c.append(a);
+    if (n.uid === myUid || prof.admin){
+      const del = document.createElement('button'); del.textContent = '🗑 Нест кардан';
+      del.onclick = () => { if (confirm('Хабар нест шавад?')) socket.emit('newsdel', { id: n.id }); };
+      a.append(del);
+    }
+    if (n.uid && n.uid !== myUid){
+      const rp = document.createElement('button'); rp.textContent = '🚩 Шикоят кардан';
+      rp.onclick = () => { if (confirm('Ин хабар ба админ шикоят карда шавад?')) socket.emit('newsreport', { id: n.id }); };
+      a.append(rp);
+    }
+    if (a.children.length) c.append(a);
   }
   top ? $('news').prepend(c) : $('news').append(c);
 }
@@ -1794,7 +1803,7 @@ async function submitNews(){
   try {
     let photo = '';
     if (nFile) photo = await upload('image/jpeg', await shrink(nFile));
-    socket.emit('news', { password: $('pw').value, title, text, photo });
+    socket.emit('news', { title, text, photo });
     $('ntt').value = ''; $('ntx').value = ''; nFile = null; $('nphoto').value = ''; $('npn').textContent = 'Расм интихоб нашудааст';
     closeNews();
   } catch (e) {
@@ -2117,7 +2126,7 @@ let adminPeek = false;
 function updAdmin(){
   const a = !!prof.admin;
   $('b4').style.display = (a || adminPeek) ? '' : 'none';
-  $('nfab').style.display = (a || adminPeek) ? 'block' : 'none';
+  $('nclean').style.display = (a || adminPeek) ? 'block' : 'none';
   $('pw').style.display = a ? 'none' : '';
   $('mkadm').style.display = a ? 'none' : '';
   $('admnote').style.display = a ? 'block' : 'none';
