@@ -1124,6 +1124,27 @@ io.on('connection', (s) => {
       console.error(e);
     }
   });
+  // Санҷиши занг аз худи барнома: баъди 10 сония ба дастгоҳҳои худи корбар занги санҷишӣ меояд
+  s.on('fcmselftest', async () => {
+    try {
+      const ft = FB ? await fcm.find({ uid }).toArray() : [];
+      s.emit('fcmres', { fb: !!FB, tokens: ft.length });
+      if (!ft.length) return;
+      setTimeout(async () => {
+        try {
+          await fcmSend(
+            ft.map((x) => x.token),
+            { type: 'call', from: uid, name: 'Санҷиш', video: '0', title: 'Санҷиш', body: 'Занги санҷишӣ' },
+            30
+          );
+        } catch (e) {
+          console.error('fcmselftest', e);
+        }
+      }, 10000);
+    } catch (e) {
+      console.error(e);
+    }
+  });
   s.on('fcmoff', async (t) => {
     try {
       await fcm.deleteOne({ token: String(t || ''), uid });
