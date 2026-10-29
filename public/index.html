@@ -353,6 +353,7 @@ mark{background:#ffe58f;border-radius:3px}
     <div id="sblk"></div>
     <button class="btn" onclick="saveSettings()">Сабт кардан</button>
     <button class="btn g" onclick="testCall()">🔔 Санҷиши занг (барномаи пӯшида)</button>
+    <button class="btn g" onclick="testResult()">📄 Натиҷаи санҷиши охирин</button>
     <button class="btn" style="background:#fff;color:#b00020;border:1px solid #b00020" onclick="logout()">Баромадан аз ҳисоб</button>
     <input id="dpass" type="password" autocomplete="current-password" placeholder="Парол барои тасдиқ" style="display:none">
     <button class="btn" style="background:#b00020" onclick="delAccount()">Ҳисобро нест кардан</button>
@@ -701,6 +702,9 @@ if (LANG === 'ru'){
       else trNode(m.target);
     }
   }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'aria-label', 'title'] });
+}
+function testResult(){
+  if (socket) socket.emit('fcmlast');
 }
 function testCall(){
   if (!socket){ return; }
@@ -1924,6 +1928,11 @@ function start(token){
     showCall((m.video ? '🎥 ' : '📞 ') + 'Занг мезанад...', true);
     startRing();
     if (autoAns){ autoAns = false; stopRing(); setTimeout(acceptCall, 400); }
+  });
+  socket.on('fcmlast', (d) => {
+    const f = (a) => (!a || !a.length) ? '—' : a.map((x) => (x.status === 200 ? '✓ 200' : '✗ ' + (x.status || '') + ' ' + (x.error || '') + ' ' + (x.message || ''))).join('; ');
+    if (!d || !d.time){ alert('Ҳоло санҷиш нашудааст. Аввал «Санҷиши занг»-ро пахш кунед ва 10 сония интизор шавед.'); return; }
+    alert('Санҷиши охирин: ' + new Date(d.time).toLocaleTimeString() + '\nЗанг (data): ' + f(d.data) + '\nОгоҳиномаи системавӣ: ' + f(d.notif));
   });
   socket.on('fcmres', (d) => {
     const apk = !!(window.Android && window.Android.getFcmToken);
