@@ -85,6 +85,33 @@ async function fcmSend(tokens, data, ttl) {
   );
   return out;
 }
+// Огоҳиномаи системавӣ (notification), ки бе рамзи барнома аз тарафи Android нишон дода мешавад — барои санҷиш
+async function fcmNotif(tokens, title, body) {
+  const out = [];
+  if (!FB || !tokens.length) return out;
+  const acc = await fbAccess();
+  await Promise.all(
+    tokens.map(async (t) => {
+      const tag = String(t).slice(-6);
+      try {
+        const r = await fetch('https://fcm.googleapis.com/v1/projects/' + FB.project_id + '/messages:send', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + acc, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: { token: t, notification: { title, body }, android: { priority: 'HIGH', ttl: '30s' } } }),
+        });
+        if (r.ok) out.push({ token: tag, status: 200 });
+        else {
+          const j = await r.json().catch(() => ({}));
+          out.push({ token: tag, status: r.status, error: (j.error && j.error.status) || '', message: String((j.error && j.error.message) || '').slice(0, 120) });
+        }
+      } catch (e) {
+        out.push({ token: tag, error: String(e.message || e).slice(0, 120) });
+      }
+    })
+  );
+  return out;
+}
+const lastTest = new Map();
 async function fcmOnly(uids, data, ttl) {
   if (!FB || !uids.length) return;
   const ft = await fcm.find({ uid: { $in: uids } }).toArray();
@@ -1132,18 +1159,21 @@ io.on('connection', (s) => {
       if (!ft.length) return;
       setTimeout(async () => {
         try {
-          await fcmSend(
-            ft.map((x) => x.token),
-            { type: 'call', from: uid, name: 'Санҷиш', video: '0', title: 'Санҷиш', body: 'Занги санҷишӣ' },
-            30
-          );
+          const toks = ft.map((x) => x.token);
+          const data = await fcmSend(toks, { type: 'call', from: uid, name: 'Санҷиш', video: '0', title: 'Санҷиш', body: 'Занги санҷишӣ' }, 30);
+          const notif = await fcmNotif(toks, 'Санҷиш: огоҳиномаи системавӣ', 'Агар ин омад, Firebase ба ин телефон мерасад');
+          lastTest.set(uid, { time: Date.now(), data, notif });
         } catch (e) {
           console.error('fcmselftest', e);
+          lastTest.set(uid, { time: Date.now(), data: [{ error: String(e.message || e).slice(0, 160) }], notif: [] });
         }
       }, 10000);
     } catch (e) {
       console.error(e);
     }
+  });
+  s.on('fcmlast', () => {
+    s.emit('fcmlast', lastTest.get(uid) || {});
   });
   s.on('fcmoff', async (t) => {
     try {
