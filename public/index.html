@@ -738,6 +738,13 @@ function nativeSync(){
   } catch (e) {}
 }
 window.onFcmToken = (t) => { if (socket && t) socket.emit('fcmtoken', t); };
+function nativeCall(on){
+  try {
+    if (window.Android && Android.callStarted){
+      if (on) Android.callStarted(callName || ''); else Android.callEnded();
+    }
+  } catch (e) {}
+}
 
 /* ---------- паёмҳои нахондашуда ---------- */
 let unreadMap = {};
@@ -1387,6 +1394,7 @@ async function openMedia(){
 }
 async function makePc(){
   pc = new RTCPeerConnection({ iceServers: await getIce() });
+  nativeCall(true);
   lstream.getTracks().forEach((t) => pc.addTrack(t, lstream));
   cand = { host: 0, srflx: 0, relay: 0 };
   pc.onicecandidate = (e) => {
@@ -1422,7 +1430,7 @@ async function makePc(){
   };
 }
 function resetCall(){
-  clearTimeout(ringT); clearTimeout(connT); clearInterval(timerI); stopRing(); stopRingback(); clearTimeout(statT);
+  clearTimeout(ringT); clearTimeout(connT); clearInterval(timerI); stopRing(); stopRingback(); clearTimeout(statT); nativeCall(false);
   $('cdbg').textContent = '';
   if (pc){ try { pc.close(); } catch (e) {} pc = null; }
   if (lstream){ lstream.getTracks().forEach((t) => t.stop()); lstream = null; }
