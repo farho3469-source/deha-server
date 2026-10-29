@@ -1354,11 +1354,20 @@ io.on('connection', (s) => {
     const to = String((m && m.to) || '');
     if (!callPairs.has(pairKey(uid, to))) return;
     const p = pendingCalls.get(to);
-    if (p && p.from === uid) pendingCalls.delete(to);
+    const missed = !!(p && p.from === uid);
+    if (missed) pendingCalls.delete(to);
     const q = pendingCalls.get(uid);
     if (q && q.from === to) pendingCalls.delete(uid);
     io.to('u:' + to).emit('callend', { from: uid });
     fcmOnly([to], { type: 'callend' }, 10).catch(() => {});
+    if (missed) {
+      // занги нагирифташуда (мисли WhatsApp)
+      pushTo(
+        [to],
+        (l) => ({ title: l === 'ru' ? '📵 Пропущенный звонок' : '📵 Занги нагирифташуда', body: s.user.name, tag: 'missed-' + uid, type: 'msg' }),
+        { ttl: 86400 }
+      ).catch(() => {});
+    }
   });
 
   s.on('delaccount', async (m) => {
