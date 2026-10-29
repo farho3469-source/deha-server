@@ -459,7 +459,7 @@ app.get('/fcm-test', async (req, res) => {
     const data =
       req.query.type === 'msg'
         ? { type: 'msg', title: 'Деҳа', body: 'Санҷиши паём', tag: 'test' }
-        : { type: 'call', from: String(u._id), name: 'Санҷиш', video: '0' };
+        : { type: 'call', caller: String(u._id), name: 'Санҷиш', video: '0' };
     const acc = await fbAccess();
     const out = [];
     for (const t of ft) {
@@ -486,7 +486,7 @@ app.get('/fcm-test', async (req, res) => {
     const ft = await fcm.find({ uid: String(u._id) }).toArray();
     const results = await fcmSend(
       ft.map((x) => x.token),
-      { type: 'call', from: String(u._id), name: 'Санҷиш', video: '0', title: 'Санҷиш', body: 'Занги санҷишӣ' },
+      { type: 'call', caller: String(u._id), name: 'Санҷиш', video: '0', title: 'Санҷиш', body: 'Занги санҷишӣ' },
       30
     );
     res.json({ user: u.name, tokens: ft.length, results });
@@ -1160,7 +1160,7 @@ io.on('connection', (s) => {
       setTimeout(async () => {
         try {
           const toks = ft.map((x) => x.token);
-          const data = await fcmSend(toks, { type: 'call', from: uid, name: 'Санҷиш', video: '0', title: 'Санҷиш', body: 'Занги санҷишӣ' }, 30);
+          const data = await fcmSend(toks, { type: 'call', caller: uid, name: 'Санҷиш', video: '0', title: 'Санҷиш', body: 'Занги санҷишӣ' }, 30);
           const notif = await fcmNotif(toks, 'Санҷиш: огоҳиномаи системавӣ', 'Агар ин омад, Firebase ба ин телефон мерасад');
           lastTest.set(uid, { time: Date.now(), data, notif });
         } catch (e) {
@@ -1318,7 +1318,7 @@ io.on('connection', (s) => {
           body: s.user.name + ' занг мезанад',
           tag: 'call',
           type: 'call',
-          from: uid,
+          caller: uid,
           name: s.user.name,
           video: m.video ? '1' : '0',
           requireInteraction: true,
