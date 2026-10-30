@@ -40,7 +40,7 @@ input,textarea,select{width:100%;padding:12px;margin:5px 0;font-size:16px;border
 .me{background:#dcf0d2;margin-left:auto;border-top-right-radius:4px}
 .nm{font-size:12px;font-weight:600;color:#2f6b3a;margin-bottom:2px}
 .tm{font-size:11px;color:#777;text-align:right;margin-top:3px}
-.b img{display:block;max-width:100%;max-height:260px;border-radius:10px}
+.b img,.b video{display:block;max-width:100%;max-height:260px;border-radius:10px}
 .b audio{width:230px;max-width:100%}
 .rq{border-left:3px solid #2f6b3a;background:rgba(0,0,0,.06);border-radius:6px;padding:4px 8px;margin-bottom:5px;font-size:13px;color:#444}
 .rq b{display:block;font-size:12px;color:#2f6b3a}
@@ -409,7 +409,7 @@ mark{background:#ffe58f;border-radius:3px}
   </div>
 </div>
 
-<input type="file" id="pfile" accept="image/*" style="display:none">
+<input type="file" id="pfile" accept="image/*,video/*" multiple style="display:none">
 <input type="file" id="adphoto" accept="image/*" style="display:none">
 <input type="file" id="avfile" accept="image/*" style="display:none">
 <div id="lb" onclick="this.style.display='none'"><div id="lbbox"><img id="lbimg" alt=""><div id="lbcap"></div></div></div>
@@ -989,7 +989,7 @@ function setGender(g){
 
 /* ---------- чат ---------- */
 function prevText(m){
-  return m.kind === 'image' ? '📷 Расм' : m.kind === 'audio' ? '🎤 Паёми овозӣ' : (m.text || '');
+  return m.kind === 'image' ? '📷 Расм' : m.kind === 'audio' ? '🎤 Паёми овозӣ' : m.kind === 'video' ? '🎬 Видео' : (m.text || '');
 }
 function setReply(m){
   replyTo = m ? { id: m.id, name: m.uid === myUid ? 'Шумо' : m.name, text: prevText(m) } : null;
@@ -1112,6 +1112,10 @@ function msgEl(m){
     im.loading = 'lazy'; im.src = mediaUrl(m.media); im.onload = scrollDown;
     im.onclick = (e) => { e.stopPropagation(); openImg(im.src); };
     d.append(im);
+  } else if (m.kind === 'video'){
+    const vd = document.createElement('video');
+    vd.controls = true; vd.preload = 'metadata'; vd.playsInline = true; vd.src = mediaUrl(m.media);
+    d.append(vd);
   } else if (m.kind === 'audio'){
     const a = document.createElement('audio');
     a.controls = true; a.preload = 'none'; a.src = mediaUrl(m.media);
@@ -1125,7 +1129,7 @@ function msgEl(m){
   }
   d.append(t);
   d.onclick = (e) => {
-    if (!m.id || e.target.closest('audio,img,.rq')) return;
+    if (!m.id || e.target.closest('audio,img,video,.rq')) return;
     openMenu(m);
   };
   return d;
@@ -1527,6 +1531,7 @@ function toggleCam(){
 
 /* ---------- занги гурӯҳӣ (ҳар кас бо ҳар кас, то 5 нафар) ---------- */
 let gc = null, gcalls = {};
+Object.assign(RU, { 'Видео аз ҳад калон аст (то 15 MB)': 'Видео слишком большое (до 15 МБ)', 'Видео фиристода нашуд': 'Не удалось отправить видео', 'Видео фиристода мешавад...': 'Отправка видео...' });
 Object.assign(RU, { 'Занги гурӯҳӣ': 'Групповой звонок', 'Дар занг ҷой нест': 'В звонке нет места', 'Занг дигар идома надорад': 'Звонок уже завершён' });
 RX.push([/^(.*)Занги гурӯҳӣ · (\d+) нафар$/, '$1Групповой звонок · $2 чел.']);
 RX.push([/^(.*): Занги гурӯҳӣ$/, '$1: групповой звонок']);
@@ -2271,7 +2276,11 @@ $('text').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat()
 $('sbtn').onclick = () => { if ($('text').value.trim()) sendChat(); else startRec(); };
 
 $('pbtn').onclick = () => $('pfile').click();
-$('pfile').onchange = () => { sendPhoto($('pfile').files[0]); $('pfile').value = ''; };
+$('pfile').onchange = async () => {
+  const files = Array.from($('pfile').files).slice(0, 10);
+  $('pfile').value = '';
+  for (const f of files){ if (f.type.startsWith('video/')) await sendVideo(f); else await sendPhoto(f); }
+};
 
 async function shrink(file){
   const bmp = await createImageBitmap(file);
@@ -2289,6 +2298,21 @@ async function sendPhoto(file){
     socket.emit('chat', { room, kind: 'image', media: id, reply: takeReply() });
   } catch (e) {
     alert('Расм фиристода нашуд');
+  }
+}
+
+async function sendVideo(file){
+  if (!file || !socket) return;
+  if (file.size > 15 * 1024 * 1024){ alert('Видео аз ҳад калон аст (то 15 MB)'); return; }
+  toast('Видео фиристода мешавад...');
+  try {
+    const type = file.type || 'video/mp4';
+    const r = await fetch('/api/upvideo?t=' + encodeURIComponent(tok) + '&type=' + encodeURIComponent(type), { method: 'POST', headers: { 'Content-Type': type }, body: file });
+    const d = await r.json();
+    if (!r.ok || !d.id) throw new Error(d.error || 'fail');
+    socket.emit('chat', { room, kind: 'video', media: d.id, reply: takeReply() });
+  } catch (e) {
+    alert('Видео фиристода нашуд');
   }
 }
 
