@@ -866,28 +866,6 @@ async function dropMember(g, u) {
   await Promise.all([u, ...rest].map(sendGroups));
 }
 
-/* ---------- занги гурӯҳӣ (то 6 нафар, mesh WebRTC) ---------- */
-const groupCalls = new Map(); // room -> { users: Map(uid -> {name, sid}), video }
-const GC_MAX = 6;
-function gcStateOf(room) {
-  const c = groupCalls.get(room);
-  return { room, count: c ? c.users.size : 0, video: !!(c && c.video) };
-}
-async function gcNotify(room) {
-  const g = await getGroup(room.slice(2));
-  if (!g) return;
-  const st = gcStateOf(room);
-  g.members.forEach((m) => io.to('u:' + m).emit('gcstate', st));
-}
-async function gcLeave(uid, room) {
-  const c = groupCalls.get(room);
-  if (!c || !c.users.has(uid)) return;
-  c.users.delete(uid);
-  c.users.forEach((_, u) => io.to('u:' + u).emit('gcleft', { room, uid }));
-  if (!c.users.size) groupCalls.delete(room);
-  await gcNotify(room);
-}
-
 /* ---------- занги гурӯҳӣ (WebRTC mesh) ---------- */
 const groupCalls = new Map(); // gid -> { video, users:Set, time }
 const GCALL_MAX = 5;
