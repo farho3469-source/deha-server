@@ -897,12 +897,18 @@ async function sendSocial(uid) {
       .toArray();
     const info = {};
     us.forEach((x) => (info[String(x._id)] = { name: x.name, village: x.village || '', av: x.avatar || '' }));
+    const accRooms = rq.filter((q) => q.status === 'accepted').map((q) => dmPair(uid, q.from === uid ? q.to : q.from));
+    const lastAgg = accRooms.length
+      ? await chat.aggregate([{ $match: { room: { $in: accRooms } } }, { $group: { _id: '$room', t: { $max: '$time' } } }]).toArray()
+      : [];
+    const lastMap = {};
+    lastAgg.forEach((x) => (lastMap[x._id] = x.t));
     const out = { incoming: [], contacts: [] };
     rq.forEach((q) => {
       const o = q.from === uid ? q.to : q.from;
       const i = info[o];
       if (!i) return;
-      if (q.status === 'accepted') out.contacts.push({ uid: o, name: i.name, village: i.village, av: i.av, room: dmPair(uid, o) });
+      if (q.status === 'accepted') out.contacts.push({ uid: o, name: i.name, village: i.village, av: i.av, room: dmPair(uid, o), last: lastMap[dmPair(uid, o)] || 0 });
       else if (q.status === 'pending' && q.to === uid)
         out.incoming.push({ id: String(q._id), uid: o, name: i.name, village: i.village, av: i.av });
     });
@@ -1609,6 +1615,18 @@ io.on('connection', (s) => {
         q,
         list: list.map((x) => ({ uid: String(x._id), name: x.name, av: x.avatar || '', village: x.village || '', state: st(String(x._id)) })),
       });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  // Кадом контактҳо ҳозир онлайн ҳастанд (барои рӯйхати чатҳо)
+  s.on('onlq', (list) => {
+    try {
+      if (!Array.isArray(list)) return;
+      const ids = list.map(String).filter((x) => HEX24.test(x)).slice(0, 300);
+      const on = ids.filter((id) => io.sockets.adapter.rooms.has('u:' + id));
+      s.emit('onl', on);
     } catch (e) {
       console.error(e);
     }
