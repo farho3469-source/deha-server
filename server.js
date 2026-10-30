@@ -1614,6 +1614,18 @@ io.on('connection', (s) => {
     }
   });
 
+  // Ҳолати онлайн/офлайн-и як корбар (барои чати шахсӣ)
+  s.on('pstat', async (to) => {
+    try {
+      to = String(to);
+      if (!HEX24.test(to)) return;
+      const on = (await io.in('u:' + to).fetchSockets()).length > 0;
+      s.emit('pstat', { uid: to, on });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   s.on('vinfo', async () => {
     try {
       const vid = s.user.village;
