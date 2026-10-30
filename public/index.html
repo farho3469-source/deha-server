@@ -725,6 +725,14 @@ let blocked = new Set(), blockedList = [];
 let adsData = [], adFilter = 'all', adFile = null, roomList = [];
 let rec = null, chunks = [], recTimer = null, recStart = 0, recCancel = false, stream = null;
 let replyTo = null, menuMsg = null, pushKey = '';
+/* тартиби рӯйхат: охирин паём ё онлайн шудан — боло */
+let bump = {}, onlSet = new Set();
+function bumpRoom(r){ if (r) bump[r] = Date.now(); }
+function lastOf(r, base){ return bump[r] || base || 0; }
+function askOnl(){
+  if (socket && social.contacts.length) socket.emit('onlq', social.contacts.map((c) => c.uid));
+}
+setInterval(askOnl, 10000);
 
 /* ---------- барномаи Android (WebView) ---------- */
 let autoAns = /[?&]answer=1/.test(location.search);
@@ -1207,7 +1215,7 @@ function renderHome(){
       box.append(item('⚠ Деҳаи худро интихоб кунед', '', () => { fillPlace('pdist', 'pvil'); $('pform').style.display = 'flex'; }));
     }
     box.append(hd('Оила ва авлод'));
-    groupsList.forEach((g) => {
+    [...groupsList].sort((a, b) => lastOf('g:' + b.id) - lastOf('g:' + a.id)).forEach((g) => {
       const r = item('👪 ' + g.name, g.members.length + ' нафар', () => showChat('g:' + g.id, g.name));
       const gb = badge(unreadMap['g:' + g.id]);
       if (gb) r.append(gb);
@@ -1225,8 +1233,9 @@ function renderHome(){
     }
     if (social.contacts.length){
       box.append(hd('Сӯҳбатҳои шахсӣ'));
-      social.contacts.forEach((c) => {
+      [...social.contacts].sort((a, b) => lastOf(b.room, b.last) - lastOf(a.room, a.last)).forEach((c) => {
         const r = item(c.name, vname(c.village), () => showChat(c.room, c.name), c.av);
+        if (onlSet.has(c.uid)){ const od = document.createElement('i'); od.className = 'dot'; r.querySelector('span').append(od); }
         const cb = badge(unreadMap[c.room]);
         if (cb) r.append(cb);
         box.append(r);
@@ -1882,6 +1891,7 @@ function start(token){
   });
   socket.on('social', (s) => {
     social = s;
+    setTimeout(askOnl, 50);
     if (pendingDM){
       const c = s.contacts.find((x) => x.uid === pendingDM);
       if (c){ pendingDM = ''; $('mem').style.display = 'none'; showChat(c.room, c.name); }
@@ -1918,7 +1928,18 @@ function start(token){
     document.querySelectorAll('#msgs .b.me .tk').forEach((k) => { k.className = 'tk rd'; k.textContent = ' ✓✓'; });
   });
   socket.on('newmsg', (m) => {
+    bumpRoom(m.room); renderHome();
     if (m.room !== room){ beep(); toast('💬 ' + m.name + ': паёми нав'); }
+  });
+  socket.on('onl', (l) => {
+    const ns = new Set(l || []);
+    let ch = false;
+    social.contacts.forEach((c) => {
+      if (ns.has(c.uid) && !onlSet.has(c.uid)){ bumpRoom(c.room); ch = true; }
+      else if (!ns.has(c.uid) && onlSet.has(c.uid)) ch = true;
+    });
+    onlSet = ns;
+    if (ch) renderHome();
   });
   socket.on('wiped', () => { $('msgs').innerHTML = ''; unreadMap = {}; updUnread(); renderHome(); renderRooms(); });
   socket.on('settingsok', () => { toast('✔ Сабт шуд'); nav = { v: 'home' }; goHome(); });
@@ -1933,6 +1954,7 @@ function start(token){
     markRead();
   });
   socket.on('chat', (m) => {
+    bumpRoom(m.room);
     if (m.room !== room || blocked.has(m.uid)) return;
     if (m.uid !== myUid) beep();
     addChat(m);
