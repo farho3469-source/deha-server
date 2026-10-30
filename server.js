@@ -866,6 +866,47 @@ async function dropMember(g, u) {
   await Promise.all([u, ...rest].map(sendGroups));
 }
 
+/* ---------- занги гурӯҳӣ (то 6 нафар, mesh WebRTC) ---------- */
+const groupCalls = new Map(); // room -> { users: Map(uid -> {name, sid}), video }
+const GC_MAX = 6;
+function gcStateOf(room) {
+  const c = groupCalls.get(room);
+  return { room, count: c ? c.users.size : 0, video: !!(c && c.video) };
+}
+async function gcNotify(room) {
+  const g = await getGroup(room.slice(2));
+  if (!g) return;
+  const st = gcStateOf(room);
+  g.members.forEach((m) => io.to('u:' + m).emit('gcstate', st));
+}
+async function gcLeave(uid, room) {
+  const c = groupCalls.get(room);
+  if (!c || !c.users.has(uid)) return;
+  c.users.delete(uid);
+  c.users.forEach((_, u) => io.to('u:' + u).emit('gcleft', { room, uid }));
+  if (!c.users.size) groupCalls.delete(room);
+  await gcNotify(room);
+}
+
+/* ---------- занги гурӯҳӣ (WebRTC mesh) ---------- */
+const groupCalls = new Map(); // gid -> { video, users:Set, time }
+const GCALL_MAX = 5;
+async function gcallState(gid) {
+  const c = groupCalls.get(gid);
+  const g = await getGroup(gid);
+  if (!g) return;
+  const st = { id: gid, active: !!c, video: c ? c.video : false, count: c ? c.users.size : 0 };
+  g.members.forEach((m) => io.to('u:' + m).emit('gcallstate', st));
+}
+function gcallLeave(gid, uid) {
+  const c = groupCalls.get(gid);
+  if (!c || !c.users.has(uid)) return;
+  c.users.delete(uid);
+  c.users.forEach((u) => io.to('u:' + u).emit('gcallpeerleft', { id: gid, uid }));
+  if (!c.users.size) groupCalls.delete(gid);
+  gcallState(gid).catch(console.error);
+}
+
 /* ---------- дархостҳо ва сӯҳбатҳои шахсӣ ---------- */
 async function deleteUser(u) {
   const uid = String(u._id);
@@ -1000,6 +1041,17 @@ io.on('connection', (s) => {
   const pc0 = pendingCalls.get(uid);
   if (pc0 && Date.now() - pc0.time < 45000) s.emit('callincoming', pc0);
   sendGroups(uid);
+  groups
+    .find({ members: uid }, { projection: { _id: 1 } })
+    .toArray()
+    .then((gs) => {
+      gs.forEach((g) => {
+        const id = String(g._id);
+        const c = groupCalls.get(id);
+        if (c) s.emit('gcallstate', { id, active: true, video: c.video, count: c.users.size });
+      });
+    })
+    .catch(console.error);
 
   unread
     .find({ uid })
@@ -1618,6 +1670,81 @@ io.on('connection', (s) => {
     } catch (e) {
       console.error(e);
     }
+  });
+
+  /* ---------- занги гурӯҳӣ ---------- */
+  const gcallEnter = async (gid, video, joinOnly) => {
+    const g = await getGroup(gid);
+    if (!g || !g.members.includes(uid)) return;
+    let c = groupCalls.get(gid);
+    if (!c && joinOnly) return s.emit('gcallfull', { id: gid });
+    const fresh = !c;
+    if (!c) {
+      c = { video: !!video, users: new Set(), time: Date.now() };
+      groupCalls.set(gid, c);
+    }
+    if (c.users.has(uid)) {
+      c.users.delete(uid);
+      c.users.forEach((u) => io.to('u:' + u).emit('gcallpeerleft', { id: gid, uid }));
+    }
+    if (c.users.size >= GCALL_MAX) return s.emit('gcallfull', { id: gid, full: true });
+    const others = [...c.users];
+    const us = others.length
+      ? await users.find({ _id: { $in: others.map((i) => new ObjectId(i)) } }, { projection: { name: 1 } }).toArray()
+      : [];
+    const nm = {};
+    us.forEach((x) => (nm[String(x._id)] = x.name));
+    c.users.add(uid);
+    s.emit('gcalljoined', { id: gid, video: c.video, peers: others.map((u) => ({ uid: u, name: nm[u] || '—' })) });
+    others.forEach((u) => io.to('u:' + u).emit('gcallpeer', { id: gid, uid, name: s.user.name }));
+    if (fresh) {
+      const rest = g.members.filter((x) => x !== uid);
+      rest.forEach((x) => io.to('u:' + x).emit('gcallincoming', { id: gid, gname: g.name, name: s.user.name, video: c.video }));
+      pushTo(
+        rest,
+        (l) => ({
+          title: g.name,
+          body: l === 'ru' ? s.user.name + ' начал групповой звонок' : s.user.name + ' занги гурӯҳӣ оғоз кард',
+          tag: 'gcall-' + gid,
+          type: 'msg',
+          room: 'g:' + gid,
+        }),
+        { ttl: 60 }
+      ).catch(console.error);
+    }
+    await gcallState(gid);
+  };
+  s.on('gcallstart', (m) => {
+    gcallEnter(String((m && m.id) || ''), !!(m && m.video), false).catch(console.error);
+  });
+  s.on('gcalljoin', (m) => {
+    gcallEnter(String((m && m.id) || ''), false, true).catch(console.error);
+  });
+  s.on('gcallsig', (m) => {
+    const gid = String((m && m.id) || '');
+    const to = String((m && m.to) || '');
+    const c = groupCalls.get(gid);
+    if (!c || !c.users.has(uid) || !c.users.has(to) || !m.data || typeof m.data !== 'object') return;
+    io.to('u:' + to).emit('gcallsig', { id: gid, from: uid, data: m.data });
+  });
+  s.on('gcallleave', (m) => {
+    gcallLeave(String((m && m.id) || ''), uid);
+  });
+  s.on('gcallq', async (m) => {
+    try {
+      const gid = String((m && m.id) || '');
+      const c = groupCalls.get(gid);
+      if (!c) return;
+      const g = await getGroup(gid);
+      if (!g || !g.members.includes(uid)) return;
+      s.emit('gcallstate', { id: gid, active: true, video: c.video, count: c.users.size });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('disconnect', () => {
+    if (io.sockets.adapter.rooms.has('u:' + uid)) return;
+    for (const [gid, c] of groupCalls) if (c.users.has(uid)) gcallLeave(gid, uid);
   });
 
   // Кадом контактҳо ҳозир онлайн ҳастанд (барои рӯйхати чатҳо)
