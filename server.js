@@ -119,6 +119,8 @@ async function fcmOnly(uids, data, ttl) {
 }
 
 const AUDIO_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4'];
+const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/3gpp'];
+const MAX_VIDEO = 15 * 1024 * 1024;
 const HEX24 = /^[0-9a-f]{24}$/;
 const SEED = {
   'Душанбе': ['Душанбе', 'Исмоили Сомонӣ', 'Сино', 'Шоҳмансур', 'Фирдавсӣ'],
@@ -333,6 +335,8 @@ const previewOf = (o, l) =>
     ? l === 'ru' ? '📷 Фото' : '📷 Расм'
     : o.kind === 'audio'
     ? l === 'ru' ? '🎤 Голосовое сообщение' : '🎤 Паёми овозӣ'
+    : o.kind === 'video'
+    ? '🎬 Видео'
     : String(o.text || '').slice(0, 80);
 
 app.use(express.json());
@@ -669,6 +673,22 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+app.post('/api/upvideo', express.raw({ type: () => true, limit: MAX_VIDEO }), async (req, res) => {
+  try {
+    const u = await users.findOne({ token: String(req.query.t || '') });
+    if (!u) return res.status(401).json({ error: 'auth' });
+    const type = String(req.query.type || 'video/mp4').split(';')[0];
+    if (!VIDEO_TYPES.includes(type) || !Buffer.isBuffer(req.body) || !req.body.length || req.body.length > MAX_VIDEO) {
+      return fail(res, 400, 'Файл нодуруст аст');
+    }
+    const r = await media.insertOne({ type, data: req.body, time: Date.now() });
+    res.json({ id: String(r.insertedId) });
+  } catch (e) {
+    console.error(e);
+    fail(res, 500, 'Хатои сервер');
+  }
+});
+
 app.get('/media/:id', async (req, res) => {
   try {
     const u = await users.findOne({ token: String(req.query.t || '') });
@@ -676,9 +696,29 @@ app.get('/media/:id', async (req, res) => {
     if (!HEX24.test(req.params.id)) return res.status(404).end();
     const m = await media.findOne({ _id: new ObjectId(req.params.id) });
     if (!m) return res.status(404).end();
+    const buf = Buffer.from(m.data.buffer);
     res.set('Content-Type', m.type);
     res.set('Cache-Control', 'private, max-age=31536000');
-    res.send(Buffer.from(m.data.buffer));
+    res.set('Accept-Ranges', 'bytes');
+    const rg = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || ''));
+    if (rg && String(m.type).startsWith('video/')) {
+      let st = rg[1] ? parseInt(rg[1], 10) : 0;
+      let en = rg[2] ? parseInt(rg[2], 10) : buf.length - 1;
+      if (!rg[1] && rg[2]) {
+        st = Math.max(0, buf.length - parseInt(rg[2], 10));
+        en = buf.length - 1;
+      }
+      en = Math.min(en, buf.length - 1);
+      if (st > en || st >= buf.length) {
+        res.set('Content-Range', 'bytes */' + buf.length);
+        return res.status(416).end();
+      }
+      res.status(206);
+      res.set('Content-Range', 'bytes ' + st + '-' + en + '/' + buf.length);
+      res.set('Content-Length', String(en - st + 1));
+      return res.end(buf.subarray(st, en + 1));
+    }
+    res.send(buf);
   } catch (e) {
     console.error(e);
     res.status(500).end();
@@ -967,9 +1007,10 @@ async function cleanup() {
     const D = 86400000;
     const tOld = now - (Number(process.env.KEEP_TEXT_DAYS) || 90) * D;
     const mOld = now - (Number(process.env.KEEP_MEDIA_DAYS) || 14) * D;
+    const vOld = now - (Number(process.env.KEEP_VIDEO_DAYS) || 3) * D;
     const olds = await chat
       .find(
-        { $or: [{ kind: 'text', time: { $lt: tOld } }, { kind: { $in: ['image', 'audio'] }, time: { $lt: mOld } }] },
+        { $or: [{ kind: 'text', time: { $lt: tOld } }, { kind: { $in: ['image', 'audio'] }, time: { $lt: mOld } }, { kind: 'video', time: { $lt: vOld } }] },
         { projection: { media: 1 } }
       )
       .limit(3000)
@@ -1869,7 +1910,7 @@ io.on('connection', (s) => {
         const oth = await users.findOne({ _id: new ObjectId(pp[1] === uid ? pp[2] : pp[1]) }, { projection: { blocked: 1 } });
         if (oth && (oth.blocked || []).includes(uid)) return;
       }
-      const kind = ['text', 'image', 'audio'].includes(m.kind) ? m.kind : 'text';
+      const kind = ['text', 'image', 'audio', 'video'].includes(m.kind) ? m.kind : 'text';
       const msg = { uid, name: s.user.name, av: s.user.avatar || '', room, kind, time: Date.now() };
       if (kind === 'text') {
         msg.text = String(m.text || '').trim().slice(0, 500);
