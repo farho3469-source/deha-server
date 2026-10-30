@@ -1039,7 +1039,9 @@ function renderMembers(){
   if (!vinfo) return;
   box.append(hd(vinfo.total + ' нафар · ' + vinfo.online + ' онлайн'));
   vinfo.list.filter((u) => !blocked.has(u.uid)).forEach((u) => {
-    const r = item(u.me ? u.name + ' (Шумо)' : u.name, '', null, u.av || '');
+    const r = item(u.me ? u.name + ' (Шумо)' : u.name, u.on ? 'онлайн' : 'офлайн', null, u.av || '');
+    const sm = r.querySelector('small');
+    if (sm) sm.style.color = u.on ? '#1fa855' : '#999';
     if (u.on){ const d = document.createElement('i'); d.className = 'dot'; r.querySelector('span').append(d); }
     if (!u.me) r.append(mini('💬', '', () => startDM(u.uid, u.name)));
     box.append(r);
@@ -1049,6 +1051,14 @@ function markRead(){
   if (socket && room.startsWith('dm:') && document.visibilityState === 'visible') socket.emit('markread', { room });
 }
 setInterval(() => { if (socket && prof.village && room === 'v:' + prof.village) socket.emit('vinfo'); }, 30000);
+/* ҳолати онлайн/офлайн дар чати шахсӣ */
+function askPstat(){
+  if (socket && room.startsWith('dm:')){
+    const p = room.split(':');
+    socket.emit('pstat', p[1] === myUid ? p[2] : p[1]);
+  }
+}
+setInterval(askPstat, 20000);
 $('mdm').onclick = () => { const m = menuMsg; closeMenu(); if (m && socket) startDM(m.uid, m.name); };
 const NAMECOL = ['#1fa855', '#d4452f', '#a05bd0', '#cf7d00', '#0a8ea6', '#c24a8e', '#5b7fcf', '#7a8f00'];
 function nameColor(k){ let h = 0; for (const c of String(k)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return NAMECOL[h % NAMECOL.length]; }
@@ -1291,12 +1301,14 @@ function openVillage(){ if (prof.village) showChat('v:' + prof.village, vname(pr
 function showChat(r, title){
   $('home').style.display = 'none'; $('chatv').style.display = 'flex';
   $('ctitle').textContent = title; $('csub').textContent = '';
+  $('csub').style.color = '#667781';
   if (r.startsWith('g:')){ const gg = gById(r.slice(2)); if (gg) $('csub').textContent = gg.members.length + ' нафар'; }
   $('sbar').style.display = 'none'; $('sq').value = ''; showSearch(false);
   $('cb1').style.display = $('cb2').style.display = (CALLS && r.startsWith('dm:')) ? 'inline-block' : 'none';
   room = r; $('msgs').innerHTML = ''; renderRooms(); setReply(null);
   socket.emit('join', r);
   if (r === 'v:' + prof.village) socket.emit('vinfo');
+  askPstat();
 }
 function goHome(){
   room = ''; $('chatv').style.display = 'none'; $('home').style.display = 'block';
@@ -1891,6 +1903,11 @@ function start(token){
   socket.on('gpeople', (d) => { gRes = d || { q: '', list: [] }; renderGPick(); });
   socket.on('gcreated', (d) => { tab(1); showChat('g:' + d.id, d.name); });
   socket.on('members', (d) => { members = d; renderHome(); });
+  socket.on('pstat', (d) => {
+    if (!room.startsWith('dm:') || !room.includes(d.uid)) return;
+    $('csub').textContent = d.on ? 'онлайн' : 'офлайн';
+    $('csub').style.color = d.on ? '#1fa855' : '#667781';
+  });
   socket.on('vinfo', (d) => {
     vinfo = d;
     if (room === 'v:' + prof.village) $('csub').textContent = d.total + ' нафар · ' + d.online + ' онлайн';
