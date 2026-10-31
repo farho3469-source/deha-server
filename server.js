@@ -233,6 +233,7 @@ let iceCache = { t: 0, v: null };
 async function iceServers() {
   if (iceCache.v && Date.now() - iceCache.t < 1800000) return iceCache.v;
   let v = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
+  let okIce = true;
   try {
     if (process.env.ICE_JSON) {
       v = v.concat(JSON.parse(process.env.ICE_JSON));
@@ -242,14 +243,20 @@ async function iceServers() {
       );
       const j = await r.json();
       if (Array.isArray(j) && j.length) v = j.concat(v);
-      else v = v.concat(OPEN_RELAY);
+      else {
+        okIce = false;
+        console.error('metered ice нодуруст', JSON.stringify(j).slice(0, 200));
+        v = v.concat(OPEN_RELAY);
+      }
     } else {
       v = v.concat(OPEN_RELAY);
     }
   } catch (e) {
+    okIce = false;
     console.error('ice', e);
   }
-  iceCache = { t: Date.now(), v };
+  // агар калид нодуруст бошад, баъди 1 дақиқа дубора мекӯшем (на 30 дақиқа)
+  iceCache = { t: Date.now() - (okIce ? 0 : 1740000), v };
   return v;
 }
 
@@ -512,6 +519,23 @@ app.get('/icon-:s.png', (req, res) => {
   if (!ICONS[n]) ICONS[n] = makeIcon(Number(n));
   res.set('Cache-Control', 'public, max-age=86400');
   res.type('image/png').send(ICONS[n]);
+});
+// Санҷиш: кадом серверҳои TURN фаъоланд (бе парол)
+app.get('/ice-status', async (req, res) => {
+  try {
+    const v = await iceServers();
+    const urls = [];
+    v.forEach((x) => [].concat(x.urls).forEach((u) => urls.push(String(u))));
+    res.json({
+      metered_env: !!(process.env.METERED_DOMAIN && process.env.METERED_KEY),
+      ice_json_env: !!process.env.ICE_JSON,
+      turn_count: urls.filter((u) => /^turns?:/.test(u)).length,
+      using_public_openrelay: urls.some((u) => /openrelay/.test(u)),
+      urls,
+    });
+  } catch (e) {
+    res.json({ error: String(e.message || e) });
+  }
 });
 app.get('/api/ice', async (req, res) => {
   try {
