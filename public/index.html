@@ -368,6 +368,7 @@ mark{background:#ffe58f;border-radius:3px}
     <button class="btn" onclick="saveSettings()">Сабт кардан</button>
     <button class="btn g" onclick="testCall()">🔔 Санҷиши занг (барномаи пӯшида)</button>
     <button class="btn g" onclick="testResult()">📄 Натиҷаи санҷиши охирин</button>
+    <button class="btn g" onclick="shareIt({title:'Деҳа',text:'Деҳа — чат, бозор ва хабарҳои деҳа',url:location.origin})">📤 Барномаро ба дигарон фиристодан</button>
     <button class="btn" style="background:#fff;color:#b00020;border:1px solid #b00020" onclick="logout()">Баромадан аз ҳисоб</button>
     <input id="dpass" type="password" autocomplete="current-password" placeholder="Парол барои тасдиқ" style="display:none">
     <button class="btn" style="background:#b00020" onclick="delAccount()">Ҳисобро нест кардан</button>
@@ -417,7 +418,7 @@ mark{background:#ffe58f;border-radius:3px}
 <div id="pickm" onclick="this.style.display='none'"><div class="mbox" onclick="event.stopPropagation()"><button class="btn" id="pk1">📷 Расм</button><button class="btn" id="pk2">🎬 Видео</button><button class="btn g" onclick="$('pickm').style.display='none'">Бекор кардан</button></div></div>
 <input type="file" id="adphoto" accept="image/*" style="display:none">
 <input type="file" id="avfile" accept="image/*" style="display:none">
-<div id="lb" onclick="this.style.display='none'"><div id="lbbox"><img id="lbimg" alt=""><div id="lbcap"></div></div></div>
+<div id="lb" onclick="this.style.display='none'"><button id="lbshare" class="ic" style="position:absolute;right:14px;top:calc(14px + env(safe-area-inset-top));z-index:2;background:rgba(255,255,255,.25)" onclick="event.stopPropagation();shareImg()" aria-label="Поделиться">📤</button><div id="lbbox"><img id="lbimg" alt=""><div id="lbcap"></div></div></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -984,8 +985,8 @@ function tab(n){
 function hhmm(t){ return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 function scrollDown(){ const b = $('msgs'); b.scrollTop = b.scrollHeight; }
 function mediaUrl(id){ return '/media/' + id + '?t=' + tok; }
-function openImg(src){ $('lbimg').className = ''; $('lbcap').textContent = ''; $('lbimg').src = src; $('lb').style.display = 'flex'; }
-function openAvatar(av, name){ $('lbimg').className = 'big'; $('lbcap').textContent = name || ''; $('lbimg').src = mediaUrl(av); $('lb').style.display = 'flex'; }
+function openImg(src){ $('lbshare').style.display = 'block'; $('lbimg').className = ''; $('lbcap').textContent = ''; $('lbimg').src = src; $('lb').style.display = 'flex'; }
+function openAvatar(av, name){ $('lbshare').style.display = 'none'; $('lbimg').className = 'big'; $('lbcap').textContent = name || ''; $('lbimg').src = mediaUrl(av); $('lb').style.display = 'flex'; }
 
 function setGender(g){
   if (socket) socket.emit('setgender', g);
@@ -1655,6 +1656,39 @@ async function gcBegin(id, video, joinOnly){
   gcUpdBanner();
 }
 
+/* ---------- поделиться ---------- */
+Object.assign(RU, { '📤 Барномаро ба дигарон фиристодан': '📤 Поделиться приложением', '✔ Нусха шуд, ҳоло ба ҷои дилхоҳ часпонед': '✔ Скопировано, вставьте куда нужно', 'Нусха кунед:': 'Скопируйте:', 'Расм фиристода нашуд. Нусха ёфт нашуд': 'Не удалось поделиться фото' });
+async function shareIt(o){
+  try {
+    if (o.file && navigator.canShare && navigator.canShare({ files: [o.file] })){
+      await navigator.share({ files: [o.file], title: o.title || '', text: o.text || '' });
+      return true;
+    }
+    if (!o.file && navigator.share){
+      await navigator.share({ title: o.title || '', text: o.text || '', url: o.url || '' });
+      return true;
+    }
+  } catch (e) { if (e && e.name === 'AbortError') return true; }
+  const txt = [o.text, o.url].filter(Boolean).join('\n');
+  try { if (!o.file && window.Android && Android.share){ Android.share(txt); return true; } } catch (e) {}
+  if (o.file) return false;
+  try { await navigator.clipboard.writeText(txt); toast('✔ Нусха шуд, ҳоло ба ҷои дилхоҳ часпонед'); return true; } catch (e) {}
+  prompt('Нусха кунед:', txt);
+  return true;
+}
+async function shareImg(){
+  try {
+    const src = $('lbimg').src;
+    const r = await fetch(src);
+    const b = await r.blob();
+    const f = new File([b], 'photo.jpg', { type: b.type || 'image/jpeg' });
+    if (await shareIt({ file: f, title: 'Деҳа' })) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b); a.download = 'photo.jpg';
+    document.body.append(a); a.click(); a.remove();
+  } catch (e) { alert('Расм фиристода нашуд'); }
+}
+
 /* ---------- сурат, манъ, модератсия ---------- */
 function avEl(av, name, sz){
   const d = document.createElement('span'); d.className = 'avt';
@@ -1906,6 +1940,10 @@ function adEl(a){
     del.onclick = () => { if (confirm('Эълон нест шавад?')) socket.emit('addel', a.id); };
     acts.append(del);
   }
+  const sh = document.createElement('button'); sh.textContent = '📤';
+  sh.style.cssText = 'flex:0 0 52px;background:#e6e3d9;color:#222';
+  sh.onclick = () => shareIt({ title: a.title, text: [a.title, a.price, a.desc].filter(Boolean).join('\n'), url: location.origin });
+  acts.append(sh);
   c.append(acts);
   return c;
 }
@@ -1958,6 +1996,10 @@ function addNews(n, top){
   c.append(d);
   if (n.id){
     const a = document.createElement('div'); a.className = 'acts';
+    const sh = document.createElement('button'); sh.textContent = '📤';
+    sh.style.cssText = 'flex:0 0 52px;background:#e6e3d9;color:#222';
+    sh.onclick = () => shareIt({ title: n.title || 'Деҳа', text: [n.title, (n.text || '').slice(0, 400)].filter(Boolean).join('\n'), url: location.origin });
+    a.append(sh);
     if (n.uid === myUid || prof.admin){
       const del = document.createElement('button'); del.textContent = '🗑 Нест кардан';
       del.onclick = () => { if (confirm('Хабар нест шавад?')) socket.emit('newsdel', { id: n.id }); };
@@ -1968,7 +2010,7 @@ function addNews(n, top){
       rp.onclick = () => { if (confirm('Ин хабар ба админ шикоят карда шавад?')) socket.emit('newsreport', { id: n.id }); };
       a.append(rp);
     }
-    if (a.children.length) c.append(a);
+    c.append(a);
   }
   top ? $('news').prepend(c) : $('news').append(c);
 }
