@@ -127,7 +127,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
 #sblk{text-align:left;margin:8px 0}
 #sav{display:flex;justify-content:center}
 #msgs{background:#efeae2}
-.b{border-radius:8px;box-shadow:0 1px .5px rgba(11,20,26,.13);color:#111b21;padding:6px 9px 4px;position:relative}
+.b{border-radius:8px;box-shadow:0 1px .5px rgba(11,20,26,.13);color:#111b21;padding:6px 9px 4px;position:relative;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .ot{background:#fff;border-top-left-radius:0}
 .me{background:#d9fdd3;border-top-right-radius:0}
 .ot:before,.me:after{content:'';position:absolute;top:0;width:8px;height:13px}
@@ -1009,8 +1009,9 @@ function takeReply(){
   setReply(null);
   return id;
 }
+let menuT = 0;
 function openMenu(m){
-  menuMsg = m;
+  menuMsg = m; menuT = Date.now();
   $('mpv').textContent = (m.uid === myUid ? 'Шумо' : m.name) + ': ' + prevText(m);
   $('mdel').style.display = (m.uid === myUid || prof.admin || $('pw').value.trim()) ? 'block' : 'none';
   $('mrpt').style.display = $('mblk').style.display = (m.uid !== myUid) ? 'block' : 'none';
@@ -1018,6 +1019,8 @@ function openMenu(m){
   $('menu').style.display = 'flex';
 }
 function closeMenu(){ $('menu').style.display = 'none'; menuMsg = null; }
+/* ламси тасодуфӣ дар лаҳзаи кушодани меню (баъди зер кардани сахт) нодида гирифта мешавад */
+$('menu').addEventListener('click', (e) => { if (Date.now() - menuT < 500){ e.stopPropagation(); e.preventDefault(); } }, true);
 $('mrep').onclick = () => {
   const m = menuMsg; closeMenu();
   if (!m) return;
@@ -1133,10 +1136,33 @@ function msgEl(m){
     const k = document.createElement('span'); k.className = 'tk' + (m.rd ? ' rd' : ''); k.textContent = m.rd ? ' ✓✓' : ' ✓'; t.append(k);
   }
   d.append(t);
-  d.onclick = (e) => {
-    if (!m.id || e.target.closest('audio,img,video,.rq')) return;
-    openMenu(m);
+  /* менюи нест кардан: танҳо бо зер кардани сахт (дароз) */
+  let lt = null, sx = 0, sy = 0;
+  const lpStart = (e) => {
+    if (!m.id || e.target.closest('audio,video,.rq')) return;
+    const pt = e.touches ? e.touches[0] : e;
+    sx = pt.clientX; sy = pt.clientY;
+    clearTimeout(lt);
+    lt = setTimeout(() => {
+      lt = null;
+      try { if (navigator.vibrate) navigator.vibrate(30); } catch (_) {}
+      openMenu(m);
+    }, 500);
   };
+  const lpCancel = () => { clearTimeout(lt); lt = null; };
+  const lpMove = (e) => {
+    if (lt === null) return;
+    const pt = e.touches ? e.touches[0] : e;
+    if (Math.abs(pt.clientX - sx) > 10 || Math.abs(pt.clientY - sy) > 10) lpCancel();
+  };
+  d.addEventListener('touchstart', lpStart, { passive: true });
+  d.addEventListener('touchmove', lpMove, { passive: true });
+  d.addEventListener('touchend', lpCancel);
+  d.addEventListener('touchcancel', lpCancel);
+  d.addEventListener('mousedown', lpStart);
+  d.addEventListener('mouseup', lpCancel);
+  d.addEventListener('mouseleave', lpCancel);
+  d.addEventListener('contextmenu', (e) => { e.preventDefault(); });
   return d;
 }
 function addChat(m){ if (blocked.has(m.uid)) return; $('msgs').append(msgEl(m)); scrollDown(); }
