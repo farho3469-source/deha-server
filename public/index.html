@@ -40,7 +40,7 @@ input,textarea,select{width:100%;padding:12px;margin:5px 0;font-size:16px;border
 .me{background:#dcf0d2;margin-left:auto;border-top-right-radius:4px}
 .nm{font-size:12px;font-weight:600;color:#2f6b3a;margin-bottom:2px}
 .tm{font-size:11px;color:#777;text-align:right;margin-top:3px}
-.b img,.b video{display:block;max-width:100%;max-height:260px;border-radius:10px}
+.b img{display:block;max-width:100%;max-height:260px;border-radius:10px}
 .b audio{width:230px;max-width:100%}
 .rq{border-left:3px solid #2f6b3a;background:rgba(0,0,0,.06);border-radius:6px;padding:4px 8px;margin-bottom:5px;font-size:13px;color:#444}
 .rq b{display:block;font-size:12px;color:#2f6b3a}
@@ -127,7 +127,7 @@ nav button.on{color:#2f6b3a;font-weight:600}
 #sblk{text-align:left;margin:8px 0}
 #sav{display:flex;justify-content:center}
 #msgs{background:#efeae2}
-.b{border-radius:8px;box-shadow:0 1px .5px rgba(11,20,26,.13);color:#111b21;padding:6px 9px 4px;position:relative;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.b{border-radius:8px;box-shadow:0 1px .5px rgba(11,20,26,.13);color:#111b21;padding:6px 9px 4px;position:relative}
 .ot{background:#fff;border-top-left-radius:0}
 .me{background:#d9fdd3;border-top-right-radius:0}
 .ot:before,.me:after{content:'';position:absolute;top:0;width:8px;height:13px}
@@ -147,6 +147,19 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
 #lang{display:block;right:10px;top:12px}
 .tk{color:#8696a0;margin-left:3px}.tk.rd{color:#53bdeb}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1fa855;margin-left:6px}
+.ol{font-size:12px;color:#8696a0;margin-top:2px;font-weight:400}
+.ol.on{color:#1fa855;font-weight:600}
+#gvcall{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#111;z-index:21;flex-direction:column}
+#gvtitle{color:#fff;padding:12px 14px 6px;font-size:16px;font-weight:600;flex:none}
+#gvgrid{flex:1;min-height:0;display:grid;gap:6px;padding:6px;grid-auto-rows:1fr}
+.gvt{position:relative;background:#222;border-radius:12px;overflow:hidden;min-height:0}
+.gvt video{width:100%;height:100%;object-fit:cover;background:#222}
+.gvn{position:absolute;left:8px;bottom:6px;color:#fff;font-size:13px;text-shadow:0 1px 3px #000}
+#gvctl{display:flex;justify-content:center;gap:24px;padding:12px 0 18px;flex:none}
+#gvban{display:none;position:fixed;left:10px;right:10px;top:10px;z-index:22;background:#1b3d22;color:#fff;border-radius:14px;padding:12px;align-items:center;gap:8px}
+#gvban span{flex:1;font-size:15px}
+#gvbar{display:none;align-items:center;gap:8px;background:#dcf0d2;color:#27500a;padding:8px 12px;font-size:14px;flex:none}
+#gvbar span{flex:1}
 #mem{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:8;flex-direction:column}
 #mem .top{background:#2f6b3a;color:#fff;padding:14px;font-size:18px;font-weight:600;flex:none}
 #mem .body{flex:1;overflow-y:auto;padding:12px}
@@ -165,40 +178,47 @@ mark{background:#ffe58f;border-radius:3px}
 #gpick .body,#ginfo .body{flex:1;overflow-y:auto;padding:12px}
 .gfoot{display:flex;gap:8px;padding:10px;flex:none}
 .gfoot .btn{flex:1}
-#pickm{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:11;align-items:flex-end;justify-content:center}
-#pickm .mbox{background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom))}
-#pickm .mbox .btn{width:100%;margin:5px 0}
-#gvids{display:none;position:absolute;left:0;top:0;right:0;bottom:0;padding:84px 8px 120px;gap:6px;grid-template-columns:repeat(2,1fr);grid-auto-rows:1fr;z-index:1}
-#gvids .gt{position:relative;background:#2a2a2a;border-radius:12px;overflow:hidden;min-height:0}
-#gvids .gt video{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;opacity:0}
-#gvids .gav{position:absolute;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;font-size:44px;color:#fff;font-weight:600}
-#gvids .gn{position:absolute;left:8px;bottom:6px;color:#fff;font-size:13px;text-shadow:0 1px 3px #000;z-index:2}
-#call.grp #ctop{top:10px}
-#call.grp #cname{font-size:18px}
-#call.grp #cst{font-size:14px;margin-top:2px}
-#call.grp #lv{top:auto;bottom:120px;right:12px;width:80px;height:106px}
-#strow{display:none;gap:12px;overflow-x:auto;padding:4px 2px 10px;margin-bottom:4px}
-.stb{flex:none;width:68px;text-align:center;font-size:12px;color:#444;background:none;border:0;padding:0;font-family:inherit}
-.stb .ring{width:62px;height:62px;border-radius:50%;padding:3px;margin:0 auto 4px;background:#1fa855}
-.stb .ring.seen{background:#c9c9c9}
-.stb .ring.add{background:#e6e3d9;color:#2f6b3a;font-size:30px}
-.stb .in{width:100%;height:100%;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.stb .ring.add .in{background:#e6e3d9}
-.stb .nmx{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-#stform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:9;flex-direction:column}
-#stform .top{background:#2f6b3a;color:#fff;padding:14px;font-size:18px;font-weight:600;flex:none}
-#stform .body{flex:1;overflow-y:auto;padding:14px}
-#stv{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#000;z-index:18;flex-direction:column;color:#fff}
-#stv .bars{display:flex;gap:4px;padding:calc(10px + env(safe-area-inset-top)) 10px 6px;flex:none}
-#stv .bars i{flex:1;height:3px;background:rgba(255,255,255,.35);border-radius:2px;overflow:hidden;position:relative}
-#stv .bars i b{position:absolute;left:0;top:0;bottom:0;width:0;background:#fff}
-#stv .hd{display:flex;align-items:center;gap:8px;padding:6px 12px;flex:none}
-#stv .body{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:0}
-#stv .body img{max-width:100%;max-height:100%}
-#stv #stcont{max-width:100%;max-height:100%;display:flex;align-items:center;justify-content:center}
-#stv .txt{padding:30px;font-size:26px;text-align:center;font-weight:600;white-space:pre-wrap;word-break:break-word}
-#stv .cap{position:absolute;left:0;right:0;bottom:0;padding:30px 16px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(0,0,0,.65));text-align:center;font-size:16px}
-#stv .tap{position:absolute;top:0;bottom:0;width:35%;z-index:2}
+/* compact: дизайни ҷамъшуда (метавон ин блокро нест кард, то дизайни пештара баргардад) */
+#hdr{height:56px}
+#hdr .t{top:6px;font-size:18px}
+#hdr .s{top:30px;font-size:11px}
+#lang,.hb{top:9px;padding:3px 10px;font-size:12px}
+#auth{padding:14px}
+input,textarea,select{padding:9px 11px;margin:3px 0;font-size:15px;border-radius:9px}
+.btn{padding:9px 16px;font-size:15px;border-radius:9px}
+.mini{padding:6px 10px;font-size:13px;border-radius:9px}
+.pad{padding:8px}
+#home{padding:8px 10px}
+.sh{margin:9px 2px 4px;font-size:12px}
+.item{padding:9px 12px;margin-bottom:5px;font-size:15px;border-radius:11px;gap:5px}
+.item small{font-size:11px}
+.item .avt{margin-right:6px}
+.card{padding:8px 10px;margin-bottom:7px;border-radius:11px}
+.card b{font-size:15px;margin-bottom:2px}
+.card .d{margin-top:4px;font-size:11px}
+.card img{max-height:200px;margin-bottom:6px}
+.price{padding:2px 9px;margin:1px 0 4px}
+.acts{margin-top:6px;gap:6px}
+.acts a,.acts button{padding:8px;font-size:14px}
+.chips{padding:5px 8px;gap:5px}
+.chip{padding:4px 11px;font-size:13px}
+#chead{padding:5px 8px;gap:6px}
+#chead b{font-size:16px}
+#chead .ic{width:32px!important;height:32px!important;font-size:15px!important}
+#msgs{padding:6px 8px}
+.b{margin:3px 0;padding:5px 8px 3px;font-size:14.5px}
+.tm{font-size:10px;margin-top:2px}
+#comp{padding:5px 6px}
+#bar{gap:5px}
+.ic{width:38px;height:38px;font-size:18px}
+#text{padding:8px 12px;font-size:15px}
+nav button{padding:5px 0;font-size:10px}
+nav button span{font-size:19px}
+.fab{padding:10px 16px;font-size:15px;right:12px;bottom:12px}
+#notif{padding:6px 10px;font-size:12px}
+#rpl{padding:4px 8px}
+#sbar{padding:4px 8px}
+.gbox{padding:16px}
 </style>
 </head>
 <body>
@@ -242,14 +262,13 @@ mark{background:#ffe58f;border-radius:3px}
           <span>🔔 Барои он ки вақти пӯшида будани барнома ҳам паём биёяд</span>
           <button class="btn" onclick="enablePush()">Фаъол кардан</button>
         </div>
-        <div id="strow"></div>
         <div id="dsrch" style="display:none"><input id="dsq" placeholder="🔍 Ноҳия, деҳа ё ном..." autocomplete="off"></div>
         <div id="hbody"></div>
       </div>
       <div id="chatv">
       <div id="chead"><button class="ic g" style="width:36px;height:36px;font-size:16px" onclick="goHome()">←</button><div id="ctw" style="line-height:1.25;min-width:0;cursor:pointer" onclick="openMembers()"><b id="ctitle"></b><div id="csub" style="font-size:12px;color:#667781"></div></div><span style="flex:1"></span><button id="csrch" class="ic g" style="width:36px;height:36px;font-size:16px" onclick="toggleSearch()" aria-label="Ҷустуҷӯ">🔍</button><button id="cb1" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(false)" aria-label="Занг">📞</button><button id="cb2" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(true)" aria-label="Видео">🎥</button></div>
-      <div id="gbanner" style="display:none;align-items:center;gap:8px;background:#dcf0d2;color:#27500A;padding:8px 12px;font-size:14px;flex:none"><span id="gbt" style="flex:1"></span><button class="mini" onclick="gcJoinHere()">Ворид шудан</button></div>
       <div class="chips" id="rooms"></div>
+      <div id="gvbar"><span id="gvbtx"></span><button class="mini" onclick="gvJoinCurrent()">Ҳамроҳ шудан</button></div>
       <div id="sbar"><input id="sq" placeholder="Ҷустуҷӯ дар чат..." autocomplete="off"><button class="ic g" style="width:34px;height:34px;font-size:15px" onclick="toggleSearch()" aria-label="Бекор">✕</button></div>
       <div id="msgs"></div>
       <div id="sres"></div>
@@ -324,11 +343,18 @@ mark{background:#ffe58f;border-radius:3px}
     <textarea id="add" rows="4" placeholder="Тавсиф (синну сол, ҷой ва ғайра)"></textarea>
     <button class="btn g" style="width:100%;margin:6px 0" onclick="$('adphoto').click()">📷 Расм интихоб кунед</button>
     <div id="adpn" style="font-size:13px;color:#777;margin-bottom:10px">Расм интихоб нашудааст</div>
-    <div style="font-size:13px;color:#777;margin-bottom:10px">Рақами шумо дар эълон барои ҳамаи корбарон намоён мешавад.</div>
+    <div style="font-size:13px;color:#777;margin-bottom:10px">Рақами шумо танҳо барои ҳамдеҳагонатон намоён аст.</div>
     <button class="btn" id="adsend" style="width:100%" onclick="submitAd()">Нашр кардан</button>
     <button class="btn g" style="width:100%;margin-top:8px" onclick="closeAd()">Бекор кардан</button>
   </div>
 </div>
+
+<div id="gvcall">
+  <div id="gvtitle"></div>
+  <div id="gvgrid"></div>
+  <div id="gvctl"><button class="cbtn" id="gvmic" onclick="gvToggle('a')">🎤</button><button class="cbtn" id="gvcam" onclick="gvToggle('v')">📷</button><button class="cbtn red" onclick="gvLeave(true)">✕</button></div>
+</div>
+<div id="gvban"><span id="gvbtxt"></span><button class="mini" onclick="gvAccept()">Ҷавоб</button><button class="mini r" onclick="gvDecline()">Рад</button></div>
 
 <div id="nform">
   <div class="top">Хабари нав</div>
@@ -355,7 +381,6 @@ mark{background:#ffe58f;border-radius:3px}
 
 <div id="call">
   <video id="rv" autoplay playsinline></video>
-  <div id="gvids"></div>
   <video id="lv" autoplay playsinline muted></video>
   <div id="ctop"><div id="cname"></div><div id="cst"></div><div id="cdbg"></div></div>
   <div id="cin"><button class="cbtn red" onclick="declineCall()">✕</button><button class="cbtn grn" onclick="acceptCall()">✔</button></div>
@@ -389,7 +414,8 @@ mark{background:#ffe58f;border-radius:3px}
     <input id="sviln" placeholder="Номи деҳаи шумо" style="display:none">
     <div id="sblk"></div>
     <button class="btn" onclick="saveSettings()">Сабт кардан</button>
-    <button class="btn g" onclick="shareIt({title:'Деҳа',text:'Деҳа — чат, бозор ва хабарҳои деҳа',url:location.origin})">📤 Барномаро ба дигарон фиристодан</button>
+    <button class="btn g" onclick="testCall()">🔔 Санҷиши занг (барномаи пӯшида)</button>
+    <button class="btn g" onclick="testResult()">📄 Натиҷаи санҷиши охирин</button>
     <button class="btn" style="background:#fff;color:#b00020;border:1px solid #b00020" onclick="logout()">Баромадан аз ҳисоб</button>
     <input id="dpass" type="password" autocomplete="current-password" placeholder="Парол барои тасдиқ" style="display:none">
     <button class="btn" style="background:#b00020" onclick="delAccount()">Ҳисобро нест кардан</button>
@@ -434,29 +460,10 @@ mark{background:#ffe58f;border-radius:3px}
   </div>
 </div>
 
-<input type="file" id="stphoto" accept="image/*" style="display:none">
-<div id="stform">
-  <div class="top">Таърихи нав</div>
-  <div class="body">
-    <textarea id="stt" rows="6" maxlength="300" placeholder="Матн нависед..." style="font-size:22px"></textarea>
-    <div id="stcols" style="gap:10px;margin:8px 0"></div>
-    <button class="btn g" style="width:100%;margin:6px 0" onclick="$('stphoto').click()">📷 Расм интихоб кунед</button>
-    <div id="stpn" style="font-size:13px;color:#777;margin-bottom:10px">Расм интихоб нашудааст</div>
-    <button class="btn" id="stsend" style="width:100%" onclick="submitStory()">Нашр кардан</button>
-    <button class="btn g" style="width:100%;margin-top:8px" onclick="closeStoryForm()">Бекор кардан</button>
-  </div>
-</div>
-<div id="stv">
-  <div class="bars" id="stbars"></div>
-  <div class="hd"><span id="stav"></span><div style="flex:1;line-height:1.2"><b id="stnm"></b><div id="sttm" style="font-size:12px;opacity:.8"></div></div><button id="stvw" class="ic g" style="display:none;width:auto;border-radius:19px;padding:0 12px;height:38px;font-size:14px" onclick="stViews()">👁</button><button id="stdel" class="ic g" style="display:none;width:38px;height:38px;font-size:16px" onclick="stDelete()">🗑</button><button class="ic g" style="width:38px;height:38px;font-size:16px" onclick="closeStory()">✕</button></div>
-  <div class="body" id="stbody"><div class="tap" style="left:0" onclick="prevStory()"></div><div class="tap" style="right:0" onclick="nextStory()"></div><div id="stcont"></div></div>
-</div>
 <input type="file" id="pfile" accept="image/*" style="display:none">
-<input type="file" id="vfile" accept="video/*" style="display:none">
-<div id="pickm" onclick="this.style.display='none'"><div class="mbox" onclick="event.stopPropagation()"><button class="btn" id="pk1">📷 Расм</button><button class="btn" id="pk2">🎬 Видео</button><button class="btn g" onclick="$('pickm').style.display='none'">Бекор кардан</button></div></div>
 <input type="file" id="adphoto" accept="image/*" style="display:none">
 <input type="file" id="avfile" accept="image/*" style="display:none">
-<div id="lb" onclick="this.style.display='none'"><button id="lbshare" class="ic" style="position:absolute;right:14px;top:calc(14px + env(safe-area-inset-top));z-index:2;background:rgba(255,255,255,.25)" onclick="event.stopPropagation();shareImg()" aria-label="Поделиться">📤</button><div id="lbbox"><img id="lbimg" alt=""><div id="lbcap"></div></div></div>
+<div id="lb" onclick="this.style.display='none'"><div id="lbbox"><img id="lbimg" alt=""><div id="lbcap"></div></div></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -564,7 +571,7 @@ const RU = {
 "Ҳама":"Все",
 "📷 Расм интихоб кунед":"📷 Выбрать фото",
 "Расм интихоб нашудааст":"Фото не выбрано",
-"Рақами шумо дар эълон барои ҳамаи корбарон намоён мешавад.":"Ваш номер в объявлении виден всем пользователям.",
+"Рақами шумо танҳо барои ҳамдеҳагонатон намоён аст.":"Ваш номер виден только землякам из вашей деревни.",
 "Нашр кардан":"Опубликовать",
 "Сарлавҳа":"Заголовок",
 "Сарлавҳа (масалан: Гови ширдеҳ)":"Заголовок (например: Дойная корова)",
@@ -702,6 +709,9 @@ const RX = [
 ];
 RX.push([/^(\d+) нафар · (\d+) онлайн$/, '$1 чел. · $2 онлайн']);
 RX.push([/^(\d+) нафар$/, '$1 чел.']);
+RX.push([/^(📞|🎥) Занги гурӯҳӣ идома дорад · (\d+) нафар$/, '$1 Групповой звонок идёт · $2 чел.']);
+RX.push([/^(📞|🎥) Занги гурӯҳӣ: (.*)$/, '$1 Групповой звонок: $2']);
+Object.assign(RU, { 'офлайн':'не в сети', 'Ҳамроҳ шудан':'Присоединиться' });
 RX.push([/^Интихоб шуд: (\d+)$/, 'Выбрано: $1']);
 RX.push([/^(.*) аз гурӯҳ хориҷ карда шавад\?$/, '$1 будет удалён из группы?']);
 Object.assign(RU, {
@@ -780,14 +790,6 @@ let blocked = new Set(), blockedList = [];
 let adsData = [], adFilter = 'all', adFile = null, roomList = [];
 let rec = null, chunks = [], recTimer = null, recStart = 0, recCancel = false, stream = null;
 let replyTo = null, menuMsg = null, pushKey = '';
-/* тартиби рӯйхат: охирин паём ё онлайн шудан — боло */
-let bump = {}, onlSet = new Set();
-function bumpRoom(r){ if (r) bump[r] = Date.now(); }
-function lastOf(r, base){ return bump[r] || base || 0; }
-function askOnl(){
-  if (socket && social.contacts.length) socket.emit('onlq', social.contacts.map((c) => c.uid));
-}
-setInterval(askOnl, 10000);
 
 /* ---------- барномаи Android (WebView) ---------- */
 let autoAns = /[?&]answer=1/.test(location.search);
@@ -1023,8 +1025,8 @@ function tab(n){
 function hhmm(t){ return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 function scrollDown(){ const b = $('msgs'); b.scrollTop = b.scrollHeight; }
 function mediaUrl(id){ return '/media/' + id + '?t=' + tok; }
-function openImg(src){ $('lbshare').style.display = 'block'; $('lbimg').className = ''; $('lbcap').textContent = ''; $('lbimg').src = src; $('lb').style.display = 'flex'; }
-function openAvatar(av, name){ $('lbshare').style.display = 'none'; $('lbimg').className = 'big'; $('lbcap').textContent = name || ''; $('lbimg').src = mediaUrl(av); $('lb').style.display = 'flex'; }
+function openImg(src){ $('lbimg').className = ''; $('lbcap').textContent = ''; $('lbimg').src = src; $('lb').style.display = 'flex'; }
+function openAvatar(av, name){ $('lbimg').className = 'big'; $('lbcap').textContent = name || ''; $('lbimg').src = mediaUrl(av); $('lb').style.display = 'flex'; }
 
 function setGender(g){
   if (socket) socket.emit('setgender', g);
@@ -1033,7 +1035,7 @@ function setGender(g){
 
 /* ---------- чат ---------- */
 function prevText(m){
-  return m.kind === 'image' ? '📷 Расм' : m.kind === 'audio' ? '🎤 Паёми овозӣ' : m.kind === 'video' ? '🎬 Видео' : (m.text || '');
+  return m.kind === 'image' ? '📷 Расм' : m.kind === 'audio' ? '🎤 Паёми овозӣ' : (m.text || '');
 }
 function setReply(m){
   replyTo = m ? { id: m.id, name: m.uid === myUid ? 'Шумо' : m.name, text: prevText(m) } : null;
@@ -1048,9 +1050,8 @@ function takeReply(){
   setReply(null);
   return id;
 }
-let menuT = 0;
 function openMenu(m){
-  menuMsg = m; menuT = Date.now();
+  menuMsg = m;
   $('mpv').textContent = (m.uid === myUid ? 'Шумо' : m.name) + ': ' + prevText(m);
   $('mdel').style.display = (m.uid === myUid || prof.admin || $('pw').value.trim()) ? 'block' : 'none';
   $('mrpt').style.display = $('mblk').style.display = (m.uid !== myUid) ? 'block' : 'none';
@@ -1058,8 +1059,6 @@ function openMenu(m){
   $('menu').style.display = 'flex';
 }
 function closeMenu(){ $('menu').style.display = 'none'; menuMsg = null; }
-/* ламси тасодуфӣ дар лаҳзаи кушодани меню (баъди зер кардани сахт) нодида гирифта мешавад */
-$('menu').addEventListener('click', (e) => { if (Date.now() - menuT < 500){ e.stopPropagation(); e.preventDefault(); } }, true);
 $('mrep').onclick = () => {
   const m = menuMsg; closeMenu();
   if (!m) return;
@@ -1105,9 +1104,7 @@ function renderMembers(){
   if (!vinfo) return;
   box.append(hd(vinfo.total + ' нафар · ' + vinfo.online + ' онлайн'));
   vinfo.list.filter((u) => !blocked.has(u.uid)).forEach((u) => {
-    const r = item(u.me ? u.name + ' (Шумо)' : u.name, u.on ? 'онлайн' : 'офлайн', null, u.av || '');
-    const sm = r.querySelector('small');
-    if (sm) sm.style.color = u.on ? '#1fa855' : '#999';
+    const r = item(u.me ? u.name + ' (Шумо)' : u.name, '', null, u.av || '', u.me ? '' : u.uid);
     if (u.on){ const d = document.createElement('i'); d.className = 'dot'; r.querySelector('span').append(d); }
     if (!u.me) r.append(mini('💬', '', () => startDM(u.uid, u.name)));
     box.append(r);
@@ -1117,14 +1114,6 @@ function markRead(){
   if (socket && room.startsWith('dm:') && document.visibilityState === 'visible') socket.emit('markread', { room });
 }
 setInterval(() => { if (socket && prof.village && room === 'v:' + prof.village) socket.emit('vinfo'); }, 30000);
-/* ҳолати онлайн/офлайн дар чати шахсӣ */
-function askPstat(){
-  if (socket && room.startsWith('dm:')){
-    const p = room.split(':');
-    socket.emit('pstat', p[1] === myUid ? p[2] : p[1]);
-  }
-}
-setInterval(askPstat, 20000);
 $('mdm').onclick = () => { const m = menuMsg; closeMenu(); if (m && socket) startDM(m.uid, m.name); };
 const NAMECOL = ['#1fa855', '#d4452f', '#a05bd0', '#cf7d00', '#0a8ea6', '#c24a8e', '#5b7fcf', '#7a8f00'];
 function nameColor(k){ let h = 0; for (const c of String(k)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return NAMECOL[h % NAMECOL.length]; }
@@ -1159,10 +1148,6 @@ function msgEl(m){
     im.loading = 'lazy'; im.src = mediaUrl(m.media); im.onload = scrollDown;
     im.onclick = (e) => { e.stopPropagation(); openImg(im.src); };
     d.append(im);
-  } else if (m.kind === 'video'){
-    const vd = document.createElement('video');
-    vd.controls = true; vd.preload = 'metadata'; vd.playsInline = true; vd.src = mediaUrl(m.media);
-    d.append(vd);
   } else if (m.kind === 'audio'){
     const a = document.createElement('audio');
     a.controls = true; a.preload = 'none'; a.src = mediaUrl(m.media);
@@ -1175,33 +1160,10 @@ function msgEl(m){
     const k = document.createElement('span'); k.className = 'tk' + (m.rd ? ' rd' : ''); k.textContent = m.rd ? ' ✓✓' : ' ✓'; t.append(k);
   }
   d.append(t);
-  /* менюи нест кардан: танҳо бо зер кардани сахт (дароз) */
-  let lt = null, sx = 0, sy = 0;
-  const lpStart = (e) => {
-    if (!m.id || e.target.closest('audio,video,.rq')) return;
-    const pt = e.touches ? e.touches[0] : e;
-    sx = pt.clientX; sy = pt.clientY;
-    clearTimeout(lt);
-    lt = setTimeout(() => {
-      lt = null;
-      try { if (navigator.vibrate) navigator.vibrate(30); } catch (_) {}
-      openMenu(m);
-    }, 500);
+  d.onclick = (e) => {
+    if (!m.id || e.target.closest('audio,img,.rq')) return;
+    openMenu(m);
   };
-  const lpCancel = () => { clearTimeout(lt); lt = null; };
-  const lpMove = (e) => {
-    if (lt === null) return;
-    const pt = e.touches ? e.touches[0] : e;
-    if (Math.abs(pt.clientX - sx) > 10 || Math.abs(pt.clientY - sy) > 10) lpCancel();
-  };
-  d.addEventListener('touchstart', lpStart, { passive: true });
-  d.addEventListener('touchmove', lpMove, { passive: true });
-  d.addEventListener('touchend', lpCancel);
-  d.addEventListener('touchcancel', lpCancel);
-  d.addEventListener('mousedown', lpStart);
-  d.addEventListener('mouseup', lpCancel);
-  d.addEventListener('mouseleave', lpCancel);
-  d.addEventListener('contextmenu', (e) => { e.preventDefault(); });
   return d;
 }
 function addChat(m){ if (blocked.has(m.uid)) return; $('msgs').append(msgEl(m)); scrollDown(); }
@@ -1269,10 +1231,14 @@ function addPlace(t){
 function wipeChat(){
   if (socket && confirm('Ҳамаи паёмҳо нест шаванд?')) socket.emit('wipechat', { password: $('pw').value });
 }
-function item(title, sub, fn, av){
+function item(title, sub, fn, av, uid){
   const b = document.createElement('button'); b.className = 'item';
-  if (av !== undefined) b.append(avEl(av, title, 34));
+  if (av !== undefined) b.append(avEl(av, title, 30));
   const s = document.createElement('span'); s.textContent = title; b.append(s);
+  if (uid){
+    const o = document.createElement('div'); o.className = 'ol'; o.dataset.uid = uid; dhOlPaint(o); s.append(o);
+    clearTimeout(dhOlT); dhOlT = setTimeout(dhRefreshOnline, 300);
+  }
   if (sub){ const m = document.createElement('small'); m.textContent = sub; b.append(m); }
   if (fn) b.onclick = fn;
   return b;
@@ -1284,7 +1250,6 @@ function mini(t, cls, fn){
   return b;
 }
 function renderHome(){
-  renderStories();
   const box = $('hbody'); box.innerHTML = '';
   $('dsrch').style.display = nav.v === 'districts' ? 'block' : 'none';
   if (nav.v === 'home' && $('dsq').value){ $('dsq').value = ''; peopleRes = { q: '', list: [] }; }
@@ -1301,9 +1266,8 @@ function renderHome(){
       box.append(item('⚠ Деҳаи худро интихоб кунед', '', () => { fillPlace('pdist', 'pvil'); $('pform').style.display = 'flex'; }));
     }
     box.append(hd('Оила ва авлод'));
-    [...groupsList].sort((a, b) => lastOf('g:' + b.id) - lastOf('g:' + a.id)).forEach((g) => {
+    groupsList.forEach((g) => {
       const r = item('👪 ' + g.name, g.members.length + ' нафар', () => showChat('g:' + g.id, g.name));
-      if (gcalls[g.id]) r.append(mini((gcalls[g.id].video ? '🎥 ' : '📞 ') + gcalls[g.id].count, '', () => gcBegin(g.id, gcalls[g.id].video, true)));
       const gb = badge(unreadMap['g:' + g.id]);
       if (gb) r.append(gb);
       box.append(r);
@@ -1312,7 +1276,7 @@ function renderHome(){
     if (social.incoming.length){
       box.append(hd('Дархостҳо'));
       social.incoming.forEach((q) => {
-        const r = item(q.name, vname(q.village), null, q.av);
+        const r = item(q.name, vname(q.village), null, q.av, q.uid);
         r.append(mini('Қабул', '', () => socket.emit('reqans', { id: q.id, accept: true })));
         r.append(mini('Рад', 'r', () => socket.emit('reqans', { id: q.id, accept: false })));
         box.append(r);
@@ -1320,9 +1284,8 @@ function renderHome(){
     }
     if (social.contacts.length){
       box.append(hd('Сӯҳбатҳои шахсӣ'));
-      [...social.contacts].sort((a, b) => lastOf(b.room, b.last) - lastOf(a.room, a.last)).forEach((c) => {
-        const r = item(c.name, vname(c.village), () => showChat(c.room, c.name), c.av);
-        if (onlSet.has(c.uid)){ const od = document.createElement('i'); od.className = 'dot'; r.querySelector('span').append(od); }
+      social.contacts.forEach((c) => {
+        const r = item(c.name, vname(c.village), () => showChat(c.room, c.name), c.av, c.uid);
         const cb = badge(unreadMap[c.room]);
         if (cb) r.append(cb);
         box.append(r);
@@ -1352,7 +1315,7 @@ function renderHome(){
     const list = (members.village === nav.id ? members.list : []).filter((x) => !blocked.has(x.uid));
     if (!list.length) box.append(item('Ҳоло касе нест', ''));
     list.forEach((m) => {
-      const r = item(m.name, '', null, m.av);
+      const r = item(m.name, '', null, m.av, m.uid);
       if (m.state === 'none') r.append(mini('Запрос', '', () => socket.emit('reqsend', m.uid)));
       else if (m.state === 'accepted'){
         const c = social.contacts.find((x) => x.uid === m.uid);
@@ -1397,20 +1360,16 @@ function openVillage(){ if (prof.village) showChat('v:' + prof.village, vname(pr
 function showChat(r, title){
   $('home').style.display = 'none'; $('chatv').style.display = 'flex';
   $('ctitle').textContent = title; $('csub').textContent = '';
-  $('csub').style.color = '#667781';
   if (r.startsWith('g:')){ const gg = gById(r.slice(2)); if (gg) $('csub').textContent = gg.members.length + ' нафар'; }
   $('sbar').style.display = 'none'; $('sq').value = ''; showSearch(false);
   $('cb1').style.display = $('cb2').style.display = (CALLS && (r.startsWith('dm:') || r.startsWith('g:'))) ? 'inline-block' : 'none';
   room = r; $('msgs').innerHTML = ''; renderRooms(); setReply(null);
   socket.emit('join', r);
   if (r === 'v:' + prof.village) socket.emit('vinfo');
-  askPstat();
-  if (r.startsWith('g:')) socket.emit('gcallq', { id: r.slice(2) });
-  gcUpdBanner();
+  gvRenderBar();
 }
 function goHome(){
   room = ''; $('chatv').style.display = 'none'; $('home').style.display = 'block';
-  gcUpdBanner();
   setReply(null); if (socket) socket.emit('leave');
   renderHome();
 }
@@ -1431,7 +1390,7 @@ function stopRingback(){
 }
 function dbg(){
   if (!pc) return;
-  $('cdbg').textContent = 'ice: ' + pc.iceConnectionState + ' · sig: ' + pc.signalingState + ' · host ' + cand.host + ' srflx ' + cand.srflx + ' relay ' + cand.relay + (cand.err ? ' · TURN хато ' + cand.err : '');
+  $('cdbg').textContent = 'ice: ' + pc.iceConnectionState + ' · sig: ' + pc.signalingState + ' · host ' + cand.host + ' srflx ' + cand.srflx + ' relay ' + cand.relay;
 }
 async function getIce(){
   if (!iceList){
@@ -1488,7 +1447,7 @@ function micErr(e){
 async function openMedia(){
   if (lstream){ lstream.getTracks().forEach((t) => t.stop()); lstream = null; }
   const tries = callVideo
-    ? [{ audio: true, video: callRole === 'group' ? { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15 } } : { facingMode: 'user' } }, { audio: true, video: false }]
+    ? [{ audio: true, video: { facingMode: 'user' } }, { audio: true, video: false }]
     : [{ audio: true, video: false }];
   let err = null;
   for (const c of tries){
@@ -1507,10 +1466,7 @@ async function makePc(){
   pc = new RTCPeerConnection({ iceServers: await getIce() });
   nativeCall(true);
   lstream.getTracks().forEach((t) => pc.addTrack(t, lstream));
-  cand = { host: 0, srflx: 0, relay: 0, err: '' };
-  pc.onicecandidateerror = (e) => {
-    if (/^turns?:/.test(String(e.url || ''))){ cand.err = (e.errorCode || '') + ' ' + String(e.errorText || '').slice(0, 40); dbg(); }
-  };
+  cand = { host: 0, srflx: 0, relay: 0 };
   pc.onicecandidate = (e) => {
     if (!e.candidate) return;
     const m = / typ (host|srflx|relay|prflx)/.exec(e.candidate.candidate || '');
@@ -1544,7 +1500,6 @@ async function makePc(){
   };
 }
 function resetCall(){
-  gcCleanup();
   clearTimeout(ringT); clearTimeout(connT); clearInterval(timerI); stopRing(); stopRingback(); clearTimeout(statT); nativeCall(false);
   $('cdbg').textContent = '';
   if (pc){ try { pc.close(); } catch (e) {} pc = null; }
@@ -1554,17 +1509,12 @@ function resetCall(){
   $('call').style.display = 'none';
 }
 function endCall(notify){
-  if (callRole === 'group' && gc && socket) socket.emit('gcallleave', { id: gc.id });
-  else if (notify && callPeer && socket) socket.emit('callend', { to: callPeer });
+  if (notify && callPeer && socket) socket.emit('callend', { to: callPeer });
   resetCall();
 }
 async function startCall(video){
+  if (room.startsWith('g:')){ gvStart(video); return; }
   if ($('call').style.display === 'flex' || (callStarting && Date.now() - callStarting < 25000)){ toast('Шумо дар занг ҳастед'); return; }
-  if (room.startsWith('g:')){
-    const gid = room.slice(2), st = gcalls[gid];
-    gcBegin(gid, st ? st.video : video, !!st);
-    return;
-  }
   resetCall();
   const p = room.split(':');
   if (p[0] !== 'dm') return;
@@ -1580,7 +1530,6 @@ async function startCall(video){
   ringT = setTimeout(() => { if (callRole === 'caller' && !pc){ toast('Ҷавоб нашуд'); endCall(true); } }, 45000);
 }
 async function acceptCall(){
-  if (gIncoming){ const g = gIncoming; gcIncClear(); gcBegin(g.id, g.video, true); return; }
   stopRing();
   if (!(await openMedia())){ socket.emit('callanswer', { to: callPeer, accept: false }); resetCall(); return; }
   showCall('Пайваст мешавад...', false);
@@ -1588,7 +1537,6 @@ async function acceptCall(){
   socket.emit('callanswer', { to: callPeer, accept: true });
 }
 function declineCall(){
-  if (gIncoming){ gcIncClear(); return; }
   socket.emit('callanswer', { to: callPeer, accept: false });
   resetCall();
 }
@@ -1603,278 +1551,6 @@ function toggleCam(){
   const t = lstream.getVideoTracks(), on = !(t[0] && t[0].enabled);
   t.forEach((x) => { x.enabled = on; });
   $('btcam').classList.toggle('off', !on);
-}
-
-/* ---------- занги гурӯҳӣ (ҳар кас бо ҳар кас, то 5 нафар) ---------- */
-let gc = null, gcalls = {}, gIncoming = null;
-Object.assign(RU, { 'Видео аз ҳад калон аст (то 15 MB)': 'Видео слишком большое (до 15 МБ)', 'Видео фиристода нашуд': 'Не удалось отправить видео', 'Видео фиристода мешавад...': 'Отправка видео...' });
-Object.assign(RU, { 'Занги гурӯҳӣ': 'Групповой звонок', 'Дар занг ҷой нест': 'В звонке нет места', 'Занг дигар идома надорад': 'Звонок уже завершён' });
-RX.push([/^(.*)Занги гурӯҳӣ · (\d+) нафар$/, '$1Групповой звонок · $2 чел.']);
-RX.push([/^(.*): Занги гурӯҳӣ$/, '$1: групповой звонок']);
-function gcIncClear(){
-  if (gIncoming){ clearTimeout(gIncoming.t); gIncoming = null; }
-  resetCall();
-}
-function gcRoomId(){ return room.startsWith('g:') ? room.slice(2) : ''; }
-function gcUpdBanner(){
-  const id = gcRoomId(), st = gcalls[id], b = $('gbanner');
-  const show = !!(id && st && !(gc && gc.id === id));
-  b.style.display = show ? 'flex' : 'none';
-  if (show) $('gbt').textContent = (st.video ? '🎥 ' : '📞 ') + 'Занги гурӯҳӣ · ' + st.count + ' нафар';
-}
-function gcJoinHere(){
-  const id = gcRoomId(), st = gcalls[id];
-  if (id && st) gcBegin(id, st.video, true);
-}
-function gcStatus(){
-  if (!gc) return;
-  const n = gc.peers.size;
-  $('cst').textContent = 'Занги гурӯҳӣ · ' + (n + 1) + ' нафар';
-  $('gvids').style.gridTemplateColumns = n <= 1 ? '1fr' : 'repeat(2,1fr)';
-}
-function gcTile(name){
-  const t = document.createElement('div'); t.className = 'gt';
-  const av = document.createElement('div'); av.className = 'gav'; av.textContent = String(name || '?').trim().charAt(0).toUpperCase();
-  const v = document.createElement('video'); v.autoplay = true; v.playsInline = true;
-  const n = document.createElement('div'); n.className = 'gn'; n.textContent = name || '';
-  t.append(av, v, n); $('gvids').append(t);
-  return { t, v, n, name: name || '' };
-}
-function gcPeer(uid){
-  let p = gc.peers.get(uid);
-  if (p) return p;
-  const tile = gcTile(gc.names[uid]);
-  const pc = new RTCPeerConnection({ iceServers: iceList || [{ urls: 'stun:stun.l.google.com:19302' }] });
-  p = { pc, tile, pending: [] };
-  gc.peers.set(uid, p);
-  if (lstream) lstream.getTracks().forEach((t) => pc.addTrack(t, lstream));
-  const gid = gc.id;
-  pc.onicecandidate = (e) => { if (e.candidate && socket) socket.emit('gcallsig', { id: gid, to: uid, data: { ice: e.candidate } }); };
-  pc.ontrack = (e) => {
-    tile.v.srcObject = e.streams[0];
-    tile.v.play().catch(() => {});
-    if (e.track.kind === 'video') tile.v.style.opacity = 1;
-  };
-  pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'failed') tile.n.textContent = tile.name + ' ⚠';
-    else if (pc.connectionState === 'connected') tile.n.textContent = tile.name;
-  };
-  gcStatus();
-  return p;
-}
-function gcDrop(uid){
-  const p = gc && gc.peers.get(uid);
-  if (!p) return;
-  try { p.pc.close(); } catch (e) {}
-  p.tile.t.remove();
-  gc.peers.delete(uid);
-  gcStatus();
-}
-async function gcOffer(uid){
-  const p = gcPeer(uid);
-  const off = await p.pc.createOffer();
-  await p.pc.setLocalDescription(off);
-  socket.emit('gcallsig', { id: gc.id, to: uid, data: { sdp: { type: off.type, sdp: off.sdp } } });
-}
-function gcCleanup(){
-  if (gc){ gc.peers.forEach((p) => { try { p.pc.close(); } catch (e) {} }); gc = null; }
-  $('gvids').innerHTML = ''; $('gvids').style.display = 'none';
-  $('rv').style.display = ''; $('call').classList.remove('grp');
-  gcUpdBanner();
-}
-async function gcBegin(id, video, joinOnly){
-  if ($('call').style.display === 'flex' || (callStarting && Date.now() - callStarting < 25000)){ toast('Шумо дар занг ҳастед'); return; }
-  resetCall();
-  callName = (gById(id) || {}).name || $('ctitle').textContent;
-  callVideo = video; callRole = 'group'; callPeer = '';
-  callStarting = Date.now();
-  if (!(await openMedia())){ callStarting = 0; resetCall(); return; }
-  callStarting = 0;
-  gc = { id, peers: new Map(), names: {} };
-  $('call').classList.add('grp'); $('rv').style.display = 'none'; $('gvids').style.display = 'grid';
-  showCall('Пайваст мешавад...', false);
-  nativeCall(true);
-  socket.emit(joinOnly ? 'gcalljoin' : 'gcallstart', { id, video: callVideo });
-  gcUpdBanner();
-}
-
-/* ---------- таърих (мисли WhatsApp, 24 соат) ---------- */
-let storyGroups = [], stCur = null, stT = null, stPending = null, stFile = null, stBg = '#2f6b3a';
-const ST_COLORS = ['#2f6b3a', '#1565c0', '#6a1b9a', '#c62828', '#ef6c00', '#37474f'];
-Object.assign(RU, {
-  'Таърих': 'История', 'Таърихи нав': 'Новая история', 'Таърихи ман': 'Моя история',
-  'Матн нависед...': 'Напишите текст...', 'Матн нависед': 'Напишите текст', 'Таърих нест шавад?': 'Удалить историю?',
-  'Таърихҳо аз ҳад зиёданд': 'Слишком много историй', 'Ҳоло касе надидааст': 'Пока никто не смотрел',
-  'Тавсиф (ихтиёрӣ)': 'Подпись (необязательно)'
-});
-function stAv(av, name, sz){ const a = avEl(av, name, sz); a.onclick = null; a.style.cursor = ''; return a; }
-function stSeen(g){ return g.items.every((x) => x.seen); }
-function sortStories(l){
-  const last = (g) => g.items[g.items.length - 1].time;
-  return [...l].sort((a, b) => (stSeen(a) - stSeen(b)) || (last(b) - last(a)));
-}
-function stTile(label, ring, inner, fn){
-  const b = document.createElement('button'); b.className = 'stb';
-  const r = document.createElement('div'); r.className = 'ring' + ring;
-  const i = document.createElement('div'); i.className = 'in';
-  if (typeof inner === 'string') i.textContent = inner; else i.append(inner);
-  r.append(i); b.append(r);
-  const n = document.createElement('span'); n.className = 'nmx'; n.textContent = label; b.append(n);
-  b.onclick = fn;
-  return b;
-}
-function renderStories(){
-  const box = $('strow');
-  if (nav.v !== 'home'){ box.style.display = 'none'; return; }
-  box.style.display = 'flex'; box.innerHTML = '';
-  const mi = storyGroups.findIndex((g) => g.me);
-  if (mi >= 0) box.append(stTile('Таърихи ман', stSeen(storyGroups[mi]) ? ' seen' : '', stAv(prof.avatar, prof.name, 52), () => openStory(mi)));
-  box.append(stTile('Таърих', ' add', '＋', openStoryForm));
-  storyGroups.forEach((g, gi) => {
-    if (g.me) return;
-    box.append(stTile(g.name, stSeen(g) ? ' seen' : '', stAv(g.av, g.name, 52), () => openStory(gi)));
-  });
-}
-function stPaint(){
-  const t = $('stt');
-  t.style.background = stFile ? '#fff' : stBg; t.style.color = stFile ? '#222' : '#fff';
-  t.placeholder = stFile ? 'Тавсиф (ихтиёрӣ)' : 'Матн нависед...';
-  const box = $('stcols'); box.innerHTML = '';
-  ST_COLORS.forEach((col) => {
-    const d = document.createElement('button');
-    d.style.cssText = 'width:34px;height:34px;border-radius:50%;padding:0;background:' + col + ';border:3px solid ' + (col === stBg ? '#222' : 'transparent');
-    d.onclick = () => { stBg = col; stPaint(); };
-    box.append(d);
-  });
-  box.style.display = stFile ? 'none' : 'flex';
-}
-function openStoryForm(){
-  stFile = null; stBg = ST_COLORS[0];
-  $('stt').value = ''; $('stpn').textContent = 'Расм интихоб нашудааст';
-  stPaint(); $('stform').style.display = 'flex';
-}
-function closeStoryForm(){ $('stform').style.display = 'none'; }
-$('stphoto').onchange = () => {
-  stFile = $('stphoto').files[0] || null;
-  $('stpn').textContent = stFile ? '✔ ' + stFile.name : 'Расм интихоб нашудааст';
-  stPaint();
-};
-async function submitStory(){
-  const text = $('stt').value.trim();
-  if (!stFile && !text){ alert('Матн нависед'); return; }
-  $('stsend').disabled = true; $('stsend').textContent = 'Интизор шавед...';
-  try {
-    if (stFile){
-      const id = await upload('image/jpeg', await shrink(stFile));
-      socket.emit('storyadd', { kind: 'image', media: id, text });
-    } else socket.emit('storyadd', { kind: 'text', text, bg: stBg });
-    closeStoryForm();
-  } catch (e) { alert('Фиристода нашуд. Дубора кӯшиш кунед.'); }
-  $('stsend').disabled = false; $('stsend').textContent = 'Нашр кардан';
-}
-function openStory(gi){
-  const g = storyGroups[gi]; if (!g) return;
-  let ii = g.items.findIndex((x) => !x.seen); if (ii < 0) ii = 0;
-  stCur = { gi, ii }; $('stv').style.display = 'flex'; showStory();
-}
-function showStory(){
-  clearTimeout(stT);
-  const g = stCur && storyGroups[stCur.gi], it = g && g.items[stCur.ii];
-  if (!it){ closeStory(); return; }
-  const bars = $('stbars'); bars.innerHTML = '';
-  g.items.forEach((x, k) => {
-    const i = document.createElement('i'), b = document.createElement('b');
-    if (k < stCur.ii) b.style.width = '100%';
-    i.append(b); bars.append(i);
-  });
-  const cur = bars.children[stCur.ii].firstChild;
-  cur.style.transition = 'none'; cur.style.width = '0'; void cur.offsetWidth;
-  cur.style.transition = 'width 5s linear'; cur.style.width = '100%';
-  $('stav').innerHTML = ''; $('stav').append(stAv(g.av, g.name, 38));
-  $('stnm').textContent = g.me ? 'Шумо' : g.name; $('sttm').textContent = hhmm(it.time);
-  $('stdel').style.display = g.me ? 'inline-block' : 'none';
-  $('stvw').style.display = g.me ? 'inline-block' : 'none';
-  if (g.me) $('stvw').textContent = '👁 ' + it.vc;
-  const c = $('stcont'); c.innerHTML = '';
-  const body = $('stbody'); body.style.background = it.kind === 'text' ? it.bg : '#000';
-  body.querySelectorAll('.cap').forEach((x) => x.remove());
-  if (it.kind === 'image'){
-    const im = document.createElement('img'); im.src = mediaUrl(it.media); c.append(im);
-    if (it.text){ const cp = document.createElement('div'); cp.className = 'cap'; cp.textContent = it.text; body.append(cp); }
-  } else {
-    const t = document.createElement('div'); t.className = 'txt'; t.textContent = it.text; c.append(t);
-  }
-  if (!g.me && !it.seen){ it.seen = true; if (socket) socket.emit('storyview', it.id); }
-  stT = setTimeout(nextStory, 5000);
-}
-function nextStory(){
-  if (!stCur) return;
-  const g = storyGroups[stCur.gi];
-  if (stCur.ii < g.items.length - 1){ stCur.ii++; showStory(); }
-  else if (stCur.gi < storyGroups.length - 1){ stCur = { gi: stCur.gi + 1, ii: 0 }; showStory(); }
-  else closeStory();
-}
-function prevStory(){
-  if (!stCur) return;
-  if (stCur.ii > 0){ stCur.ii--; showStory(); }
-  else if (stCur.gi > 0){ const pg = storyGroups[stCur.gi - 1]; stCur = { gi: stCur.gi - 1, ii: pg.items.length - 1 }; showStory(); }
-  else showStory();
-}
-function closeStory(){
-  clearTimeout(stT); stCur = null; $('stv').style.display = 'none';
-  if (stPending){ storyGroups = sortStories(stPending); stPending = null; }
-  renderStories();
-}
-function stDelete(){
-  if (!stCur) return;
-  const it = storyGroups[stCur.gi].items[stCur.ii];
-  clearTimeout(stT);
-  if (confirm('Таърих нест шавад?')){ if (socket) socket.emit('storydel', it.id); closeStory(); }
-  else showStory();
-}
-function stViews(){
-  if (!stCur || !socket) return;
-  clearTimeout(stT);
-  socket.emit('storyviews', storyGroups[stCur.gi].items[stCur.ii].id);
-}
-setInterval(() => { if (socket) socket.emit('storylist'); }, 120000);
-
-/* ---------- поделиться ---------- */
-Object.assign(RU, { '📤 Барномаро ба дигарон фиристодан': '📤 Поделиться приложением', '✔ Нусха шуд, ҳоло ба ҷои дилхоҳ часпонед': '✔ Скопировано, вставьте куда нужно', 'Нусха кунед:': 'Скопируйте:', 'Расм фиристода нашуд. Нусха ёфт нашуд': 'Не удалось поделиться фото' });
-async function shareIt(o){
-  try {
-    if (o.file && navigator.canShare && navigator.canShare({ files: [o.file] })){
-      await navigator.share({ files: [o.file], title: o.title || '', text: o.text || '' });
-      return true;
-    }
-    if (!o.file && navigator.share){
-      await navigator.share({ title: o.title || '', text: o.text || '', url: o.url || '' });
-      return true;
-    }
-  } catch (e) { if (e && e.name === 'AbortError') return true; }
-  const txt = [o.text, o.url].filter(Boolean).join('\n');
-  try { if (!o.file && window.Android && Android.share){ Android.share(txt); return true; } } catch (e) {}
-  if (o.file) return false;
-  try { await navigator.clipboard.writeText(txt); toast('✔ Нусха шуд, ҳоло ба ҷои дилхоҳ часпонед'); return true; } catch (e) {}
-  prompt('Нусха кунед:', txt);
-  return true;
-}
-async function shareImg(){
-  try {
-    const src = $('lbimg').src;
-    const r = await fetch(src);
-    const b = await r.blob();
-    const f = new File([b], 'photo.jpg', { type: b.type || 'image/jpeg' });
-    if (window.Android && Android.shareImage){
-      const b64 = await new Promise((ok) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.readAsDataURL(b); });
-      Android.shareImage(b64, f.type);
-      return;
-    }
-    if (await shareIt({ file: f, title: 'Деҳа' })) return;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(b); a.download = 'photo.jpg';
-    document.body.append(a); a.click(); a.remove();
-  } catch (e) { alert('Расм фиристода нашуд'); }
 }
 
 /* ---------- сурат, манъ, модератсия ---------- */
@@ -1950,7 +1626,7 @@ function renderGPick(){
     box.append(item((on ? '✅ ' : '⬜ ') + p.name, vname(p.village), () => {
       if (gSel.has(p.uid)) gSel.delete(p.uid); else gSel.set(p.uid, p.name);
       renderGPick();
-    }, p.av));
+    }, p.av, p.uid));
   });
 }
 $('gpq').addEventListener('input', () => {
@@ -1985,7 +1661,7 @@ function renderGInfo(){
   const mine = g.owner === myUid;
   box.append(hd(g.members.length + ' нафар'));
   g.members.forEach((m) => {
-    const r = item(m.name + (m.uid === g.owner ? ' 👑' : '') + (m.uid === myUid ? ' (Шумо)' : ''), '', null, m.av);
+    const r = item(m.name + (m.uid === g.owner ? ' 👑' : '') + (m.uid === myUid ? ' (Шумо)' : ''), '', null, m.av, m.uid === myUid ? '' : m.uid);
     if (mine && m.uid !== myUid){
       r.append(mini('✕', 'r', () => {
         if (confirm(m.name + ' аз гурӯҳ хориҷ карда шавад?')) socket.emit('gremove', { id: g.id, uid: m.uid });
@@ -2000,6 +1676,126 @@ function renderGInfo(){
   if (mine) gBtn(box, '🗑 Нест кардани гурӯҳ', '', () => {
     if (confirm('Гурӯҳ бо ҳамаи паёмҳо нест карда шавад?')) socket.emit('gdel', { id: g.id });
   });
+}
+
+/* ---------- ҳолати онлайн дар рӯйхати одамон ---------- */
+let dhOlMap = {}, dhOlT = null;
+function dhOlPaint(o){
+  const v = dhOlMap[o.dataset.uid];
+  o.className = 'ol' + (v ? ' on' : '');
+  o.textContent = v === undefined ? '' : (v ? '● онлайн' : 'офлайн');
+}
+function dhRefreshOnline(){
+  if (!socket || !socket.connected) return;
+  const ids = [...new Set([...document.querySelectorAll('.ol[data-uid]')].map((e) => e.dataset.uid))];
+  if (ids.length) socket.emit('onq', { uids: ids });
+}
+setInterval(() => { if (document.visibilityState === 'visible') dhRefreshOnline(); }, 15000);
+
+/* ---------- занги гурӯҳии видео ва овозӣ (mesh) ---------- */
+let gv = null, gvState = {}, gvIn = null;
+function gvCols(){
+  const n = $('gvgrid').children.length;
+  $('gvgrid').style.gridTemplateColumns = n <= 1 ? '1fr' : n <= 4 ? 'repeat(2,1fr)' : 'repeat(3,1fr)';
+}
+function gvTile(uid, name, mine){
+  let t = document.getElementById('gvt-' + uid);
+  if (t) return t;
+  t = document.createElement('div'); t.className = 'gvt'; t.id = 'gvt-' + uid;
+  const v = document.createElement('video'); v.autoplay = true; v.playsInline = true; if (mine) v.muted = true;
+  const n = document.createElement('div'); n.className = 'gvn'; n.textContent = mine ? 'Шумо' : name;
+  t.append(v, n); $('gvgrid').append(t); gvCols();
+  return t;
+}
+function gvStart(video){
+  if (gv || callPeer || $('call').style.display === 'flex'){ toast('Шумо дар занг ҳастед'); return; }
+  const gid = room.slice(2), g = gById(gid);
+  if (!g) return;
+  const st = gvState[gid];
+  gvBegin(gid, g.name, st && st.active ? st.video : video);
+}
+function gvJoinCurrent(){
+  if (gv || callPeer) return;
+  const gid = room.slice(2), g = gById(gid), st = gvState[gid];
+  if (g && st && st.active) gvBegin(gid, g.name, st.video);
+}
+async function gvBegin(gid, gname, video){
+  gvDismissBan();
+  const tries = video ? [{ audio: true, video: { facingMode: 'user' } }, { audio: true, video: false }] : [{ audio: true, video: false }];
+  let stream = null, err = null;
+  for (const c of tries){ try { stream = await gum(c, 8000); break; } catch (e) { err = e; } }
+  if (!stream){ alert(micErr(err)); return; }
+  const hasV = stream.getVideoTracks().length > 0;
+  gv = { gid, name: gname, local: stream, peers: new Map(), names: {} };
+  callName = gname;
+  $('gvtitle').textContent = '👪 ' + gname;
+  $('gvgrid').innerHTML = '';
+  gvTile(myUid, 'Шумо', true).querySelector('video').srcObject = stream;
+  $('gvcam').style.display = hasV ? '' : 'none';
+  $('gvmic').classList.remove('off'); $('gvcam').classList.remove('off');
+  $('gvcall').style.display = 'flex';
+  nativeCall(true);
+  socket.emit('gcjoin', { id: gid, video: hasV });
+  gvRenderBar();
+}
+async function gvPeer(uid, name, initiator){
+  if (!gv) return null;
+  if (gv.peers.has(uid)) return gv.peers.get(uid);
+  const ice = await getIce();
+  if (!gv) return null;
+  if (gv.peers.has(uid)) return gv.peers.get(uid);
+  const g0 = gv;
+  const pc = new RTCPeerConnection({ iceServers: ice });
+  const p = { pc, name, pend: [] };
+  g0.peers.set(uid, p);
+  g0.local.getTracks().forEach((t) => pc.addTrack(t, g0.local));
+  pc.onicecandidate = (e) => { if (e.candidate && gv === g0) socket.emit('gcsig', { id: g0.gid, to: uid, data: { ice: e.candidate } }); };
+  pc.ontrack = (e) => { const v = gvTile(uid, name, false).querySelector('video'); v.srcObject = e.streams[0]; v.play().catch(() => {}); };
+  pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') gvDrop(uid); };
+  gvTile(uid, name, false);
+  if (initiator){
+    const off = await pc.createOffer();
+    await pc.setLocalDescription(off);
+    socket.emit('gcsig', { id: g0.gid, to: uid, data: { sdp: { type: off.type, sdp: off.sdp } } });
+  }
+  return p;
+}
+function gvDrop(uid){
+  if (!gv) return;
+  const p = gv.peers.get(uid);
+  if (p){ try { p.pc.close(); } catch (e) {} gv.peers.delete(uid); }
+  const t = document.getElementById('gvt-' + uid);
+  if (t) t.remove();
+  gvCols();
+}
+function gvToggle(k){
+  if (!gv) return;
+  const tr = k === 'a' ? gv.local.getAudioTracks() : gv.local.getVideoTracks();
+  const on = !(tr[0] && tr[0].enabled);
+  tr.forEach((x) => { x.enabled = on; });
+  $(k === 'a' ? 'gvmic' : 'gvcam').classList.toggle('off', !on);
+}
+function gvLeave(notify){
+  if (!gv) return;
+  const g = gv; gv = null;
+  g.peers.forEach((p) => { try { p.pc.close(); } catch (e) {} });
+  g.local.getTracks().forEach((t) => t.stop());
+  $('gvgrid').innerHTML = ''; $('gvcall').style.display = 'none';
+  if (notify && socket) socket.emit('gcleave', { id: g.gid });
+  nativeCall(false);
+  gvRenderBar();
+}
+function gvDismissBan(){ gvIn = null; $('gvban').style.display = 'none'; stopRing(); }
+function gvAccept(){ const d = gvIn; gvDismissBan(); if (d) gvBegin(d.id, d.name, d.video); }
+function gvDecline(){ gvDismissBan(); }
+function gvRenderBar(){
+  const bar = $('gvbar');
+  if (!room.startsWith('g:')){ bar.style.display = 'none'; return; }
+  const st = gvState[room.slice(2)];
+  if (st && st.active && !gv){
+    $('gvbtx').textContent = (st.video ? '🎥 ' : '📞 ') + 'Занги гурӯҳӣ идома дорад · ' + st.count + ' нафар';
+    bar.style.display = 'flex';
+  } else bar.style.display = 'none';
 }
 
 /* ---------- ҷустуҷӯ ---------- */
@@ -2035,7 +1831,7 @@ $('sq').addEventListener('input', () => {
   srT = setTimeout(() => { if (socket) socket.emit('search', { room, q }); }, 300);
 });
 function personRow(m){
-  const r = item(m.name, vname(m.village), null, m.av || '');
+  const r = item(m.name, vname(m.village), null, m.av || '', m.uid);
   if (m.state === 'accepted'){
     const c = social.contacts.find((x) => x.uid === m.uid);
     r.append(mini('Гап задан', '', () => { if (c) showChat(c.room, c.name); }));
@@ -2116,11 +1912,10 @@ function adEl(a){
   if (a.phone){
     const tel = document.createElement('a'); tel.href = 'tel:+' + a.phone; tel.textContent = '📞 Занг задан';
     acts.append(tel);
-  }
-  if (a.uid !== myUid){
-    const rq = document.createElement('button'); rq.textContent = '💬 Чат';
+  } else if (a.uid !== myUid){
+    const rq = document.createElement('button'); rq.textContent = '💬 Запрос барои сӯҳбат';
     rq.style.background = '#dcf0d2'; rq.style.color = '#27500A';
-    rq.onclick = () => { socket.emit('adchat', a.uid); };
+    rq.onclick = () => { socket.emit('reqsend', a.uid); toast('Дархост фиристода шуд'); };
     acts.append(rq);
   }
   if (a.uid === myUid){
@@ -2128,10 +1923,6 @@ function adEl(a){
     del.onclick = () => { if (confirm('Эълон нест шавад?')) socket.emit('addel', a.id); };
     acts.append(del);
   }
-  const sh = document.createElement('button'); sh.textContent = '📤';
-  sh.style.cssText = 'flex:0 0 52px;background:#e6e3d9;color:#222';
-  sh.onclick = () => shareIt({ title: a.title, text: [a.title, a.price, a.desc].filter(Boolean).join('\n'), url: location.origin });
-  acts.append(sh);
   c.append(acts);
   return c;
 }
@@ -2184,10 +1975,6 @@ function addNews(n, top){
   c.append(d);
   if (n.id){
     const a = document.createElement('div'); a.className = 'acts';
-    const sh = document.createElement('button'); sh.textContent = '📤';
-    sh.style.cssText = 'flex:0 0 52px;background:#e6e3d9;color:#222';
-    sh.onclick = () => shareIt({ title: n.title || 'Деҳа', text: [n.title, (n.text || '').slice(0, 400)].filter(Boolean).join('\n'), url: location.origin });
-    a.append(sh);
     if (n.uid === myUid || prof.admin){
       const del = document.createElement('button'); del.textContent = '🗑 Нест кардан';
       del.onclick = () => { if (confirm('Хабар нест шавад?')) socket.emit('newsdel', { id: n.id }); };
@@ -2198,7 +1985,7 @@ function addNews(n, top){
       rp.onclick = () => { if (confirm('Ин хабар ба админ шикоят карда шавад?')) socket.emit('newsreport', { id: n.id }); };
       a.append(rp);
     }
-    c.append(a);
+    if (a.children.length) c.append(a);
   }
   top ? $('news').prepend(c) : $('news').append(c);
 }
@@ -2274,7 +2061,6 @@ function start(token){
   });
   socket.on('social', (s) => {
     social = s;
-    setTimeout(askOnl, 50);
     if (pendingDM){
       const c = s.contacts.find((x) => x.uid === pendingDM);
       if (c){ pendingDM = ''; $('mem').style.display = 'none'; showChat(c.room, c.name); }
@@ -2296,11 +2082,6 @@ function start(token){
   socket.on('gpeople', (d) => { gRes = d || { q: '', list: [] }; renderGPick(); });
   socket.on('gcreated', (d) => { tab(1); showChat('g:' + d.id, d.name); });
   socket.on('members', (d) => { members = d; renderHome(); });
-  socket.on('pstat', (d) => {
-    if (!room.startsWith('dm:') || !room.includes(d.uid)) return;
-    $('csub').textContent = d.on ? 'онлайн' : 'офлайн';
-    $('csub').style.color = d.on ? '#1fa855' : '#667781';
-  });
   socket.on('vinfo', (d) => {
     vinfo = d;
     if (room === 'v:' + prof.village) $('csub').textContent = d.total + ' нафар · ' + d.online + ' онлайн';
@@ -2311,82 +2092,7 @@ function start(token){
     document.querySelectorAll('#msgs .b.me .tk').forEach((k) => { k.className = 'tk rd'; k.textContent = ' ✓✓'; });
   });
   socket.on('newmsg', (m) => {
-    bumpRoom(m.room); renderHome();
     if (m.room !== room){ beep(); toast('💬 ' + m.name + ': паёми нав'); }
-  });
-  socket.on('connect', () => {
-    if (gc && callRole === 'group'){
-      gc.peers.forEach((p) => { try { p.pc.close(); } catch (e) {} p.tile.t.remove(); });
-      gc.peers.clear();
-      socket.emit('gcalljoin', { id: gc.id });
-    }
-  });
-  socket.on('gcalljoined', (d) => {
-    if (!gc || gc.id !== d.id) return;
-    d.peers.forEach((p) => { gc.names[p.uid] = p.name; });
-    d.peers.forEach((p) => { gcOffer(p.uid).catch(() => {}); });
-    gcStatus();
-  });
-  socket.on('gcallpeer', (d) => { if (gc && gc.id === d.id) gc.names[d.uid] = d.name; });
-  socket.on('gcallpeerleft', (d) => { if (gc && gc.id === d.id) gcDrop(d.uid); });
-  socket.on('gcallfull', (d) => {
-    if (!gc || gc.id !== d.id) return;
-    toast(d.full ? 'Дар занг ҷой нест' : 'Занг дигар идома надорад');
-    resetCall();
-  });
-  socket.on('gcallstate', (d) => {
-    if (d.active) gcalls[d.id] = { video: d.video, count: d.count };
-    else delete gcalls[d.id];
-    if (!d.active && gIncoming && gIncoming.id === d.id) gcIncClear();
-    gcUpdBanner(); renderHome();
-  });
-  socket.on('gcallincoming', (d) => {
-    if (gc || callPeer || gIncoming || $('call').style.display === 'flex'){ beep(); toast((d.video ? '🎥 ' : '📞 ') + d.name + ': Занги гурӯҳӣ'); return; }
-    callName = d.gname + ' · ' + d.name; callVideo = !!d.video; callRole = 'gin';
-    showCall((d.video ? '🎥 ' : '📞 ') + 'Занги гурӯҳӣ', true);
-    startRing();
-    gIncoming = { id: d.id, video: !!d.video, t: setTimeout(() => { if (gIncoming && gIncoming.id === d.id) gcIncClear(); }, 40000) };
-    if (autoAns){ autoAns = false; stopRing(); setTimeout(acceptCall, 400); }
-  });
-  socket.on('gcallsig', async (m) => {
-    if (!gc || m.id !== gc.id || !m.data) return;
-    const d = m.data;
-    try {
-      const p = gcPeer(m.from);
-      if (d.sdp){
-        await p.pc.setRemoteDescription(d.sdp);
-        if (d.sdp.type === 'offer'){
-          const ans = await p.pc.createAnswer();
-          await p.pc.setLocalDescription(ans);
-          socket.emit('gcallsig', { id: gc.id, to: m.from, data: { sdp: { type: ans.type, sdp: ans.sdp } } });
-        }
-        for (const c of p.pending) await p.pc.addIceCandidate(c).catch(() => {});
-        p.pending = [];
-      } else if (d.ice){
-        if (p.pc.remoteDescription) await p.pc.addIceCandidate(d.ice).catch(() => {});
-        else p.pending.push(d.ice);
-      }
-    } catch (e) {}
-  });
-  socket.on('stories', (l) => {
-    if (stCur){ stPending = l || []; return; }
-    storyGroups = sortStories(l || []); renderStories();
-  });
-  socket.on('storychanged', () => { socket.emit('storylist'); });
-  socket.on('storyviews', (d) => {
-    alert((d.list && d.list.length) ? d.list.join('\n') : 'Ҳоло касе надидааст');
-    if (stCur) showStory();
-  });
-  socket.on('adchatok', (d) => { tab(1); showChat(d.room, d.name); });
-  socket.on('onl', (l) => {
-    const ns = new Set(l || []);
-    let ch = false;
-    social.contacts.forEach((c) => {
-      if (ns.has(c.uid) && !onlSet.has(c.uid)){ bumpRoom(c.room); ch = true; }
-      else if (!ns.has(c.uid) && onlSet.has(c.uid)) ch = true;
-    });
-    onlSet = ns;
-    if (ch) renderHome();
   });
   socket.on('wiped', () => { $('msgs').innerHTML = ''; unreadMap = {}; updUnread(); renderHome(); renderRooms(); });
   socket.on('settingsok', () => { toast('✔ Сабт шуд'); nav = { v: 'home' }; goHome(); });
@@ -2401,7 +2107,6 @@ function start(token){
     markRead();
   });
   socket.on('chat', (m) => {
-    bumpRoom(m.room);
     if (m.room !== room || blocked.has(m.uid)) return;
     if (m.uid !== myUid) beep();
     addChat(m);
@@ -2417,7 +2122,7 @@ function start(token){
   });
   socket.on('callincoming', (m) => {
     if (callPeer === m.from && callRole === 'callee') return;
-    if (callPeer || gc || gIncoming){ socket.emit('callanswer', { to: m.from, accept: false, busy: true }); return; }
+    if (callPeer){ socket.emit('callanswer', { to: m.from, accept: false, busy: true }); return; }
     callPeer = m.from; callName = m.name; callVideo = !!m.video; callRole = 'callee';
     showCall((m.video ? '🎥 ' : '📞 ') + 'Занг мезанад...', true);
     startRing();
@@ -2434,6 +2139,50 @@ function start(token){
     if (!d.fb){ alert('Firebase дар сервер танзим нашудааст.'); return; }
     if (!d.tokens){ alert('Дастгоҳи шумо ба Firebase сабт нашудааст. Аз барнома баромада (Баромадан аз ҳисоб) ва аз нав ворид шавед, ва баъд дубора кӯшиш кунед.'); return; }
     alert('Сабт шуд (дастгоҳҳо: ' + d.tokens + '). Ҳозир барномаро пурра пӯшед (аз рӯйхати барномаҳои охирин тоза кунед) ва экранро хомӯш кунед. Баъд аз 10 сония занги санҷишӣ меояд.');
+  });
+  socket.on('onr', (m) => { Object.assign(dhOlMap, m || {}); document.querySelectorAll('.ol[data-uid]').forEach(dhOlPaint); });
+  socket.on('disconnect', () => { if (gv) gvLeave(false); });
+  socket.on('gcpeers', async (d) => {
+    if (!gv || gv.gid !== d.id) return;
+    for (const p of (d.list || [])){ gv.names[p.uid] = p.name; try { await gvPeer(p.uid, p.name, true); } catch (e) {} }
+  });
+  socket.on('gcpeer', (d) => { if (gv && gv.gid === d.id){ gv.names[d.uid] = d.name; gvTile(d.uid, d.name, false); } });
+  socket.on('gcpeerleft', (d) => { if (gv && gv.gid === d.id) gvDrop(d.uid); });
+  socket.on('gcsig', async (m) => {
+    if (!gv || gv.gid !== m.id) return;
+    const d = m.data || {};
+    try {
+      let p = gv.peers.get(m.from);
+      if (!p) p = await gvPeer(m.from, gv.names[m.from] || 'Иштирокчӣ', false);
+      if (!p) return;
+      if (d.sdp){
+        await p.pc.setRemoteDescription(d.sdp);
+        if (d.sdp.type === 'offer'){
+          const ans = await p.pc.createAnswer();
+          await p.pc.setLocalDescription(ans);
+          socket.emit('gcsig', { id: gv.gid, to: m.from, data: { sdp: { type: ans.type, sdp: ans.sdp } } });
+        }
+        for (const c of p.pend) await p.pc.addIceCandidate(c).catch(() => {});
+        p.pend = [];
+      } else if (d.ice){
+        if (p.pc.remoteDescription) await p.pc.addIceCandidate(d.ice).catch(() => {});
+        else p.pend.push(d.ice);
+      }
+    } catch (e) {}
+  });
+  socket.on('gcring', (d) => {
+    if (gv || callPeer || $('call').style.display === 'flex') return;
+    if (autoAns){ autoAns = false; gvBegin(d.id, d.name, d.video); return; }
+    if (d.late) return;
+    gvIn = d;
+    $('gvbtxt').textContent = (d.video ? '🎥 ' : '📞 ') + 'Занги гурӯҳӣ: ' + d.name + ' · ' + d.by;
+    $('gvban').style.display = 'flex';
+    startRing();
+  });
+  socket.on('gcstate', (d) => {
+    gvState[d.id] = d;
+    if (!d.active && gvIn && gvIn.id === d.id) gvDismissBan();
+    gvRenderBar();
   });
   socket.on('callstatus', (m) => {
     if (callRole !== 'caller' || !m || m.peer !== callPeer || pc) return;
@@ -2557,37 +2306,15 @@ $('text').addEventListener('input', upd);
 $('text').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
 $('sbtn').onclick = () => { if ($('text').value.trim()) sendChat(); else startRec(); };
 
-if (!window.Android) $('pfile').multiple = true;
-$('pbtn').onclick = () => { $('pickm').style.display = 'flex'; };
-$('pk1').onclick = () => { $('pickm').style.display = 'none'; $('pfile').click(); };
-$('pk2').onclick = () => { $('pickm').style.display = 'none'; $('vfile').click(); };
-async function sendPicked(inp){
-  const files = Array.from(inp.files).slice(0, 10);
-  if (!files.length){ alert('Файл интихоб нашуд'); return; }
-  toast('Интихоб шуд: ' + files.length + ' · ' + (files[0].type || '?') + ' · ' + Math.round(files[0].size / 1024) + ' KB');
-  for (const f of files){ if (f.type.startsWith('video/')) await sendVideo(f); else await sendPhoto(f); }
-  inp.value = '';
-}
-$('pfile').onchange = () => sendPicked($('pfile'));
-$('vfile').onchange = () => sendPicked($('vfile'));
+$('pbtn').onclick = () => $('pfile').click();
+$('pfile').onchange = () => { sendPhoto($('pfile').files[0]); $('pfile').value = ''; };
 
-async function loadBmp(file){
-  try { return await createImageBitmap(file); }
-  catch (e) {
-    const url = URL.createObjectURL(file);
-    try {
-      const im = new Image();
-      await new Promise((ok, no) => { im.onload = ok; im.onerror = () => no(new Error('decode')); im.src = url; });
-      return { width: im.naturalWidth, height: im.naturalHeight, _img: im };
-    } finally { setTimeout(() => URL.revokeObjectURL(url), 5000); }
-  }
-}
 async function shrink(file){
-  const bmp = await loadBmp(file);
+  const bmp = await createImageBitmap(file);
   const k = Math.min(1, 1100 / Math.max(bmp.width, bmp.height));
   const c = document.createElement('canvas');
   c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
-  c.getContext('2d').drawImage(bmp._img || bmp, 0, 0, c.width, c.height);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
   const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.75));
   return blob.arrayBuffer();
 }
@@ -2597,22 +2324,7 @@ async function sendPhoto(file){
     const id = await upload('image/jpeg', await shrink(file));
     socket.emit('chat', { room, kind: 'image', media: id, reply: takeReply() });
   } catch (e) {
-    alert('Расм фиристода нашуд\n(' + ((e && e.message) || e) + ')');
-  }
-}
-
-async function sendVideo(file){
-  if (!file || !socket) return;
-  if (file.size > 15 * 1024 * 1024){ alert('Видео аз ҳад калон аст (то 15 MB)'); return; }
-  toast('Видео фиристода мешавад...');
-  try {
-    const type = file.type || 'video/mp4';
-    const r = await fetch('/api/upvideo?t=' + encodeURIComponent(tok) + '&type=' + encodeURIComponent(type), { method: 'POST', headers: { 'Content-Type': type }, body: file });
-    const d = await r.json();
-    if (!r.ok || !d.id) throw new Error(d.error || 'fail');
-    socket.emit('chat', { room, kind: 'video', media: d.id, reply: takeReply() });
-  } catch (e) {
-    alert('Видео фиристода нашуд');
+    alert('Расм фиристода нашуд');
   }
 }
 
@@ -2705,16 +2417,15 @@ let guard = false, ignorePop = false;
 function isOpen(id){ return $(id).style.display === 'flex'; }
 function atRoot(){
   if ($('app').style.display !== 'flex') return true;
-  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('mem') || isOpen('nform') || isOpen('gpick') || isOpen('ginfo') || isOpen('stv') || isOpen('stform') || isOpen('call')
+  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('mem') || isOpen('gvcall') || isOpen('nform') || isOpen('gpick') || isOpen('ginfo') || isOpen('call')
     || $('chatv').style.display === 'flex' || nav.v !== 'home' || !$('s1').classList.contains('on'));
 }
 function appBack(){
   if ($('app').style.display !== 'flex') return false;
   if (isOpen('lb')){ $('lb').style.display = 'none'; return true; }
-  if (isOpen('stv')){ closeStory(); return true; }
   if (isOpen('menu')){ closeMenu(); return true; }
-  for (const id of ['stform', 'nform', 'gpick', 'ginfo', 'sform', 'pform', 'gform', 'adform', 'mem']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
-  if (isOpen('call')) return true;
+  for (const id of ['nform', 'gpick', 'ginfo', 'sform', 'pform', 'gform', 'adform', 'mem']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
+  if (isOpen('call') || isOpen('gvcall')) return true;
   if (isOpen('sbar')){ toggleSearch(); return true; }
   if ($('chatv').style.display === 'flex'){ goHome(); return true; }
   if (nav.v === 'members'){ nav = { v: 'district', id: nav.d }; renderHome(); return true; }
@@ -2742,13 +2453,6 @@ if ('serviceWorker' in navigator){
 }
 $('lang').textContent = LANG === 'ru' ? '🌐 Тоҷикӣ' : '🌐 Русский';
 fetch('/api/places').then((r) => r.json()).then((p) => { places = p; fillPlace('rdist', 'rvil'); }).catch(() => {});
-
-Object.assign(RU, {
-  '🔔 Санҷиши занг (барномаи пӯшида)': '🔔 Проверка звонка (приложение закрыто)',
-  '📄 Натиҷаи санҷиши охирин': '📄 Результат последней проверки'
-});
-/* ҳамаи матнҳои статикӣ баъд аз пур шудани луғат аз нав тарҷума мешаванд */
-if (LANG === 'ru') trNode(document.body);
 
 const saved = localStorage.getItem('token');
 if (saved) start(saved);
