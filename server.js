@@ -317,7 +317,7 @@ const adOut = (a, u) => ({
   id: String(a._id),
   uid: a.uid,
   name: a.name,
-  phone: u && (a.uid === String(u._id) || (a.village && a.village === u.village)) ? a.phone : '',
+  phone: u ? a.phone : '',
   title: a.title,
   price: a.price,
   desc: a.desc,
@@ -364,7 +364,7 @@ const POLICY = {
     ['About', ['Деҳа (Deha) is a community app for villages in Tajikistan: village chat, private chats, a marketplace and news.', 'This policy explains what data the app collects, how it is used and how it can be deleted.']],
     ['Data we collect', ['Account data: first name, surname, age, phone number, password (stored only as a hash), the district and village you choose, and your language.', 'Optional: gender and profile photo.', 'Content you create: chat messages, photos, voice messages, marketplace ads, and your reports and blocks.', 'Technical: a push-notification token, so that notifications can be delivered to your device.']],
     ['How we use it', ['To create your account and show you your village chat, marketplace and news.', 'To deliver notifications about new messages and chat requests.', 'To keep the community safe: reports, blocking and moderation.']],
-    ['Who can see your data', ['Your name, photo and messages are visible to the people in the chats where you write.', 'Your phone number is visible only to people from your own village (for the call button in the marketplace). It is not shown to anyone else.', 'A private chat with a person from another village starts only after that person accepts your request.']],
+    ['Who can see your data', ['Your name, photo and messages are visible to the people in the chats where you write.', 'When you post a marketplace ad, your phone number becomes visible to all signed-in users of the app (for the call button). It is not shown anywhere else.', 'A private chat with a person from another village starts only after that person accepts your request.']],
     ['Sharing', ['We do not sell your data and we do not show ads.', 'Service providers process data on our behalf: hosting (Render), database (MongoDB Atlas) and push delivery (your browser vendor, for example Google). Data may therefore be processed outside Tajikistan.']],
     ['Retention', ['Text messages: 90 days. Photos and voice messages: 14 days. Marketplace ads: 90 days.', 'Account data is kept until you delete your account.']],
     ['Security', ['Data is sent over an encrypted HTTPS connection. Passwords are stored only as hashes.']],
@@ -375,7 +375,7 @@ const POLICY = {
     ['О приложении', ['Деҳа (Деха) — приложение для сельских общин Таджикистана: чат деревни, личные чаты, рынок объявлений и новости.', 'Здесь описано, какие данные собирает приложение, как они используются и как их удалить.']],
     ['Какие данные мы собираем', ['Данные аккаунта: имя, фамилия, возраст, номер телефона, пароль (хранится только в виде хэша), выбранные район и деревня, язык.', 'По желанию: пол и фото профиля.', 'Ваш контент: сообщения в чатах, фото, голосовые сообщения, объявления на рынке, ваши жалобы и блокировки.', 'Технические данные: токен push-уведомлений для доставки уведомлений на ваше устройство.']],
     ['Как мы их используем', ['Чтобы создать аккаунт и показывать чат вашей деревни, рынок и новости.', 'Чтобы доставлять уведомления о новых сообщениях и запросах на чат.', 'Чтобы поддерживать безопасность: жалобы, блокировка и модерация.']],
-    ['Кто видит ваши данные', ['Ваше имя, фото и сообщения видят участники чатов, в которых вы пишете.', 'Ваш номер телефона видят только жители вашей деревни (кнопка звонка на рынке). Другим он не показывается.', 'Личный чат с жителем другой деревни начинается только после того, как он примет ваш запрос.']],
+    ['Кто видит ваши данные', ['Ваше имя, фото и сообщения видят участники чатов, в которых вы пишете.', 'Когда вы публикуете объявление на рынке, ваш номер телефона становится виден всем авторизованным пользователям приложения (кнопка звонка). В других местах он не показывается.', 'Личный чат с жителем другой деревни начинается только после того, как он примет ваш запрос.']],
     ['Передача данных', ['Мы не продаём данные и не показываем рекламу.', 'Данные обрабатывают наши поставщики услуг: хостинг (Render), база данных (MongoDB Atlas) и доставка push (производитель браузера, например Google). Поэтому данные могут обрабатываться за пределами Таджикистана.']],
     ['Сроки хранения', ['Текстовые сообщения — 90 дней. Фото и голосовые сообщения — 14 дней. Объявления — 90 дней.', 'Данные аккаунта хранятся, пока вы не удалите аккаунт.']],
     ['Безопасность', ['Данные передаются по защищённому соединению HTTPS. Пароли хранятся только в виде хэшей.']],
@@ -386,7 +386,7 @@ const POLICY = {
     ['Дар бораи барнома', ['Деҳа — барнома барои деҳаҳои Тоҷикистон: чати деҳа, чатҳои шахсӣ, бозори эълонҳо ва хабарҳо.', 'Дар ин ҷо навишта шудааст, ки барнома кадом маълумотро ҷамъ мекунад, чӣ тавр истифода мебарад ва чӣ тавр нест кардан мумкин аст.']],
     ['Кадом маълумотро ҷамъ мекунем', ['Маълумоти ҳисоб: ном, насаб, синну сол, рақами телефон, парол (танҳо ҳамчун хэш нигоҳ дошта мешавад), ноҳия ва деҳаи интихобшуда, забон.', 'Ихтиёрӣ: ҷинс ва сурати профил.', 'Мундариҷаи шумо: паёмҳо дар чат, суратҳо, паёмҳои овозӣ, эълонҳо дар бозор, шикоят ва манъҳои шумо.', 'Техникӣ: токени огоҳиномаҳо барои расонидани огоҳинома ба дастгоҳи шумо.']],
     ['Чӣ тавр истифода мебарем', ['Барои сохтани ҳисоб ва нишон додани чати деҳа, бозор ва хабарҳо.', 'Барои расонидани огоҳинома дар бораи паёмҳои нав ва дархостҳои чат.', 'Барои амнияти ҷамъият: шикоят, манъ ва назорат.']],
-    ['Кӣ маълумотро мебинад', ['Номи шумо, сурат ва паёмҳоятонро иштирокчиёни чатҳое мебинанд, ки дар онҳо менависед.', 'Рақами телефони шумо танҳо барои одамони деҳаи худатон намоён аст (тугмаи занг дар бозор). Ба дигарон нишон дода намешавад.', 'Чати шахсӣ бо одами деҳаи дигар танҳо баъд аз он оғоз мешавад, ки ӯ дархости шуморо қабул кунад.']],
+    ['Кӣ маълумотро мебинад', ['Номи шумо, сурат ва паёмҳоятонро иштирокчиёни чатҳое мебинанд, ки дар онҳо менависед.', 'Вақте эълон мегузоред, рақами телефони шумо барои ҳамаи корбарони барнома намоён мешавад (тугмаи занг дар бозор). Дар ҷойҳои дигар нишон дода намешавад.', 'Чати шахсӣ бо одами деҳаи дигар танҳо баъд аз он оғоз мешавад, ки ӯ дархости шуморо қабул кунад.']],
     ['Додани маълумот', ['Мо маълумотро намефурӯшем ва реклама нишон намедиҳем.', 'Маълумотро хидматрасонҳо коркард мекунанд: ҳостинг (Render), база (MongoDB Atlas) ва расонидани push (истеҳсолкунандаи браузер, масалан Google). Бинобар ин маълумот метавонад берун аз Тоҷикистон коркард шавад.']],
     ['Мӯҳлати нигоҳдорӣ', ['Паёмҳои матнӣ: 90 рӯз. Суратҳо ва паёмҳои овозӣ: 14 рӯз. Эълонҳо: 90 рӯз.', 'Маълумоти ҳисоб то нест кардани ҳисоб нигоҳ дошта мешавад.']],
     ['Бехатарӣ', ['Маълумот тавассути пайвасти рамзгузоришудаи HTTPS ирсол мешавад. Паролҳо танҳо ҳамчун хэш нигоҳ дошта мешаванд.']],
@@ -1878,6 +1878,25 @@ io.on('connection', (s) => {
       }
       sendSocial(uid);
       sendSocial(to);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  // Чати мустақим бо соҳиби эълон (бе дархост)
+  s.on('adchat', async (to) => {
+    try {
+      to = String(to);
+      if (!HEX24.test(to) || to === uid) return;
+      const other = await users.findOne({ _id: new ObjectId(to) }, { projection: { name: 1, blocked: 1, banned: 1 } });
+      if (!other || other.banned) return;
+      if ((other.blocked || []).includes(uid)) return s.emit('err', 'Дархост фиристода нашуд');
+      if (!(await ads.findOne({ uid: to }, { projection: { _id: 1 } }))) return;
+      const ex = await reqs.findOne({ $or: [{ from: uid, to }, { from: to, to: uid }] });
+      if (!ex) await reqs.insertOne({ from: uid, to, status: 'accepted', time: Date.now() });
+      else if (ex.status !== 'accepted') await reqs.updateOne({ _id: ex._id }, { $set: { status: 'accepted' } });
+      await Promise.all([sendSocial(uid), sendSocial(to)]);
+      s.emit('adchatok', { uid: to, room: dmPair(uid, to), name: other.name });
     } catch (e) {
       console.error(e);
     }
