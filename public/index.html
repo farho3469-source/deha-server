@@ -1506,6 +1506,7 @@ async function startCall(video){
   ringT = setTimeout(() => { if (callRole === 'caller' && !pc){ toast('Ҷавоб нашуд'); endCall(true); } }, 45000);
 }
 async function acceptCall(){
+  if (gIncoming){ const g = gIncoming; gcIncClear(); gcBegin(g.id, g.video, true); return; }
   stopRing();
   if (!(await openMedia())){ socket.emit('callanswer', { to: callPeer, accept: false }); resetCall(); return; }
   showCall('Пайваст мешавад...', false);
@@ -1513,6 +1514,7 @@ async function acceptCall(){
   socket.emit('callanswer', { to: callPeer, accept: true });
 }
 function declineCall(){
+  if (gIncoming){ gcIncClear(); return; }
   socket.emit('callanswer', { to: callPeer, accept: false });
   resetCall();
 }
@@ -1530,11 +1532,15 @@ function toggleCam(){
 }
 
 /* ---------- занги гурӯҳӣ (ҳар кас бо ҳар кас, то 5 нафар) ---------- */
-let gc = null, gcalls = {};
+let gc = null, gcalls = {}, gIncoming = null;
 Object.assign(RU, { 'Видео аз ҳад калон аст (то 15 MB)': 'Видео слишком большое (до 15 МБ)', 'Видео фиристода нашуд': 'Не удалось отправить видео', 'Видео фиристода мешавад...': 'Отправка видео...' });
 Object.assign(RU, { 'Занги гурӯҳӣ': 'Групповой звонок', 'Дар занг ҷой нест': 'В звонке нет места', 'Занг дигар идома надорад': 'Звонок уже завершён' });
 RX.push([/^(.*)Занги гурӯҳӣ · (\d+) нафар$/, '$1Групповой звонок · $2 чел.']);
 RX.push([/^(.*): Занги гурӯҳӣ$/, '$1: групповой звонок']);
+function gcIncClear(){
+  if (gIncoming){ clearTimeout(gIncoming.t); gIncoming = null; }
+  resetCall();
+}
 function gcRoomId(){ return room.startsWith('g:') ? room.slice(2) : ''; }
 function gcUpdBanner(){
   const id = gcRoomId(), st = gcalls[id], b = $('gbanner');
@@ -2069,12 +2075,16 @@ function start(token){
   socket.on('gcallstate', (d) => {
     if (d.active) gcalls[d.id] = { video: d.video, count: d.count };
     else delete gcalls[d.id];
+    if (!d.active && gIncoming && gIncoming.id === d.id) gcIncClear();
     gcUpdBanner(); renderHome();
   });
   socket.on('gcallincoming', (d) => {
-    if (gc) return;
-    beep();
-    toast((d.video ? '🎥 ' : '📞 ') + d.name + ': Занги гурӯҳӣ');
+    if (gc || callPeer || gIncoming || $('call').style.display === 'flex'){ beep(); toast((d.video ? '🎥 ' : '📞 ') + d.name + ': Занги гурӯҳӣ'); return; }
+    callName = d.gname + ' · ' + d.name; callVideo = !!d.video; callRole = 'gin';
+    showCall((d.video ? '🎥 ' : '📞 ') + 'Занги гурӯҳӣ', true);
+    startRing();
+    gIncoming = { id: d.id, video: !!d.video, t: setTimeout(() => { if (gIncoming && gIncoming.id === d.id) gcIncClear(); }, 40000) };
+    if (autoAns){ autoAns = false; stopRing(); setTimeout(acceptCall, 400); }
   });
   socket.on('gcallsig', async (m) => {
     if (!gc || m.id !== gc.id || !m.data) return;
@@ -2135,7 +2145,7 @@ function start(token){
   });
   socket.on('callincoming', (m) => {
     if (callPeer === m.from && callRole === 'callee') return;
-    if (callPeer || gc){ socket.emit('callanswer', { to: m.from, accept: false, busy: true }); return; }
+    if (callPeer || gc || gIncoming){ socket.emit('callanswer', { to: m.from, accept: false, busy: true }); return; }
     callPeer = m.from; callName = m.name; callVideo = !!m.video; callRole = 'callee';
     showCall((m.video ? '🎥 ' : '📞 ') + 'Занг мезанад...', true);
     startRing();
