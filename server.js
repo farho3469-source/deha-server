@@ -909,6 +909,7 @@ async function dropMember(g, u) {
 /* ---------- занги гурӯҳӣ (WebRTC mesh) ---------- */
 const groupCalls = new Map(); // gid -> { video, users:Set, time }
 const GCALL_MAX = 5;
+const pendingGCalls = new Map(); // uid -> { id, gname, name, video, time }
 async function gcallState(gid) {
   const c = groupCalls.get(gid);
   const g = await getGroup(gid);
@@ -921,7 +922,12 @@ function gcallLeave(gid, uid) {
   if (!c || !c.users.has(uid)) return;
   c.users.delete(uid);
   c.users.forEach((u) => io.to('u:' + u).emit('gcallpeerleft', { id: gid, uid }));
-  if (!c.users.size) groupCalls.delete(gid);
+  if (!c.users.size) {
+    groupCalls.delete(gid);
+    getGroup(gid)
+      .then((g) => { if (g) fcmOnly(g.members, { type: 'callend' }, 10).catch(() => {}); })
+      .catch(() => {});
+  }
   gcallState(gid).catch(console.error);
 }
 
@@ -1057,6 +1063,8 @@ io.on('connection', (s) => {
   s.emit('profile', profOf(s.user));
   s.emit('rooms', myRooms(s.user));
   if (!s.user.gender) s.emit('needgender');
+  const pg0 = pendingGCalls.get(uid);
+  if (pg0 && Date.now() - pg0.time < 45000 && groupCalls.has(pg0.id)) s.emit('gcallincoming', pg0);
   const pc0 = pendingCalls.get(uid);
   if (pc0 && Date.now() - pc0.time < 45000) s.emit('callincoming', pc0);
   sendGroups(uid);
@@ -1714,21 +1722,32 @@ io.on('connection', (s) => {
     const nm = {};
     us.forEach((x) => (nm[String(x._id)] = x.name));
     c.users.add(uid);
+    pendingGCalls.delete(uid);
     s.emit('gcalljoined', { id: gid, video: c.video, peers: others.map((u) => ({ uid: u, name: nm[u] || '—' })) });
     others.forEach((u) => io.to('u:' + u).emit('gcallpeer', { id: gid, uid, name: s.user.name }));
     if (fresh) {
       const rest = g.members.filter((x) => x !== uid);
-      rest.forEach((x) => io.to('u:' + x).emit('gcallincoming', { id: gid, gname: g.name, name: s.user.name, video: c.video }));
+      const inc = { id: gid, gname: g.name, name: s.user.name, video: c.video, time: Date.now() };
+      rest.forEach((x) => {
+        pendingGCalls.set(x, inc);
+        io.to('u:' + x).emit('gcallincoming', inc);
+      });
+      // push ҳамчун занги оддӣ (type: call), то телефон мисли занг садо диҳад
       pushTo(
         rest,
         (l) => ({
-          title: g.name,
-          body: l === 'ru' ? s.user.name + ' начал групповой звонок' : s.user.name + ' занги гурӯҳӣ оғоз кард',
-          tag: 'gcall-' + gid,
-          type: 'msg',
-          room: 'g:' + gid,
+          title: (c.video ? '🎥 ' : '📞 ') + g.name,
+          body: l === 'ru' ? s.user.name + ' — групповой звонок' : s.user.name + ' — занги гурӯҳӣ',
+          tag: 'call',
+          type: 'call',
+          caller: uid,
+          name: g.name + ' · ' + s.user.name,
+          video: c.video ? '1' : '0',
+          requireInteraction: true,
+          renotify: true,
+          vibrate: [400, 200, 400, 200, 400, 200, 400],
         }),
-        { ttl: 60 }
+        { ttl: 30 }
       ).catch(console.error);
     }
     await gcallState(gid);
