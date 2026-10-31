@@ -12,9 +12,28 @@ const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 3e6 });
 
 const ADMIN = String(process.env.ADMIN_PASSWORD || 'admin123').trim();
-const MONGO_URI = String(process.env.MONGODB_URI || '')
-  .replace(/[^\x21-\x7E]/g, '')
-  .replace(/["'<>]/g, '');
+function fixMongoUri(u) {
+  // агар дар парол аломатҳои махсус бошанд (@ : / ва ғ.), худаш дуруст рамзгузорӣ мекунад
+  const m = /^(mongodb(?:\+srv)?:\/\/)([^:\/@]+):(.*)@([^@]*)$/.exec(u);
+  if (!m) return u;
+  const dec = (x) => {
+    try {
+      return decodeURIComponent(x);
+    } catch (e) {
+      return x;
+    }
+  };
+  return m[1] + encodeURIComponent(dec(m[2])) + ':' + encodeURIComponent(dec(m[3])) + '@' + m[4];
+}
+const MONGO_URI = fixMongoUri(
+  String(process.env.MONGODB_URI || '')
+    .replace(/[^\x21-\x7E]/g, '')
+    .replace(/["'<>]/g, '')
+);
+try {
+  const mm = /^mongodb(?:\+srv)?:\/\/([^:]+):.*@([^@\/?]*)/.exec(MONGO_URI);
+  console.log('Mongo корбар:', mm ? decodeURIComponent(mm[1]) + ' @ ' + mm[2] : 'URI нодуруст (шакл)');
+} catch (e) {}
 const client = new MongoClient(MONGO_URI);
 let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, groups, dbh;
 let VAPID_PUBLIC = '';
@@ -235,7 +254,22 @@ async function iceServers() {
   let v = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
   let okIce = true;
   try {
-    if (process.env.ICE_JSON) {
+    if (process.env.TURN_PASS) {
+      const tu = String(process.env.TURN_USER || '8f3b1b0052249c6724509047').trim();
+      v = v.concat([
+        { urls: 'stun:stun.relay.metered.ca:80' },
+        {
+          urls: [
+            'turn:global.relay.metered.ca:80',
+            'turn:global.relay.metered.ca:80?transport=tcp',
+            'turn:global.relay.metered.ca:443',
+            'turns:global.relay.metered.ca:443?transport=tcp',
+          ],
+          username: tu,
+          credential: String(process.env.TURN_PASS).trim(),
+        },
+      ]);
+    } else if (process.env.ICE_JSON) {
       v = v.concat(JSON.parse(process.env.ICE_JSON));
     } else if (process.env.METERED_DOMAIN && process.env.METERED_KEY) {
       const r = await fetch(
@@ -529,6 +563,7 @@ app.get('/ice-status', async (req, res) => {
     res.json({
       metered_env: !!(process.env.METERED_DOMAIN && process.env.METERED_KEY),
       ice_json_env: !!process.env.ICE_JSON,
+      turn_pass_env: !!process.env.TURN_PASS,
       turn_count: urls.filter((u) => /^turns?:/.test(u)).length,
       using_public_openrelay: urls.some((u) => /openrelay/.test(u)),
       urls,
