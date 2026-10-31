@@ -2296,19 +2296,31 @@ $('pk1').onclick = () => { $('pickm').style.display = 'none'; $('pfile').click()
 $('pk2').onclick = () => { $('pickm').style.display = 'none'; $('vfile').click(); };
 async function sendPicked(inp){
   const files = Array.from(inp.files).slice(0, 10);
-  if (!files.length) return;
+  if (!files.length){ alert('Файл интихоб нашуд'); return; }
+  toast('Интихоб шуд: ' + files.length + ' · ' + (files[0].type || '?') + ' · ' + Math.round(files[0].size / 1024) + ' KB');
   for (const f of files){ if (f.type.startsWith('video/')) await sendVideo(f); else await sendPhoto(f); }
   inp.value = '';
 }
 $('pfile').onchange = () => sendPicked($('pfile'));
 $('vfile').onchange = () => sendPicked($('vfile'));
 
+async function loadBmp(file){
+  try { return await createImageBitmap(file); }
+  catch (e) {
+    const url = URL.createObjectURL(file);
+    try {
+      const im = new Image();
+      await new Promise((ok, no) => { im.onload = ok; im.onerror = () => no(new Error('decode')); im.src = url; });
+      return { width: im.naturalWidth, height: im.naturalHeight, _img: im };
+    } finally { setTimeout(() => URL.revokeObjectURL(url), 5000); }
+  }
+}
 async function shrink(file){
-  const bmp = await createImageBitmap(file);
+  const bmp = await loadBmp(file);
   const k = Math.min(1, 1100 / Math.max(bmp.width, bmp.height));
   const c = document.createElement('canvas');
   c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
-  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  c.getContext('2d').drawImage(bmp._img || bmp, 0, 0, c.width, c.height);
   const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.75));
   return blob.arrayBuffer();
 }
@@ -2318,7 +2330,7 @@ async function sendPhoto(file){
     const id = await upload('image/jpeg', await shrink(file));
     socket.emit('chat', { room, kind: 'image', media: id, reply: takeReply() });
   } catch (e) {
-    alert('Расм фиристода нашуд');
+    alert('Расм фиристода нашуд\n(' + ((e && e.message) || e) + ')');
   }
 }
 
