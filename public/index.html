@@ -301,7 +301,7 @@ mark{background:#ffe58f;border-radius:3px}
     <textarea id="add" rows="4" placeholder="Тавсиф (синну сол, ҷой ва ғайра)"></textarea>
     <button class="btn g" style="width:100%;margin:6px 0" onclick="$('adphoto').click()">📷 Расм интихоб кунед</button>
     <div id="adpn" style="font-size:13px;color:#777;margin-bottom:10px">Расм интихоб нашудааст</div>
-    <div style="font-size:13px;color:#777;margin-bottom:10px">Рақами шумо танҳо барои ҳамдеҳагонатон намоён аст.</div>
+    <div style="font-size:13px;color:#777;margin-bottom:10px">Рақами шумо дар эълон барои ҳамаи корбарон намоён мешавад.</div>
     <button class="btn" id="adsend" style="width:100%" onclick="submitAd()">Нашр кардан</button>
     <button class="btn g" style="width:100%;margin-top:8px" onclick="closeAd()">Бекор кардан</button>
   </div>
@@ -525,7 +525,7 @@ const RU = {
 "Ҳама":"Все",
 "📷 Расм интихоб кунед":"📷 Выбрать фото",
 "Расм интихоб нашудааст":"Фото не выбрано",
-"Рақами шумо танҳо барои ҳамдеҳагонатон намоён аст.":"Ваш номер виден только землякам из вашей деревни.",
+"Рақами шумо дар эълон барои ҳамаи корбарон намоён мешавад.":"Ваш номер в объявлении виден всем пользователям.",
 "Нашр кардан":"Опубликовать",
 "Сарлавҳа":"Заголовок",
 "Сарлавҳа (масалан: Гови ширдеҳ)":"Заголовок (например: Дойная корова)",
@@ -1894,10 +1894,11 @@ function adEl(a){
   if (a.phone){
     const tel = document.createElement('a'); tel.href = 'tel:+' + a.phone; tel.textContent = '📞 Занг задан';
     acts.append(tel);
-  } else if (a.uid !== myUid){
-    const rq = document.createElement('button'); rq.textContent = '💬 Запрос барои сӯҳбат';
+  }
+  if (a.uid !== myUid){
+    const rq = document.createElement('button'); rq.textContent = '💬 Чат';
     rq.style.background = '#dcf0d2'; rq.style.color = '#27500A';
-    rq.onclick = () => { socket.emit('reqsend', a.uid); toast('Дархост фиристода шуд'); };
+    rq.onclick = () => { socket.emit('adchat', a.uid); };
     acts.append(rq);
   }
   if (a.uid === myUid){
@@ -2137,6 +2138,7 @@ function start(token){
       }
     } catch (e) {}
   });
+  socket.on('adchatok', (d) => { tab(1); showChat(d.room, d.name); });
   socket.on('onl', (l) => {
     const ns = new Set(l || []);
     let ch = false;
