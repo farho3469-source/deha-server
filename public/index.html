@@ -1392,7 +1392,7 @@ function stopRingback(){
 }
 function dbg(){
   if (!pc) return;
-  $('cdbg').textContent = 'ice: ' + pc.iceConnectionState + ' · sig: ' + pc.signalingState + ' · host ' + cand.host + ' srflx ' + cand.srflx + ' relay ' + cand.relay;
+  $('cdbg').textContent = 'ice: ' + pc.iceConnectionState + ' · sig: ' + pc.signalingState + ' · host ' + cand.host + ' srflx ' + cand.srflx + ' relay ' + cand.relay + (cand.err ? ' · TURN хато ' + cand.err : '');
 }
 async function getIce(){
   if (!iceList){
@@ -1468,7 +1468,10 @@ async function makePc(){
   pc = new RTCPeerConnection({ iceServers: await getIce() });
   nativeCall(true);
   lstream.getTracks().forEach((t) => pc.addTrack(t, lstream));
-  cand = { host: 0, srflx: 0, relay: 0 };
+  cand = { host: 0, srflx: 0, relay: 0, err: '' };
+  pc.onicecandidateerror = (e) => {
+    if (/^turns?:/.test(String(e.url || ''))){ cand.err = (e.errorCode || '') + ' ' + String(e.errorText || '').slice(0, 40); dbg(); }
+  };
   pc.onicecandidate = (e) => {
     if (!e.candidate) return;
     const m = / typ (host|srflx|relay|prflx)/.exec(e.candidate.candidate || '');
@@ -1682,6 +1685,11 @@ async function shareImg(){
     const r = await fetch(src);
     const b = await r.blob();
     const f = new File([b], 'photo.jpg', { type: b.type || 'image/jpeg' });
+    if (window.Android && Android.shareImage){
+      const b64 = await new Promise((ok) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.readAsDataURL(b); });
+      Android.shareImage(b64, f.type);
+      return;
+    }
     if (await shareIt({ file: f, title: 'Деҳа' })) return;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(b); a.download = 'photo.jpg';
