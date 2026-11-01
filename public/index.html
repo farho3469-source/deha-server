@@ -387,6 +387,9 @@ mark{background:#ffe58f;border-radius:3px}
     <select id="svil"></select>
     <input id="sviln" placeholder="Номи деҳаи шумо" style="display:none">
     <div id="sblk"></div>
+    <div class="sh" style="text-align:left">Фони барнома</div>
+    <div id="bgcols" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:6px 0"></div>
+    <button class="btn g" onclick="$('bgfile').click()">🖼 Расми худам</button>
     <button class="btn" onclick="saveSettings()">Сабт кардан</button>
     <button class="btn g" onclick="shareIt({title:'Деҳа',text:'Деҳа — чат, бозор ва хабарҳои деҳа',url:location.origin})">📤 Барномаро ба дигарон фиристодан</button>
     <button class="btn" style="background:#fff;color:#b00020;border:1px solid #b00020" onclick="logout()">Баромадан аз ҳисоб</button>
@@ -437,6 +440,7 @@ mark{background:#ffe58f;border-radius:3px}
 <input type="file" id="vfile" accept="video/*" style="display:none">
 <div id="pickm" onclick="this.style.display='none'"><div class="mbox" onclick="event.stopPropagation()"><button class="btn" id="pk1">📷 Расм</button><button class="btn" id="pk2">🎬 Видео</button><button class="btn g" onclick="$('pickm').style.display='none'">Бекор кардан</button></div></div>
 <input type="file" id="adphoto" accept="image/*" style="display:none">
+<input type="file" id="bgfile" accept="image/*" style="display:none">
 <input type="file" id="avfile" accept="image/*" style="display:none">
 <div id="lb" onclick="this.style.display='none'"><button id="lbshare" class="ic" style="position:absolute;right:14px;top:calc(14px + env(safe-area-inset-top));z-index:2;background:rgba(255,255,255,.25)" onclick="event.stopPropagation();shareImg()" aria-label="Поделиться">📤</button><div id="lbbox"><img id="lbimg" alt=""><div id="lbcap"></div></div></div>
 
@@ -1362,6 +1366,7 @@ function openSettings(){
   if (prof.district){ $('sdist').value = prof.district; $('sdist').onchange(); }
   if (prof.village) $('svil').value = prof.village;
   $('svil').onchange();
+  renderBgCols();
   $('sform').style.display = 'flex';
 }
 function saveSettings(){
@@ -1678,6 +1683,51 @@ async function gcBegin(id, video, joinOnly){
   socket.emit(joinOnly ? 'gcalljoin' : 'gcallstart', { id, video: callVideo });
   gcUpdBanner();
 }
+
+/* ---------- фони барнома (ҳар кас барои худаш) ---------- */
+Object.assign(RU, { 'Фони барнома': 'Фон приложения', '🖼 Расми худам': '🖼 Своё фото' });
+const BG_COLORS = ['#ffffff', '#e3f1df', '#e1edf7', '#f7e4ea', '#f7f0d8', '#e4e4e4'];
+function getBg(){ try { return JSON.parse(localStorage.getItem('bg') || '{}') || {}; } catch (e) { return {}; } }
+function applyBg(){
+  const b = getBg();
+  document.body.style.background = b.type === 'color' ? b.c : '';
+  [$('msgs'), $('sres')].forEach((el) => {
+    if (b.type === 'img') el.style.background = 'url("' + b.d + '") center/cover no-repeat';
+    else if (b.type === 'color') el.style.background = b.c;
+    else el.style.background = '';
+  });
+}
+function setBg(v){
+  try {
+    if (v) localStorage.setItem('bg', JSON.stringify(v)); else localStorage.removeItem('bg');
+  } catch (e) { alert('Расм хеле калон аст'); return; }
+  applyBg(); renderBgCols();
+}
+function renderBgCols(){
+  const box = $('bgcols'); box.innerHTML = '';
+  const b = getBg();
+  const mk = (label, col, on, fn) => {
+    const d = document.createElement('button'); d.textContent = label;
+    d.style.cssText = 'width:42px;height:42px;border-radius:50%;padding:0;font-size:20px;color:#2f6b3a;background:' + col + ';border:3px solid ' + (on ? '#2f6b3a' : '#cfcfcf');
+    d.onclick = fn; box.append(d);
+  };
+  mk('↺', '#efece3', !b.type, () => setBg(null));
+  BG_COLORS.forEach((col) => mk(b.type === 'color' && b.c === col ? '✓' : '', col, b.type === 'color' && b.c === col, () => setBg({ type: 'color', c: col })));
+  if (b.type === 'img') mk('🖼', '#fff', true, () => {});
+}
+async function bgFromFile(f){
+  const bmp = await loadBmp(f);
+  const k = Math.min(1, 900 / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+  cv.getContext('2d').drawImage(bmp._img || bmp, 0, 0, cv.width, cv.height);
+  return cv.toDataURL('image/jpeg', 0.7);
+}
+$('bgfile').onchange = async () => {
+  const f = $('bgfile').files[0]; if (!f) return;
+  try { setBg({ type: 'img', d: await bgFromFile(f) }); }
+  catch (e) { alert('Расм фиристода нашуд'); }
+};
 
 /* ---------- менюи паҳлӯӣ (мисли Telegram) ---------- */
 Object.assign(RU, { 'Барномаро ба дигарон фиристодан': 'Поделиться приложением', 'Меню': 'Меню' });
@@ -2622,6 +2672,8 @@ Object.assign(RU, {
 });
 /* ҳамаи матнҳои статикӣ баъд аз пур шудани луғат аз нав тарҷума мешаванд */
 if (LANG === 'ru') trNode(document.body);
+
+applyBg();
 
 const saved = localStorage.getItem('token');
 if (saved) start(saved);
