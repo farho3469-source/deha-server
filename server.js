@@ -1023,16 +1023,25 @@ async function sendSocial(uid) {
     us.forEach((x) => (info[String(x._id)] = { name: x.name, village: x.village || '', av: x.avatar || '' }));
     const accRooms = rq.filter((q) => q.status === 'accepted').map((q) => dmPair(uid, q.from === uid ? q.to : q.from));
     const lastAgg = accRooms.length
-      ? await chat.aggregate([{ $match: { room: { $in: accRooms } } }, { $group: { _id: '$room', t: { $max: '$time' } } }]).toArray()
+      ? await chat
+          .aggregate([
+            { $match: { room: { $in: accRooms } } },
+            { $sort: { time: -1 } },
+            { $group: { _id: '$room', t: { $first: '$time' }, k: { $first: '$kind' }, x: { $first: '$text' }, u: { $first: '$uid' } } },
+          ])
+          .toArray()
       : [];
     const lastMap = {};
-    lastAgg.forEach((x) => (lastMap[x._id] = x.t));
+    lastAgg.forEach((x) => {
+      const p = x.k === 'image' ? '📷 Расм' : x.k === 'audio' ? '🎤 Паёми овозӣ' : x.k === 'video' ? '🎬 Видео' : String(x.x || '').slice(0, 60);
+      lastMap[x._id] = { t: x.t, p, m: x.u === uid };
+    });
     const out = { incoming: [], contacts: [] };
     rq.forEach((q) => {
       const o = q.from === uid ? q.to : q.from;
       const i = info[o];
       if (!i) return;
-      if (q.status === 'accepted') out.contacts.push({ uid: o, name: i.name, village: i.village, av: i.av, room: dmPair(uid, o), last: lastMap[dmPair(uid, o)] || 0 });
+      if (q.status === 'accepted') out.contacts.push({ uid: o, name: i.name, village: i.village, av: i.av, room: dmPair(uid, o), last: (lastMap[dmPair(uid, o)] || {}).t || 0, lp: (lastMap[dmPair(uid, o)] || {}).p || '', lm: !!(lastMap[dmPair(uid, o)] || {}).m });
       else if (q.status === 'pending' && q.to === uid)
         out.incoming.push({ id: String(q._id), uid: o, name: i.name, village: i.village, av: i.av });
     });
@@ -2065,13 +2074,13 @@ io.on('connection', (s) => {
       io.to('r:' + room).emit('chat', m.cid ? { ...msg, cid: String(m.cid).slice(0, 40) } : msg);
       const v = vOf(room);
       if (v && !v.sub) {
-        s.to('vil:' + v.vid).emit('newmsg', { room, name: msg.name });
+        s.to('vil:' + v.vid).emit('newmsg', { room, name: msg.name, p: previewOf(msg), t: msg.time });
       } else if (room.startsWith('dm:')) {
         const p = room.split(':');
-        io.to('u:' + (p[1] === uid ? p[2] : p[1])).emit('newmsg', { room, name: msg.name });
+        io.to('u:' + (p[1] === uid ? p[2] : p[1])).emit('newmsg', { room, name: msg.name, p: previewOf(msg), t: msg.time });
       } else if (room.startsWith('g:')) {
         const gt = await groupTargets(room, uid);
-        gt.list.forEach((x) => io.to('u:' + x).emit('newmsg', { room, name: msg.name }));
+        gt.list.forEach((x) => io.to('u:' + x).emit('newmsg', { room, name: msg.name, p: previewOf(msg), t: msg.time }));
       }
       bump(msg, room);
       pushMsg(msg, room);
