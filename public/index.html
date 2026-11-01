@@ -191,6 +191,11 @@ mark{background:#ffe58f;border-radius:3px}
 .dri:active{background:#efece3}
 .dri span:first-child{width:26px;text-align:center;font-size:20px;flex:none}
 .dri.sep{border-top:1px solid #e6e3d9}
+#drwtop .stt{display:block;width:100%;margin-top:10px;padding:8px 10px;border:0;border-radius:10px;background:rgba(255,255,255,.2);color:#fff;font-size:14px;text-align:left;font-family:inherit}
+#mood{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:16;align-items:center;justify-content:center}
+#mood .gbox{background:#fff;border-radius:14px;padding:20px;width:88%;max-width:360px;text-align:center;max-height:90vh;overflow-y:auto}
+#mood .gbox h3{margin:0 0 10px;font-size:20px}
+#mood .gbox .btn{width:100%;margin:5px 0}
 </style>
 </head>
 <body>
@@ -307,6 +312,18 @@ mark{background:#ffe58f;border-radius:3px}
   <div id="drwbox" onclick="event.stopPropagation()">
     <div id="drwtop"></div>
     <div id="drwlist"></div>
+  </div>
+</div>
+
+<div id="mood">
+  <div class="gbox">
+    <h3>Ҳолати ман</h3>
+    <div id="moodem" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:8px"></div>
+    <div id="moodpr" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:8px"></div>
+    <input id="moodtx" maxlength="60" placeholder="Матн нависед (ихтиёрӣ)...">
+    <button class="btn" onclick="saveMood()">Сабт кардан</button>
+    <button class="btn g" onclick="clearMood()">Тоза кардан</button>
+    <button class="btn g" onclick="$('mood').style.display='none'">Бекор кардан</button>
   </div>
 </div>
 
@@ -1095,6 +1112,7 @@ function renderMembers(){
     const sm = r.querySelector('small');
     if (sm) sm.style.color = u.on ? '#1fa855' : '#999';
     if (u.on){ const d = document.createElement('i'); d.className = 'dot'; r.querySelector('span').append(d); }
+    addStatus(r, u);
     if (!u.me) r.append(mini('💬', '', () => startDM(u.uid, u.name)));
     box.append(r);
   });
@@ -1341,6 +1359,7 @@ function renderHome(){
     if (!list.length) box.append(item('Ҳоло касе нест', ''));
     list.forEach((m) => {
       const r = item(m.name, '', null, m.av);
+      addStatus(r, m);
       if (m.state === 'none') r.append(mini('Запрос', '', () => socket.emit('reqsend', m.uid)));
       else if (m.state === 'accepted'){
         const c = social.contacts.find((x) => x.uid === m.uid);
@@ -1757,6 +1776,39 @@ function sendTyping(){
 }
 $('text').addEventListener('input', () => { if ($('text').value.trim()) sendTyping(); });
 
+/* ---------- ҳолат / кайфият ---------- */
+Object.assign(RU, { 'Ҳолати ман': 'Моё состояние', 'Ҳолатро нависед': 'Укажите состояние', 'Матн нависед (ихтиёрӣ)...': 'Текст (необязательно)...', 'Тоза кардан': 'Очистить', 'Озод': 'Свободен', 'Банд': 'Занят', 'Дар кор': 'На работе', 'Дар роҳ': 'В пути', 'Хобидаам': 'Сплю' });
+const MOODS = ['😊', '😍', '😎', '🤔', '😴', '🤒', '😢', '😡', '🙏', '💪', '🎉', '❤️', '🚗', '🏠', '💼', '🌾', '🐄', '✈️'];
+const MOOD_TX = ['Озод', 'Банд', 'Дар кор', 'Дар роҳ', 'Хобидаам'];
+let moodSel = '';
+function paintMood(){
+  const box = $('moodem'); box.innerHTML = '';
+  MOODS.forEach((e) => {
+    const b = document.createElement('button'); b.textContent = e;
+    b.style.cssText = 'width:42px;height:42px;font-size:22px;border-radius:12px;padding:0;background:' + (e === moodSel ? '#dcf0d2' : '#f3f1ea') + ';border:2px solid ' + (e === moodSel ? '#2f6b3a' : 'transparent');
+    b.onclick = () => { moodSel = moodSel === e ? '' : e; paintMood(); };
+    box.append(b);
+  });
+  const pr = $('moodpr'); pr.innerHTML = '';
+  MOOD_TX.forEach((t) => {
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = t;
+    b.onclick = () => { $('moodtx').value = t; };
+    pr.append(b);
+  });
+}
+function openMood(){ moodSel = prof.mood || ''; $('moodtx').value = prof.about || ''; paintMood(); $('mood').style.display = 'flex'; }
+function saveMood(){ if (socket) socket.emit('setstatus', { mood: moodSel, about: $('moodtx').value.trim() }); $('mood').style.display = 'none'; }
+function clearMood(){ if (socket) socket.emit('setstatus', { mood: '', about: '' }); $('mood').style.display = 'none'; }
+function addStatus(r, o){
+  if (!o || (!o.mood && !o.about)) return;
+  const t = [...r.children].find((x) => x.tagName === 'SPAN' && !x.classList.contains('avt'));
+  if (!t) return;
+  const d = document.createElement('div');
+  d.style.cssText = 'font-size:12px;color:#667781;font-weight:400;margin-top:2px';
+  d.textContent = (o.mood ? o.mood + ' ' : '') + (o.about || '');
+  t.append(d);
+}
+
 /* ---------- менюи паҳлӯӣ (мисли Telegram) ---------- */
 Object.assign(RU, { 'Барномаро ба дигарон фиристодан': 'Поделиться приложением', 'Меню': 'Меню' });
 function renderHeaderAvatar(){
@@ -1778,6 +1830,10 @@ function renderDrawer(){
   top.append(a);
   const n = document.createElement('div'); n.className = 'nm2'; n.textContent = prof.name || ''; top.append(n);
   const v = document.createElement('div'); v.className = 'vl'; v.textContent = prof.village ? vname(prof.village) : ''; top.append(v);
+  const sb = document.createElement('button'); sb.className = 'stt';
+  sb.textContent = (prof.mood ? prof.mood + ' ' : '😊 ') + (prof.about || 'Ҳолатро нависед');
+  sb.onclick = () => { closeDrawer(); setTimeout(openMood, 80); };
+  top.append(sb);
   const box = $('drwlist'); box.innerHTML = '';
   box.append(drwItem('💬', 'Чат', () => { tab(1); if ($('chatv').style.display === 'flex') goHome(); nav = { v: 'home' }; renderHome(); }));
   box.append(drwItem('🗺️', 'Ноҳияҳо', openDistricts));
@@ -2708,7 +2764,7 @@ let guard = false, ignorePop = false;
 function isOpen(id){ return $(id).style.display === 'flex'; }
 function atRoot(){
   if ($('app').style.display !== 'flex') return true;
-  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('mem') || isOpen('nform') || isOpen('gpick') || isOpen('ginfo') || isOpen('call') || $('drw').style.display === 'block'
+  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('mem') || isOpen('nform') || isOpen('gpick') || isOpen('ginfo') || isOpen('mood') || isOpen('call') || $('drw').style.display === 'block'
     || $('chatv').style.display === 'flex' || nav.v !== 'home' || !$('s1').classList.contains('on'));
 }
 function appBack(){
@@ -2716,7 +2772,7 @@ function appBack(){
   if (isOpen('lb')){ $('lb').style.display = 'none'; return true; }
   if ($('drw').style.display === 'block'){ closeDrawer(); return true; }
   if (isOpen('menu')){ closeMenu(); return true; }
-  for (const id of ['nform', 'gpick', 'ginfo', 'sform', 'pform', 'gform', 'adform', 'mem']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
+  for (const id of ['mood', 'nform', 'gpick', 'ginfo', 'sform', 'pform', 'gform', 'adform', 'mem']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
   if (isOpen('call')) return true;
   if (isOpen('sbar')){ toggleSearch(); return true; }
   if ($('chatv').style.display === 'flex'){ goHome(); return true; }
