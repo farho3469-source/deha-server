@@ -190,15 +190,15 @@ mark{background:#ffe58f;border-radius:3px}
 #drw{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:14}
 #drwbox{position:absolute;left:0;top:0;bottom:0;width:min(80vw,340px);background:#fff;display:flex;flex-direction:column;box-shadow:2px 0 12px rgba(0,0,0,.3);transform:translateX(-100%);transition:transform .22s ease}
 #drw.on #drwbox{transform:none}
-#drwtop{position:relative;overflow:hidden;background:#2f6b3a;color:#fff;padding:calc(18px + env(safe-area-inset-top)) 16px 14px;flex:none}
+#drwtop{position:relative;overflow:hidden;background:#2f6b3a;color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 12px;flex:none}
 #drwtop .sc{position:absolute;left:0;top:0;right:0;bottom:0}
 #drwtop .in{position:relative;z-index:1}
 #drwtop .in .avt{border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)}
-#drwtop .nrow{display:flex;align-items:center;gap:8px;margin-top:8px}
+#drwtop .nrow{display:flex;align-items:center;gap:8px;margin-top:6px}
 #drwtop .nrow .nm2{margin-top:0;text-shadow:0 1px 3px rgba(0,0,0,.5)}
 #drwtop .nrow .nm2{font-size:20px;font-weight:700}
 #drwtop .pen{flex:none;width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.85);background:rgba(0,0,0,.15);color:#fff;font-size:14px;padding:0}
-#drwtop .onl{display:inline-flex;align-items:center;gap:6px;background:rgba(15,70,35,.8);border-radius:14px;padding:3px 12px 3px 8px;font-size:14px;font-weight:600;margin-top:8px}
+#drwtop .onl{display:inline-flex;align-items:center;gap:6px;background:rgba(15,70,35,.8);border-radius:14px;padding:3px 12px 3px 8px;font-size:14px;font-weight:600;margin-top:6px}
 #drwtop .onl i{width:12px;height:12px;border-radius:50%;background:#ffd600;display:inline-block}
 .dri .dtx{flex:1;min-width:0}
 .dri .dtx small{color:#777;font-size:12.5px;margin-left:6px}
@@ -207,11 +207,11 @@ mark{background:#ffe58f;border-radius:3px}
 #drwtop .nm2{font-size:17px;font-weight:600;margin-top:10px;word-break:break-word}
 #drwtop .vl{font-size:15px;margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,.5)}
 #drwlist{flex:1;overflow-y:auto;padding:6px 0}
-.dri{display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border:0;background:none;font-size:16px;color:#222;text-align:left;font-family:inherit}
+.dri{display:flex;align-items:center;gap:12px;width:100%;padding:10px 16px;border:0;background:none;font-size:15px;color:#222;text-align:left;font-family:inherit}
 .dri:active{background:#e7f3e4}
-.dri > span:first-child{width:28px;text-align:center;font-size:21px;flex:none}
+.dri > span:first-child{width:26px;text-align:center;font-size:20px;flex:none}
 .dri.sep{border-top:1px solid #e6e3d9}
-#drwtop .stt{display:block;width:100%;margin-top:10px;padding:8px 10px;border:0;border-radius:10px;background:rgba(255,255,255,.2);color:#fff;font-size:14px;text-align:left;font-family:inherit}
+#drwtop .stt{display:block;width:100%;margin-top:8px;padding:6px 10px;border:0;border-radius:10px;background:rgba(255,255,255,.2);color:#fff;font-size:14px;text-align:left;font-family:inherit}
 #mood{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:16;align-items:center;justify-content:center}
 #mood .gbox{background:#fff;border-radius:14px;padding:20px;width:88%;max-width:360px;text-align:center;max-height:90vh;overflow-y:auto}
 #mood .gbox h3{margin:0 0 10px;font-size:20px}
@@ -1951,7 +1951,7 @@ function renderDrawer(){
   const top = $('drwtop'); top.innerHTML = '';
   const sc = document.createElement('div'); sc.className = 'sc'; sc.innerHTML = sceneSvg('d'); top.append(sc);
   const inn = document.createElement('div'); inn.className = 'in'; top.append(inn);
-  const a = avEl(prof.avatar, prof.name, 72); a.onclick = null; a.style.cursor = ''; inn.append(a);
+  const a = avEl(prof.avatar, prof.name, 64); a.onclick = null; a.style.cursor = ''; inn.append(a);
   const nr = document.createElement('div'); nr.className = 'nrow';
   const n = document.createElement('div'); n.className = 'nm2'; n.textContent = prof.name || ''; nr.append(n);
   const pen = document.createElement('button'); pen.className = 'pen'; pen.textContent = '✎';
@@ -1984,7 +1984,7 @@ function renderDrawer(){
 }
 function openDrawer(){
   renderDrawer();
-  const d = $('drw'); d.style.display = 'block'; void d.offsetWidth; d.classList.add('on');
+  const d = $('drw'); d.style.display = 'block'; $('drwlist').scrollTop = 0; void d.offsetWidth; d.classList.add('on');
 }
 function closeDrawer(){
   const d = $('drw'); d.classList.remove('on');
