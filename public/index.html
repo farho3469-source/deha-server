@@ -1771,6 +1771,25 @@ function closeDrawer(){
   setTimeout(() => { if (!d.classList.contains('on')) d.style.display = 'none'; }, 230);
 }
 
+/* ламс аз чап ба рост: меню мекушояд; аз рост ба чап: мепӯшонад */
+let swX = 0, swY = 0, swT = 0, swOn = false;
+function swCanOpen(el){
+  if ($('app').style.display !== 'flex' || $('chatv').style.display === 'flex') return false;
+  for (const id of ['lb', 'menu', 'sform', 'pform', 'gform', 'adform', 'mem', 'nform', 'gpick', 'ginfo', 'pickm', 'call']) if (isOpen(id)) return false;
+  if (el && el.closest && el.closest('input,textarea,select,audio,video,.chips')) return false;
+  return true;
+}
+document.addEventListener('touchstart', (e) => {
+  const t = e.touches[0]; swX = t.clientX; swY = t.clientY; swT = Date.now(); swOn = e.touches.length === 1;
+}, { passive: true });
+document.addEventListener('touchend', (e) => {
+  if (!swOn) return; swOn = false;
+  const t = e.changedTouches[0], dx = t.clientX - swX, dy = t.clientY - swY;
+  if (Date.now() - swT > 700 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+  if ($('drw').style.display === 'block'){ if (dx < -60) closeDrawer(); return; }
+  if (dx > 70 && swX < window.innerWidth * 0.3 && swCanOpen(e.target)) openDrawer();
+}, { passive: true });
+
 /* ---------- поделиться ---------- */
 Object.assign(RU, { '📤 Барномаро ба дигарон фиристодан': '📤 Поделиться приложением', '✔ Нусха шуд, ҳоло ба ҷои дилхоҳ часпонед': '✔ Скопировано, вставьте куда нужно', 'Нусха кунед:': 'Скопируйте:', 'Расм фиристода нашуд. Нусха ёфт нашуд': 'Не удалось поделиться фото' });
 async function shareIt(o){
