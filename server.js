@@ -35,7 +35,7 @@ try {
   console.log('Mongo корбар:', mm ? decodeURIComponent(mm[1]) + ' @ ' + mm[2] : 'URI нодуруст (шакл)');
 } catch (e) {}
 const client = new MongoClient(MONGO_URI);
-let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, groups, stories, dbh;
+let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, groups, dbh;
 let VAPID_PUBLIC = '';
 
 /* ---------- Firebase (FCM) барои барномаи Android ---------- */
@@ -965,58 +965,6 @@ async function dropMember(g, u) {
   await Promise.all([u, ...rest].map(sendGroups));
 }
 
-/* ---------- таърих (stories, 24 соат) ---------- */
-const STORY_MS = 86400000;
-async function storyAudience(u) {
-  const uid = String(u._id);
-  const ids = new Set([uid]);
-  if (u.village) {
-    const vs = await users.find({ village: u.village, banned: { $ne: true } }, { projection: { _id: 1 } }).limit(1000).toArray();
-    vs.forEach((x) => ids.add(String(x._id)));
-  }
-  const rq = await reqs.find({ status: 'accepted', $or: [{ from: uid }, { to: uid }] }).toArray();
-  rq.forEach((q) => ids.add(q.from === uid ? q.to : q.from));
-  return ids;
-}
-async function sendStories(s) {
-  try {
-    const uid = String(s.user._id);
-    const aud = await storyAudience(s.user);
-    const mine = new Set((s.user.blocked || []).map(String));
-    const list = await stories
-      .find({ uid: { $in: [...aud] }, time: { $gt: Date.now() - STORY_MS } })
-      .sort({ time: 1 })
-      .limit(500)
-      .toArray();
-    const aids = [...new Set(list.map((x) => x.uid))].filter((x) => HEX24.test(x));
-    const au = aids.length
-      ? await users.find({ _id: { $in: aids.map((i) => new ObjectId(i)) } }, { projection: { name: 1, avatar: 1, blocked: 1 } }).toArray()
-      : [];
-    const info = {};
-    au.forEach((x) => (info[String(x._id)] = x));
-    const gm = new Map();
-    list.forEach((st) => {
-      if (mine.has(st.uid)) return;
-      const a = info[st.uid];
-      if (!a || (a.blocked || []).includes(uid)) return;
-      if (!gm.has(st.uid)) gm.set(st.uid, { uid: st.uid, name: a.name, av: a.avatar || '', me: st.uid === uid, items: [] });
-      gm.get(st.uid).items.push({
-        id: String(st._id),
-        kind: st.kind,
-        media: st.media || '',
-        text: st.text || '',
-        bg: st.bg || '',
-        time: st.time,
-        seen: st.uid === uid || (st.views || []).includes(uid),
-        vc: st.uid === uid ? (st.views || []).length : 0,
-      });
-    });
-    s.emit('stories', [...gm.values()]);
-  } catch (e) {
-    console.error('stories', e);
-  }
-}
-
 /* ---------- занги гурӯҳӣ (WebRTC mesh) ---------- */
 const groupCalls = new Map(); // gid -> { video, users:Set, time }
 const GCALL_MAX = 5;
@@ -1047,12 +995,10 @@ async function deleteUser(u) {
   const uid = String(u._id);
   const msgs = await chat.find({ uid }, { projection: { media: 1 } }).toArray();
   const myAds = await ads.find({ uid }).toArray();
-  const myStories = await stories.find({ uid }).toArray();
-  const mids = msgs.map((d) => d.media).concat(myAds.map((a) => a.photo), myStories.map((x) => x.media), [u.avatar]).filter((x) => HEX24.test(String(x || ''))).map((x) => new ObjectId(x));
+  const mids = msgs.map((d) => d.media).concat(myAds.map((a) => a.photo), [u.avatar]).filter((x) => HEX24.test(String(x || ''))).map((x) => new ObjectId(x));
   if (mids.length) await media.deleteMany({ _id: { $in: mids } });
   await chat.deleteMany({ uid });
   await ads.deleteMany({ uid });
-  await stories.deleteMany({ uid });
   await subs.deleteMany({ uid });
   await unread.deleteMany({ uid });
   await fcm.deleteMany({ uid });
@@ -1141,12 +1087,6 @@ async function cleanup() {
       console.log('cleanup', olds.length);
     }
     await reports.deleteMany({ status: { $ne: 'new' }, time: { $lt: now - 90 * D } });
-    const oldSt = await stories.find({ time: { $lt: now - STORY_MS } }, { projection: { media: 1 } }).limit(500).toArray();
-    if (oldSt.length) {
-      const sm = oldSt.map((d) => d.media).filter((x) => HEX24.test(String(x || ''))).map((x) => new ObjectId(x));
-      if (sm.length) await media.deleteMany({ _id: { $in: sm } });
-      await stories.deleteMany({ _id: { $in: oldSt.map((d) => d._id) } });
-    }
   } catch (e) {
     console.error('cleanup', e);
   }
@@ -1229,7 +1169,6 @@ io.on('connection', (s) => {
       if (!s.user.village) s.emit('needplace');
       sendSocial(uid);
       sendBlocks(s);
-      sendStories(s);
     } catch (e) {
       console.error(e);
     }
@@ -2003,70 +1942,22 @@ io.on('connection', (s) => {
     }
   });
 
-  /* ---------- таърих ---------- */
-  s.on('storylist', () => {
-    sendStories(s);
-  });
-  s.on('storyadd', async (m) => {
+  // «навишта истодааст...»
+  s.on('typing', async (m) => {
     try {
-      if (!m) return;
-      const kind = m.kind === 'image' ? 'image' : 'text';
-      const doc = { uid, kind, time: Date.now(), views: [] };
-      doc.text = String(m.text || '').trim().slice(0, kind === 'text' ? 300 : 140);
-      if (kind === 'image') {
-        const mid = String(m.media || '');
-        if (!HEX24.test(mid) || !(await media.findOne({ _id: new ObjectId(mid) }, { projection: { _id: 1 } }))) {
-          return s.emit('err', 'Файл нодуруст аст');
-        }
-        doc.media = mid;
+      const room = String((m && m.room) || '');
+      if (!room) return;
+      const now = Date.now();
+      if (s.data.typT && now - s.data.typT < 1500) return;
+      s.data.typT = now;
+      if (!(await canEnter(s.user, room))) return;
+      const pl = { room, uid, name: s.user.name };
+      if (room.startsWith('dm:')) {
+        const p = room.split(':');
+        io.to('u:' + (p[1] === uid ? p[2] : p[1])).emit('typing', pl);
       } else {
-        if (!doc.text) return s.emit('err', 'Матн нависед');
-        doc.bg = /^#[0-9a-fA-F]{6}$/.test(String(m.bg || '')) ? String(m.bg) : '#2f6b3a';
+        s.to('r:' + room).emit('typing', pl);
       }
-      if ((await stories.countDocuments({ uid, time: { $gt: Date.now() - STORY_MS } })) >= 20) {
-        return s.emit('err', 'Таърихҳо аз ҳад зиёданд');
-      }
-      await stories.insertOne(doc);
-      const aud = await storyAudience(s.user);
-      aud.forEach((x) => io.to('u:' + x).emit('storychanged'));
-    } catch (e) {
-      console.error(e);
-    }
-  });
-  s.on('storyview', async (id) => {
-    try {
-      id = String(id);
-      if (!HEX24.test(id)) return;
-      await stories.updateOne({ _id: new ObjectId(id), uid: { $ne: uid } }, { $addToSet: { views: uid } });
-    } catch (e) {
-      console.error(e);
-    }
-  });
-  s.on('storydel', async (id) => {
-    try {
-      id = String(id);
-      if (!HEX24.test(id)) return;
-      const d = await stories.findOne({ _id: new ObjectId(id), uid });
-      if (!d) return;
-      await stories.deleteOne({ _id: d._id });
-      if (d.media && HEX24.test(d.media)) await media.deleteOne({ _id: new ObjectId(d.media) }).catch(() => {});
-      const aud = await storyAudience(s.user);
-      aud.forEach((x) => io.to('u:' + x).emit('storychanged'));
-    } catch (e) {
-      console.error(e);
-    }
-  });
-  s.on('storyviews', async (id) => {
-    try {
-      id = String(id);
-      if (!HEX24.test(id)) return;
-      const d = await stories.findOne({ _id: new ObjectId(id), uid });
-      if (!d) return;
-      const vids = (d.views || []).filter((x) => HEX24.test(x));
-      const us = vids.length
-        ? await users.find({ _id: { $in: vids.map((i) => new ObjectId(i)) } }, { projection: { name: 1 } }).toArray()
-        : [];
-      s.emit('storyviews', { id, list: us.map((x) => x.name) });
     } catch (e) {
       console.error(e);
     }
@@ -2156,7 +2047,7 @@ io.on('connection', (s) => {
       }
       const r = await chat.insertOne({ ...msg });
       msg.id = String(r.insertedId);
-      io.to('r:' + room).emit('chat', msg);
+      io.to('r:' + room).emit('chat', m.cid ? { ...msg, cid: String(m.cid).slice(0, 40) } : msg);
       const v = vOf(room);
       if (v && !v.sub) {
         s.to('vil:' + v.vid).emit('newmsg', { room, name: msg.name });
@@ -2336,7 +2227,6 @@ io.on('connection', (s) => {
     unread = db.collection('unread');
     fcm = db.collection('fcm');
     groups = db.collection('groups');
-    stories = db.collection('stories');
     dbh = db;
     await users.createIndex({ phone: 1 }, { unique: true });
     await users.createIndex({ village: 1 });
@@ -2350,8 +2240,6 @@ io.on('connection', (s) => {
     await fcm.createIndex({ token: 1 }, { unique: true });
     await fcm.createIndex({ uid: 1 });
     await groups.createIndex({ members: 1 });
-    await stories.createIndex({ time: -1 });
-    await stories.createIndex({ uid: 1 });
     let ord = 0;
     for (const [region, names] of Object.entries(SEED)) {
       for (const name of names) {
