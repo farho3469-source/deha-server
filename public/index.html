@@ -10,11 +10,12 @@
 <title>Деҳа</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;height:100dvh;display:flex;flex-direction:column;font-family:system-ui,sans-serif;background:#efece3;color:#222}
-#hdr{position:relative;height:84px;background:#2f6b3a;flex:none;overflow:hidden}
+body{margin:0;height:100dvh;display:flex;flex-direction:column;font-family:system-ui,sans-serif;background:#e7f3e4;color:#222}
+#hdr{position:relative;height:150px;background:#2f6b3a;flex:none;overflow:hidden}
+#hsc{position:absolute;left:0;top:0;right:0;bottom:0}
 #hdr svg{position:absolute;left:0;top:0;width:100%;height:100%}
-#hdr .t{position:absolute;left:14px;top:10px;color:#fff;font-size:21px;font-weight:600}
-#hdr .s{position:absolute;left:14px;top:40px;color:#dfe8dc;font-size:12px}
+#hdr .t{position:absolute;left:14px;top:16px;color:#fff;font-size:22px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.45)}
+#hdr .s{position:absolute;left:14px;top:48px;color:#f0f6ee;font-size:14px;text-shadow:0 1px 3px rgba(0,0,0,.45)}
 #out{position:absolute;right:10px;top:10px;display:none;background:rgba(0,0,0,.3);color:#fff;border:0;border-radius:14px;padding:5px 12px;font-size:13px}
 #auth{flex:1;overflow-y:auto;padding:20px}
 #auth h3{margin:0 0 12px;font-size:22px}
@@ -68,14 +69,14 @@ input,textarea,select{width:100%;padding:12px;margin:5px 0;font-size:16px;border
 .acts a{background:#2f6b3a;color:#fff}
 .acts button{background:#f3d6d6;color:#8a1c1c}
 .fab{position:absolute;right:14px;bottom:14px;background:#2f6b3a;color:#fff;border:0;border-radius:26px;padding:13px 20px;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
-nav{flex:none;display:flex;background:#fff;border-top:1px solid #ddd;padding-bottom:env(safe-area-inset-bottom)}
+nav{flex:none;display:flex;background:#fff;margin:4px 8px calc(6px + env(safe-area-inset-bottom));border-radius:22px;box-shadow:0 2px 12px rgba(0,0,0,.18);overflow:hidden;padding:4px}
 nav button{flex:1;border:0;background:none;padding:8px 0;font-size:11px;color:#777;position:relative}
 nav button span{display:block;font-size:21px}
-nav button.on{color:#2f6b3a;font-weight:600}
+nav button.on{color:#2f6b3a;font-weight:600;background:#e3f1df;border-radius:18px}
 .nb{display:none;position:absolute;top:2px;left:calc(50% + 6px);background:#d4452f;color:#fff;border-radius:10px;min-width:18px;padding:1px 5px;font-size:11px;font-style:normal;font-weight:600;line-height:16px;text-align:center}
 #lb{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.92);z-index:9;align-items:center;justify-content:center}
 #lb img{max-width:100%;max-height:100%}
-#adform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:8;flex-direction:column}
+#adform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#e7f3e4;z-index:8;flex-direction:column}
 #adform .top{background:#2f6b3a;color:#fff;padding:14px;font-size:18px;font-weight:600;flex:none}
 #adform .body{flex:1;overflow-y:auto;padding:14px}
 #gform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:10;align-items:center;justify-content:center}
@@ -147,7 +148,7 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
 #lang{display:block;right:10px;top:12px}
 .tk{color:#8696a0;margin-left:3px}.tk.rd{color:#53bdeb}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1fa855;margin-left:6px}
-#mem{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:8;flex-direction:column}
+#mem{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#e7f3e4;z-index:8;flex-direction:column}
 #mem .top{background:#2f6b3a;color:#fff;padding:14px;font-size:18px;font-weight:600;flex:none}
 #mem .body{flex:1;overflow-y:auto;padding:12px}
 #sbar{display:none;align-items:center;gap:6px;padding:6px 10px;background:#fff;border-bottom:1px solid #ddd;flex:none}
@@ -156,11 +157,11 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:auto;overflow:hidden;ov
 .sr{background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:8px;box-shadow:0 1px .5px rgba(11,20,26,.13)}
 .sr b{font-size:13px;color:#2f6b3a}
 .sr .d{font-size:11px;color:#667781}
-#nform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:9;flex-direction:column}
+#nform{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#e7f3e4;z-index:9;flex-direction:column}
 #nform .top{background:#2f6b3a;color:#fff;padding:14px;font-size:18px;font-weight:600;flex:none}
 #nform .body{flex:1;overflow-y:auto;padding:14px}
 mark{background:#ffe58f;border-radius:3px}
-#gpick,#ginfo{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:9;flex-direction:column}
+#gpick,#ginfo{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#e7f3e4;z-index:9;flex-direction:column}
 #gpick .top,#ginfo .top{background:#2f6b3a;color:#fff;padding:14px;font-size:18px;font-weight:600;flex:none}
 #gpick .body,#ginfo .body{flex:1;overflow-y:auto;padding:12px}
 .gfoot{display:flex;gap:8px;padding:10px;flex:none}
@@ -177,43 +178,72 @@ mark{background:#ffe58f;border-radius:3px}
 #call.grp #cname{font-size:18px}
 #call.grp #cst{font-size:14px;margin-top:2px}
 #call.grp #lv{top:auto;bottom:120px;right:12px;width:80px;height:106px}
-#hav{display:none;position:absolute;left:12px;top:19px;width:48px;height:48px;border:0;background:none;padding:0;z-index:2}
+#hav{display:none;position:absolute;left:12px;top:16px;width:56px;height:56px;border:0;background:none;padding:0;z-index:2}
 #hav .avt{border:2px solid rgba(255,255,255,.85)}
-#hdr .t,#hdr .s{left:72px}
+#hdr .t,#hdr .s{left:78px}
+#hdr .t{right:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#hdr .s{right:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#hdrr{position:absolute;right:10px;top:12px;display:flex;align-items:center;gap:6px;z-index:2}
+#hdrr #lang{position:static;display:block}
+#bell{position:relative;background:none;border:0;font-size:25px;padding:4px 6px;color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))}
+#bellb{display:none;position:absolute;top:-2px;right:-2px;background:#e53935;color:#fff;border-radius:9px;font-size:11px;min-width:18px;height:18px;line-height:18px;text-align:center;font-style:normal;padding:0 4px;font-weight:700}
 #drw{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:14}
-#drwbox{position:absolute;left:0;top:0;bottom:0;width:min(64vw,300px);background:#fff;display:flex;flex-direction:column;box-shadow:2px 0 12px rgba(0,0,0,.3);transform:translateX(-100%);transition:transform .22s ease}
+#drwbox{position:absolute;left:0;top:0;bottom:0;width:min(80vw,340px);background:#fff;display:flex;flex-direction:column;box-shadow:2px 0 12px rgba(0,0,0,.3);transform:translateX(-100%);transition:transform .22s ease}
 #drw.on #drwbox{transform:none}
-#drwtop{background:#2f6b3a;color:#fff;padding:calc(20px + env(safe-area-inset-top)) 16px 14px;flex:none}
+#drwtop{position:relative;overflow:hidden;background:#2f6b3a;color:#fff;padding:calc(18px + env(safe-area-inset-top)) 16px 14px;flex:none}
+#drwtop .sc{position:absolute;left:0;top:0;right:0;bottom:0}
+#drwtop .in{position:relative;z-index:1}
+#drwtop .in .avt{border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+#drwtop .nrow{display:flex;align-items:center;gap:8px;margin-top:8px}
+#drwtop .nrow .nm2{margin-top:0;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+#drwtop .nrow .nm2{font-size:20px;font-weight:700}
+#drwtop .pen{flex:none;width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.85);background:rgba(0,0,0,.15);color:#fff;font-size:14px;padding:0}
+#drwtop .onl{display:inline-flex;align-items:center;gap:6px;background:rgba(15,70,35,.8);border-radius:14px;padding:3px 12px 3px 8px;font-size:14px;font-weight:600;margin-top:8px}
+#drwtop .onl i{width:12px;height:12px;border-radius:50%;background:#ffd600;display:inline-block}
+.dri .dtx{flex:1;min-width:0}
+.dri .dtx small{color:#777;font-size:12.5px;margin-left:6px}
+.dri .chev{color:#9aa79c;font-size:22px;flex:none}
+.dri .soon{font-size:11px;color:#2f8f4a;background:#e3f1df;border-radius:8px;padding:1px 7px;margin-left:6px}
 #drwtop .nm2{font-size:17px;font-weight:600;margin-top:10px;word-break:break-word}
-#drwtop .vl{font-size:13px;opacity:.85;margin-top:2px}
+#drwtop .vl{font-size:15px;margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,.5)}
 #drwlist{flex:1;overflow-y:auto;padding:6px 0}
 .dri{display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border:0;background:none;font-size:16px;color:#222;text-align:left;font-family:inherit}
-.dri:active{background:#efece3}
-.dri span:first-child{width:26px;text-align:center;font-size:20px;flex:none}
+.dri:active{background:#e7f3e4}
+.dri > span:first-child{width:28px;text-align:center;font-size:21px;flex:none}
 .dri.sep{border-top:1px solid #e6e3d9}
 #drwtop .stt{display:block;width:100%;margin-top:10px;padding:8px 10px;border:0;border-radius:10px;background:rgba(255,255,255,.2);color:#fff;font-size:14px;text-align:left;font-family:inherit}
 #mood{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:16;align-items:center;justify-content:center}
 #mood .gbox{background:#fff;border-radius:14px;padding:20px;width:88%;max-width:360px;text-align:center;max-height:90vh;overflow-y:auto}
 #mood .gbox h3{margin:0 0 10px;font-size:20px}
 #mood .gbox .btn{width:100%;margin:5px 0}
+
+.cardx{background:#fff;border-radius:18px;box-shadow:0 1px 6px rgba(0,0,0,.08);margin-bottom:10px;overflow:hidden}
+.secx{font-size:19px;font-weight:700;color:#1b3d22;margin:16px 4px 8px}
+.rowx{display:flex;align-items:center;gap:12px;padding:11px 14px;width:100%;border:0;background:none;text-align:left;font-family:inherit;color:#222;border-bottom:1px solid #eef1ec}
+.rowx:last-child{border-bottom:0}
+.rowx .mid{flex:1;min-width:0}
+.rowx .tt{font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowx .ss{font-size:14px;color:#6b7a6e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowx .ss.ty{color:#1fa855}
+.rowx .rt{flex:none;text-align:right;font-size:13px;color:#6b7a6e;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.rowx .rt .vv{color:#2f8f4a;font-weight:600;font-size:14px}
+.rowx .rt .tb{display:flex;align-items:center;gap:6px}
+.rowx .rt b.cnt{color:#2f6b3a}
+.rowx .chev{color:#9aa79c;font-size:22px;flex:none}
+.rowx .ico{width:42px;height:42px;border-radius:50%;background:#eef4ec;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.rowx .thumb{width:62px;height:50px;border-radius:12px;overflow:hidden;flex:none}
+.rowx.add{background:#e3f1df;margin:6px 8px 8px;width:auto;border-radius:14px;border-bottom:0}
+.rowx.add .ico{background:#2f8f4a;color:#fff}
+.rowx .dotx{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1fa855;margin-left:6px}
 </style>
 </head>
 <body>
 <div id="hdr">
-  <svg viewBox="0 0 360 84" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-    <circle cx="300" cy="24" r="12" fill="#FAC775"/>
-    <path d="M0 84 L0 58 Q50 36 110 56 Q170 74 230 52 Q300 30 360 52 L360 84 Z" fill="#4c8f5a"/>
-    <path d="M0 84 L0 68 Q70 54 150 68 Q250 82 360 64 L360 84 Z" fill="#27500A"/>
-    <rect x="262" y="46" width="30" height="22" fill="#F5C4B3"/>
-    <path d="M256 47 L277 31 L298 47 Z" fill="#993C1D"/>
-    <rect x="272" y="55" width="8" height="13" fill="#712B13"/>
-    <rect x="228" y="54" width="4" height="14" fill="#712B13"/>
-    <circle cx="230" cy="50" r="9" fill="#27500A"/>
-  </svg>
+  <div id="hsc"></div>
   <button id="hav" onclick="openDrawer()" aria-label="Меню"></button>
   <div class="t" data-nt>Деҳа</div>
-  <div class="s">Чат, бозор ва хабарҳои деҳа</div>
-  <button id="lang" class="hb" data-nt onclick="toggleLang()"></button>
+  <div class="s" data-nt>Чат, бозор ва хабарҳои деҳа</div>
+  <div id="hdrr"><button id="bell" onclick="bellTap()" aria-label="Огоҳӣ">🔔<i id="bellb"></i></button><button id="lang" class="hb" data-nt onclick="toggleLang()"></button></div>
 </div>
 
 <div id="auth">
@@ -300,8 +330,8 @@ mark{background:#ffe58f;border-radius:3px}
   </div>
   <nav>
     <button id="b1" class="on" onclick="tab(1)"><span>💬</span>Чат<i class="nb" id="nbadge"></i></button>
-    <button id="b6" onclick="openDistricts()"><span>🗺️</span>Ноҳияҳо</button>
-    <button id="b2" onclick="tab(2)"><span>🐄</span>Бозор</button>
+    <button id="b6" onclick="openDistricts()"><span>📍</span>Ноҳияҳо</button>
+    <button id="b2" onclick="tab(2)"><span>🏪</span>Бозор</button>
     <button id="b3" onclick="tab(3)"><span>📰</span>Хабарҳо</button>
     <button id="b5" onclick="openSettings()"><span>⚙️</span>Танзимот</button>
     <button id="b4" onclick="tab(4)" style="display:none"><span>🔐</span>Админ</button>
@@ -829,6 +859,8 @@ function totalUnread(){
 function updUnread(){
   const n = totalUnread(), el = $('nbadge');
   if (el){ el.textContent = n > 99 ? '99+' : String(n); el.style.display = n ? 'block' : 'none'; }
+  const bb = $('bellb');
+  if (bb){ bb.textContent = n > 99 ? '99+' : String(n); bb.style.display = n ? 'block' : 'none'; }
   try {
     if (navigator.setAppBadge){
       if (n) navigator.setAppBadge(n).catch(() => {});
@@ -1288,53 +1320,114 @@ function mini(t, cls, fn){
   b.onclick = (e) => { e.stopPropagation(); fn(); };
   return b;
 }
+/* ---------- корт-ҳои саҳифаи асосӣ ---------- */
+Object.assign(RU, {
+  'Деҳаи мо': 'Наша деревня', 'Аҳолӣ:': 'Жители:', 'Чатҳои шахсӣ': 'Личные чаты', 'Ҳамаи ноҳияҳо': 'Все районы',
+  'Деҳаи худро интихоб кунед': 'Выберите свою деревню', 'Дирӯз': 'Вчера',
+  'Чатҳои ман': 'Мои чаты', 'Ахбори деҳа': 'Новости деревни', 'Рӯйдодҳо': 'События', 'Хизматрасониҳо': 'Услуги',
+  'Албоми деҳа': 'Альбом деревни', 'Избранное': 'Избранное', 'Дар бораи барнома': 'О приложении', 'Мубодилаи барнома': 'Поделиться приложением',
+  '(Хариду фурӯш)': '(Покупка и продажа)', '(Тӯй, маърака...)': '(Свадьбы, мероприятия...)', '(Усто, нақлиёт...)': '(Мастера, транспорт...)',
+  'Ба зудӣ': 'Скоро', 'Ба зудӣ илова мешавад': 'Скоро будет добавлено'
+});
+RX.push([/^Шумо: (.*)$/, 'Вы: $1']);
+function cardx(){ const d = document.createElement('div'); d.className = 'cardx'; return d; }
+function secx(icon, text){ const d = document.createElement('div'); d.className = 'secx'; d.textContent = icon + ' ' + text; return d; }
+function icoEl(txt){ const d = document.createElement('div'); d.className = 'ico'; d.textContent = txt; return d; }
+function rowx(lead, title, sub, rt, fn, o){
+  o = o || {};
+  const b = document.createElement('button'); b.className = 'rowx' + (o.cls ? ' ' + o.cls : '');
+  if (lead) b.append(lead);
+  const m = document.createElement('div'); m.className = 'mid';
+  const t = document.createElement('div'); t.className = 'tt'; t.textContent = title; m.append(t);
+  if (sub){ const s = document.createElement('div'); s.className = 'ss' + (o.subCls ? ' ' + o.subCls : ''); s.textContent = sub; m.append(s); }
+  b.append(m);
+  if (rt) b.append(rt);
+  if (!o.noChev){ const ch = document.createElement('span'); ch.className = 'chev'; ch.textContent = '›'; b.append(ch); }
+  if (fn) b.onclick = fn;
+  return b;
+}
+function fmtListTime(t){
+  if (!t) return '';
+  const d = new Date(t), n = new Date(), sd = (x) => x.toDateString();
+  if (sd(d) === sd(n)) return hhmm(t);
+  if (sd(d) === sd(new Date(n.getTime() - 86400000))) return LANG === 'ru' ? 'Вчера' : 'Дирӯз';
+  return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function setLast(r, text, time, mine){
+  const c = social.contacts.find((x) => x.room === r);
+  if (!c) return;
+  c.lp = text || ''; c.last = time || Date.now(); c.lm = !!mine;
+}
 function renderHome(){
   const box = $('hbody'); box.innerHTML = '';
   $('dsrch').style.display = nav.v === 'districts' ? 'block' : 'none';
   if (nav.v === 'home' && $('dsq').value){ $('dsq').value = ''; peopleRes = { q: '', list: [] }; }
   if (nav.v === 'home'){
+    box.append(secx('🏠', 'Деҳаи мо'));
+    const vc = cardx();
     if (prof.village){
-      box.append(hd('Деҳаи ман'));
-      const vr = item('🏠 ' + vname(prof.village), dname(prof.district), openVillage);
-      const pvc = (places.villages.find((x) => x.id === prof.village) || {}).count;
-      if (pvc) vr.append(cntEl(pvc));
-      const vb = badge(unreadMap['v:' + prof.village]);
-      if (vb) vr.append(vb);
-      box.append(vr);
+      const pvc = (places.villages.find((x) => x.id === prof.village) || {}).count || 0;
+      const th = document.createElement('div'); th.className = 'thumb'; th.innerHTML = sceneSvg('t');
+      const pr = document.createElement('div'); pr.className = 'rt';
+      const pl = document.createElement('div'); pl.append(document.createTextNode('Аҳолӣ: '));
+      const pb = document.createElement('b'); pb.className = 'cnt'; pb.textContent = pvc + ' нафар'; pl.append(pb); pr.append(pl);
+      const vb = badge(unreadMap['v:' + prof.village]); if (vb) pr.append(vb);
+      vc.append(rowx(th, vname(prof.village), 'Деҳаи мо', pr, openVillage));
     } else {
-      box.append(item('⚠ Деҳаи худро интихоб кунед', '', () => { fillPlace('pdist', 'pvil'); $('pform').style.display = 'flex'; }));
+      vc.append(rowx(icoEl('⚠️'), 'Деҳаи худро интихоб кунед', '', null, () => { fillPlace('pdist', 'pvil'); $('pform').style.display = 'flex'; }));
     }
-    box.append(hd('Оила ва авлод'));
-    [...groupsList].sort((a, b) => lastOf('g:' + b.id) - lastOf('g:' + a.id)).forEach((g) => {
-      const r = item('👪 ' + g.name, g.members.length + ' нафар', () => showChat('g:' + g.id, g.name));
-      if (gcalls[g.id]) r.append(mini((gcalls[g.id].video ? '🎥 ' : '📞 ') + gcalls[g.id].count, '', () => gcBegin(g.id, gcalls[g.id].video, true)));
-      const gb = badge(unreadMap['g:' + g.id]);
-      if (gb) r.append(gb);
-      box.append(r);
+    box.append(vc);
+
+    box.append(secx('👪', 'Оила ва авлод'));
+    const gc2 = cardx();
+    [...groupsList].sort((a2, b2) => lastOf('g:' + b2.id) - lastOf('g:' + a2.id)).forEach((g) => {
+      const rt = document.createElement('div'); rt.className = 'rt';
+      const tb = document.createElement('div'); tb.className = 'tb';
+      const cn = document.createElement('span'); cn.textContent = g.members.length + ' нафар'; tb.append(cn);
+      if (gcalls[g.id]) tb.append(mini((gcalls[g.id].video ? '🎥 ' : '📞 ') + gcalls[g.id].count, '', () => gcBegin(g.id, gcalls[g.id].video, true)));
+      const gb = badge(unreadMap['g:' + g.id]); if (gb) tb.append(gb);
+      rt.append(tb);
+      gc2.append(rowx(icoEl('👥'), g.name, '', rt, () => showChat('g:' + g.id, g.name)));
     });
-    box.append(item('➕ Гурӯҳи оилавии нав', 'Одамонро аз рӯйхат интихоб кунед', () => openGPick({ type: 'create' })));
+    gc2.append(rowx(icoEl('＋'), 'Гурӯҳи оилавии нав', 'Одамонро аз рӯйхат интихоб кунед', null, () => openGPick({ type: 'create' }), { cls: 'add' }));
+    box.append(gc2);
+
     if (social.incoming.length){
-      box.append(hd('Дархостҳо'));
+      box.append(secx('📨', 'Дархостҳо'));
+      const rc = cardx();
       social.incoming.forEach((q) => {
-        const r = item(q.name, vname(q.village), null, q.av);
-        r.append(mini('Қабул', '', () => socket.emit('reqans', { id: q.id, accept: true })));
-        r.append(mini('Рад', 'r', () => socket.emit('reqans', { id: q.id, accept: false })));
-        box.append(r);
+        const rt = document.createElement('div'); rt.className = 'rt';
+        const tb = document.createElement('div'); tb.className = 'tb';
+        tb.append(mini('Қабул', '', () => socket.emit('reqans', { id: q.id, accept: true })));
+        tb.append(mini('Рад', 'r', () => socket.emit('reqans', { id: q.id, accept: false })));
+        rt.append(tb);
+        rc.append(rowx(avEl(q.av, q.name, 46), q.name, vname(q.village), rt, null, { noChev: true }));
       });
+      box.append(rc);
     }
+
     if (social.contacts.length){
-      box.append(hd('Сӯҳбатҳои шахсӣ'));
-      [...social.contacts].sort((a, b) => lastOf(b.room, b.last) - lastOf(a.room, a.last)).forEach((c) => {
-        const tn = typingNames(c.room).length;
-        const r = item(c.name, tn ? '✍ навишта истодааст...' : vname(c.village), () => showChat(c.room, c.name), c.av);
-        if (tn){ const sm = r.querySelector('small'); if (sm) sm.style.color = '#1fa855'; }
-        if (onlSet.has(c.uid)){ const od = document.createElement('i'); od.className = 'dot'; r.querySelector('span').append(od); }
-        const cb = badge(unreadMap[c.room]);
-        if (cb) r.append(cb);
-        box.append(r);
+      box.append(secx('💬', 'Чатҳои шахсӣ'));
+      const cc = cardx();
+      [...social.contacts].sort((a2, b2) => lastOf(b2.room, b2.last) - lastOf(a2.room, a2.last)).forEach((c2) => {
+        const tn = typingNames(c2.room).length;
+        const sub = tn ? '✍ навишта истодааст...' : ((c2.lm ? 'Шумо: ' : '') + (c2.lp || ''));
+        const rt = document.createElement('div'); rt.className = 'rt';
+        const vv = document.createElement('div'); vv.className = 'vv'; vv.textContent = vname(c2.village); rt.append(vv);
+        const tb = document.createElement('div'); tb.className = 'tb';
+        const tm = document.createElement('span'); tm.textContent = fmtListTime(lastOf(c2.room, c2.last)); tb.append(tm);
+        const cb = badge(unreadMap[c2.room]); if (cb) tb.append(cb);
+        rt.append(tb);
+        const row = rowx(avEl(c2.av, c2.name, 46), c2.name, sub, rt, () => showChat(c2.room, c2.name), { noChev: true, subCls: tn ? 'ty' : '' });
+        if (onlSet.has(c2.uid)){ const od = document.createElement('i'); od.className = 'dotx'; row.querySelector('.tt').append(od); }
+        cc.append(row);
       });
+      box.append(cc);
     }
-    box.append(item('🗺 Ҳамаи ноҳияҳо', 'Одамони деҳаҳои дигарро ёбед', () => { nav = { v: 'districts' }; renderHome(); }));
+
+    const dc = cardx();
+    dc.append(rowx(icoEl('🗺️'), 'Ҳамаи ноҳияҳо', 'Одамони деҳаҳои дигарро ёбед', null, () => { nav = { v: 'districts' }; renderHome(); }));
+    box.append(dc);
   } else if (nav.v === 'districts'){
     box.append(item('← Бозгашт', '', () => { nav = { v: 'home' }; renderHome(); }));
     searchView(box);
@@ -1734,7 +1827,7 @@ function renderBgCols(){
     d.style.cssText = 'width:42px;height:42px;border-radius:50%;padding:0;font-size:20px;color:#2f6b3a;background:' + col + ';border:3px solid ' + (on ? '#2f6b3a' : '#cfcfcf');
     d.onclick = fn; box.append(d);
   };
-  mk('↺', '#efece3', !b.type, () => setBg(null));
+  mk('↺', '#e7f3e4', !b.type, () => setBg(null));
   BG_COLORS.forEach((col) => mk(b.type === 'color' && b.c === col ? '✓' : '', col, b.type === 'color' && b.c === col, () => setBg({ type: 'color', c: col })));
   if (b.type === 'img') mk('🖼', '#fff', true, () => {});
 }
@@ -1809,6 +1902,30 @@ function addStatus(r, o){
   t.append(d);
 }
 
+/* ---------- расми деҳа (SVG) ---------- */
+function sceneSvg(id){
+  return '<svg viewBox="0 0 360 150" preserveAspectRatio="xMidYMax slice" aria-hidden="true">' +
+    '<defs><linearGradient id="sk' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fb1d8"/><stop offset="1" stop-color="#e0f0e8"/></linearGradient>' +
+    '<linearGradient id="sh' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d3b1f" stop-opacity=".7"/><stop offset="1" stop-color="#0d3b1f" stop-opacity="0"/></linearGradient></defs>' +
+    '<rect width="360" height="150" fill="url(#sk' + id + ')"/>' +
+    '<path d="M0 98 L50 52 L78 72 L120 28 L168 80 L208 42 L252 82 L292 52 L360 98 L360 150 L0 150Z" fill="#7f95aa"/>' +
+    '<path d="M120 28 L103 50 L112 47 L120 56 L129 47 L138 52Z M208 42 L193 62 L201 59 L208 66 L216 59 L224 63Z M50 52 L38 66 L45 64 L50 70 L56 64 L62 67Z M292 52 L280 68 L287 65 L292 72 L298 65 L306 69Z" fill="#fff"/>' +
+    '<path d="M0 112 Q60 88 130 106 Q200 126 260 98 Q320 74 360 102 L360 150 L0 150Z" fill="#4c9a58"/>' +
+    '<g fill="#e8b27a"><rect x="236" y="96" width="30" height="20"/><rect x="278" y="104" width="26" height="18"/><rect x="170" y="108" width="24" height="16"/></g>' +
+    '<g fill="#b5442a"><path d="M232 97 L251 82 L270 97Z"/><path d="M274 105 L291 92 L308 105Z"/><path d="M166 109 L182 97 L198 109Z"/></g>' +
+    '<g fill="#1f6b32"><circle cx="212" cy="112" r="9"/><circle cx="318" cy="112" r="10"/><circle cx="148" cy="116" r="8"/><circle cx="24" cy="108" r="12"/></g>' +
+    '<path d="M0 130 Q80 114 160 127 Q250 142 360 120 L360 150 L0 150Z" fill="#2d7a3e"/>' +
+    '<rect width="360" height="80" fill="url(#sh' + id + ')"/></svg>';
+}
+function updHdr(){
+  const t = document.querySelector('#hdr .t'), s = document.querySelector('#hdr .s');
+  const vn = prof.village ? vname(prof.village) : '';
+  t.textContent = vn ? (LANG === 'ru' ? 'Деревня ' : 'Деҳаи ') + vn : 'Деҳа';
+  s.textContent = LANG === 'ru' ? 'Чат деревни • Новости • Рынок' : 'Чати деҳа • Ахбор • Бозор';
+}
+function bellTap(){ tab(1); if ($('chatv').style.display === 'flex') goHome(); nav = { v: 'home' }; renderHome(); }
+$('hsc').innerHTML = sceneSvg('h');
+
 /* ---------- менюи паҳлӯӣ (мисли Telegram) ---------- */
 Object.assign(RU, { 'Барномаро ба дигарон фиристодан': 'Поделиться приложением', 'Меню': 'Меню' });
 function renderHeaderAvatar(){
@@ -1816,35 +1933,54 @@ function renderHeaderAvatar(){
   const a = avEl(prof.avatar, prof.name, 44); a.onclick = null; a.style.cursor = '';
   b.append(a); b.style.display = 'block';
 }
-function drwItem(icon, text, fn, sep){
-  const b = document.createElement('button'); b.className = 'dri' + (sep ? ' sep' : '');
+function drwItem(icon, text, fn, o){
+  o = o || {};
+  const b = document.createElement('button'); b.className = 'dri' + (o.sep ? ' sep' : '');
   const i = document.createElement('span'); i.textContent = icon;
-  const t = document.createElement('span'); t.textContent = text;
-  b.append(i, t);
+  const d = document.createElement('div'); d.className = 'dtx';
+  const t = document.createElement('span'); t.className = 'l'; t.textContent = text; d.append(t);
+  if (o.sub){ const sm = document.createElement('small'); sm.textContent = o.sub; d.append(sm); }
+  if (o.soon){ const so = document.createElement('span'); so.className = 'soon'; so.textContent = 'Ба зудӣ'; d.append(so); }
+  b.append(i, d);
+  if (o.badge){ const bd = badge(o.badge); if (bd) b.append(bd); }
+  const ch = document.createElement('span'); ch.className = 'chev'; ch.textContent = '›'; b.append(ch);
   b.onclick = () => { closeDrawer(); setTimeout(fn, 80); };
   return b;
 }
 function renderDrawer(){
   const top = $('drwtop'); top.innerHTML = '';
-  const a = avEl(prof.avatar, prof.name, 64); a.onclick = null; a.style.cursor = '';
-  top.append(a);
-  const n = document.createElement('div'); n.className = 'nm2'; n.textContent = prof.name || ''; top.append(n);
-  const v = document.createElement('div'); v.className = 'vl'; v.textContent = prof.village ? vname(prof.village) : ''; top.append(v);
+  const sc = document.createElement('div'); sc.className = 'sc'; sc.innerHTML = sceneSvg('d'); top.append(sc);
+  const inn = document.createElement('div'); inn.className = 'in'; top.append(inn);
+  const a = avEl(prof.avatar, prof.name, 72); a.onclick = null; a.style.cursor = ''; inn.append(a);
+  const nr = document.createElement('div'); nr.className = 'nrow';
+  const n = document.createElement('div'); n.className = 'nm2'; n.textContent = prof.name || ''; nr.append(n);
+  const pen = document.createElement('button'); pen.className = 'pen'; pen.textContent = '✎';
+  pen.onclick = () => { closeDrawer(); setTimeout(openSettings, 80); }; nr.append(pen);
+  inn.append(nr);
+  const v = document.createElement('div'); v.className = 'vl'; v.textContent = prof.village ? '📍 ' + vname(prof.village) : ''; inn.append(v);
+  const on = document.createElement('div'); on.className = 'onl'; on.append(document.createElement('i'), document.createTextNode('Онлайн')); inn.append(on);
   const sb = document.createElement('button'); sb.className = 'stt';
   sb.textContent = (prof.mood ? prof.mood + ' ' : '😊 ') + (prof.about || 'Ҳолатро нависед');
   sb.onclick = () => { closeDrawer(); setTimeout(openMood, 80); };
-  top.append(sb);
+  inn.append(sb);
+
   const box = $('drwlist'); box.innerHTML = '';
-  box.append(drwItem('💬', 'Чат', () => { tab(1); if ($('chatv').style.display === 'flex') goHome(); nav = { v: 'home' }; renderHome(); }));
-  box.append(drwItem('🗺️', 'Ноҳияҳо', openDistricts));
-  box.append(drwItem('🐄', 'Бозор', () => tab(2)));
-  box.append(drwItem('📰', 'Хабарҳо', () => tab(3)));
-  box.append(drwItem('👪', 'Гурӯҳи оилавии нав', () => { tab(1); if ($('chatv').style.display === 'flex') goHome(); openGPick({ type: 'create' }); }));
-  box.append(drwItem('📤', 'Барномаро ба дигарон фиристодан', () => shareIt({ title: 'Деҳа', text: 'Деҳа — чат, бозор ва хабарҳои деҳа', url: location.origin }), true));
-  box.append(drwItem('🌐', LANG === 'ru' ? 'Тоҷикӣ' : 'Русский', toggleLang));
-  box.append(drwItem('⚙️', 'Танзимот', openSettings));
+  const homeList = () => { tab(1); if ($('chatv').style.display === 'flex') goHome(); nav = { v: 'home' }; renderHome(); };
+  const soon = () => toast('Ба зудӣ илова мешавад');
+  box.append(drwItem('🏠', 'Деҳаи ман', () => { if (prof.village){ tab(1); openVillage(); } else homeList(); }));
+  box.append(drwItem('👥', 'Оила ва авлод', homeList));
+  box.append(drwItem('💬', 'Чатҳои ман', homeList, { badge: totalUnread() }));
+  box.append(drwItem('🛒', 'Бозор', () => tab(2), { sub: '(Хариду фурӯш)' }));
+  box.append(drwItem('📰', 'Ахбори деҳа', () => tab(3)));
+  box.append(drwItem('📅', 'Рӯйдодҳо', soon, { sub: '(Тӯй, маърака...)', soon: true }));
+  box.append(drwItem('🛠️', 'Хизматрасониҳо', soon, { sub: '(Усто, нақлиёт...)', soon: true }));
+  box.append(drwItem('🖼️', 'Албоми деҳа', soon, { soon: true }));
+  box.append(drwItem('🔖', 'Избранное', soon, { soon: true }));
+  box.append(drwItem('⚙️', 'Танзимот', openSettings, { sep: true }));
+  box.append(drwItem('ℹ️', 'Дар бораи барнома', () => alert('Деҳа\nЧат, бозор ва хабарҳои деҳа\n' + location.origin)));
+  box.append(drwItem('🔗', 'Мубодилаи барнома', () => shareIt({ title: 'Деҳа', text: 'Деҳа — чат, бозор ва хабарҳои деҳа', url: location.origin })));
   if (prof.admin) box.append(drwItem('🔐', 'Админ', () => tab(4)));
-  box.append(drwItem('🚪', 'Баромадан аз ҳисоб', logout, true));
+  box.append(drwItem('🚪', 'Баромадан аз ҳисоб', logout, { sep: true }));
 }
 function openDrawer(){
   renderDrawer();
@@ -2290,9 +2426,9 @@ function start(token){
   socket.on('me', (id) => { myUid = id; });
   socket.on('needgender', () => { $('gform').style.display = 'flex'; });
   socket.on('rooms', (list) => { roomList = list; renderRooms(); });
-  socket.on('profile', (p) => { prof = p; renderHome(); updAdmin(); renderNews(); renderHeaderAvatar(); });
+  socket.on('profile', (p) => { prof = p; renderHome(); updAdmin(); renderNews(); renderHeaderAvatar(); updHdr(); });
   socket.on('places', (p) => {
-    places = p; fillPlace('pdist', 'pvil'); fillPlace('rdist', 'rvil'); renderHome();
+    places = p; fillPlace('pdist', 'pvil'); fillPlace('rdist', 'rvil'); renderHome(); updHdr();
   });
   socket.on('needplace', () => { if (places.districts.length) $('pform').style.display = 'flex'; });
   socket.on('unreadall', (m) => {
@@ -2347,6 +2483,7 @@ function start(token){
   });
   socket.on('newmsg', (m) => {
     delete typing[m.room];
+    if (m.p !== undefined) setLast(m.room, m.p, m.t, false);
     bumpRoom(m.room); renderHome();
     if (m.room !== room){ beep(); toast('💬 ' + m.name + ': паёми нав'); }
   });
@@ -2434,6 +2571,7 @@ function start(token){
   });
   socket.on('chat', (m) => {
     bumpRoom(m.room);
+    setLast(m.room, prevText(m), m.time, m.uid === myUid);
     if (typing[m.room]) delete typing[m.room][m.uid];
     if (m.room !== room || blocked.has(m.uid)) return;
     updTyping();
