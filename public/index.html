@@ -239,7 +239,7 @@ mark{background:#ffe58f;border-radius:3px}
         <div id="hbody"></div>
       </div>
       <div id="chatv">
-      <div id="chead"><button class="ic g" style="width:36px;height:36px;font-size:16px" onclick="goHome()">←</button><div id="ctw" style="line-height:1.25;min-width:0;cursor:pointer" onclick="openMembers()"><b id="ctitle"></b><div id="csub" style="font-size:12px;color:#667781"></div></div><span style="flex:1"></span><button id="csrch" class="ic g" style="width:36px;height:36px;font-size:16px" onclick="toggleSearch()" aria-label="Ҷустуҷӯ">🔍</button><button id="cb1" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(false)" aria-label="Занг">📞</button><button id="cb2" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(true)" aria-label="Видео">🎥</button></div>
+      <div id="chead"><button class="ic g" style="width:36px;height:36px;font-size:16px" onclick="goHome()">←</button><div id="ctw" style="line-height:1.25;min-width:0;cursor:pointer" onclick="openMembers()"><b id="ctitle"></b><div id="csub" style="font-size:12px;color:#667781"></div><div id="ctyp" style="display:none;font-size:12px;color:#1fa855"></div></div><span style="flex:1"></span><button id="csrch" class="ic g" style="width:36px;height:36px;font-size:16px" onclick="toggleSearch()" aria-label="Ҷустуҷӯ">🔍</button><button id="cb1" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(false)" aria-label="Занг">📞</button><button id="cb2" class="ic g" style="width:36px;height:36px;font-size:16px;display:none" onclick="startCall(true)" aria-label="Видео">🎥</button></div>
       <div id="gbanner" style="display:none;align-items:center;gap:8px;background:#dcf0d2;color:#27500A;padding:8px 12px;font-size:14px;flex:none"><span id="gbt" style="flex:1"></span><button class="mini" onclick="gcJoinHere()">Ворид шудан</button></div>
       <div class="chips" id="rooms"></div>
       <div id="sbar"><input id="sq" placeholder="Ҷустуҷӯ дар чат..." autocomplete="off"><button class="ic g" style="width:34px;height:34px;font-size:15px" onclick="toggleSearch()" aria-label="Бекор">✕</button></div>
@@ -1206,6 +1206,7 @@ function renderRooms(){
 function selectRoom(id){
   room = id; $('msgs').innerHTML = ''; renderRooms(); setReply(null);
   if (socket) socket.emit('join', id);
+  updTyping();
 }
 
 /* ---------- ноҳия, деҳа, дархостҳо ---------- */
@@ -1306,7 +1307,9 @@ function renderHome(){
     if (social.contacts.length){
       box.append(hd('Сӯҳбатҳои шахсӣ'));
       [...social.contacts].sort((a, b) => lastOf(b.room, b.last) - lastOf(a.room, a.last)).forEach((c) => {
-        const r = item(c.name, vname(c.village), () => showChat(c.room, c.name), c.av);
+        const tn = typingNames(c.room).length;
+        const r = item(c.name, tn ? '✍ навишта истодааст...' : vname(c.village), () => showChat(c.room, c.name), c.av);
+        if (tn){ const sm = r.querySelector('small'); if (sm) sm.style.color = '#1fa855'; }
         if (onlSet.has(c.uid)){ const od = document.createElement('i'); od.className = 'dot'; r.querySelector('span').append(od); }
         const cb = badge(unreadMap[c.room]);
         if (cb) r.append(cb);
@@ -1393,6 +1396,7 @@ function showChat(r, title){
   askPstat();
   if (r.startsWith('g:')) socket.emit('gcallq', { id: r.slice(2) });
   gcUpdBanner();
+  updTyping();
 }
 function goHome(){
   room = ''; $('chatv').style.display = 'none'; $('home').style.display = 'block';
@@ -1728,6 +1732,30 @@ $('bgfile').onchange = async () => {
   try { setBg({ type: 'img', d: await bgFromFile(f) }); }
   catch (e) { alert('Расм фиристода нашуд'); }
 };
+
+/* ---------- «навишта истодааст...» ---------- */
+Object.assign(RU, { '✍ навишта истодааст...': '✍ печатает...', 'Фиристода мешавад...': 'Отправка...', '❌ Фиристода нашуд · Дубора': '❌ Не отправлено · Повторить' });
+RX.push([/^✍ (.*) навишта истодааст\.\.\.$/, '✍ $1 печатает...']);
+let typing = {}, lastTyp = 0;
+function typingNames(r){
+  const o = typing[r] || {}, now = Date.now(), n = [];
+  for (const k in o){ if (o[k].until > now) n.push(o[k].name); else delete o[k]; }
+  return n;
+}
+function updTyping(){
+  const n = room ? typingNames(room) : [];
+  const el = $('ctyp');
+  if (n.length){
+    el.textContent = room.startsWith('dm:') ? '✍ навишта истодааст...' : '✍ ' + n.slice(0, 2).join(', ') + (n.length > 2 ? ' +' + (n.length - 2) : '') + ' навишта истодааст...';
+    el.style.display = 'block'; $('csub').style.display = 'none';
+  } else { el.style.display = 'none'; $('csub').style.display = ''; }
+  if ($('chatv').style.display !== 'flex') renderHome();
+}
+function sendTyping(){
+  if (!socket || !room || Date.now() - lastTyp < 2500) return;
+  lastTyp = Date.now(); socket.emit('typing', { room });
+}
+$('text').addEventListener('input', () => { if ($('text').value.trim()) sendTyping(); });
 
 /* ---------- менюи паҳлӯӣ (мисли Telegram) ---------- */
 Object.assign(RU, { 'Барномаро ба дигарон фиристодан': 'Поделиться приложением', 'Меню': 'Меню' });
@@ -2262,6 +2290,7 @@ function start(token){
     document.querySelectorAll('#msgs .b.me .tk').forEach((k) => { k.className = 'tk rd'; k.textContent = ' ✓✓'; });
   });
   socket.on('newmsg', (m) => {
+    delete typing[m.room];
     bumpRoom(m.room); renderHome();
     if (m.room !== room){ beep(); toast('💬 ' + m.name + ': паёми нав'); }
   });
@@ -2319,6 +2348,11 @@ function start(token){
       }
     } catch (e) {}
   });
+  socket.on('typing', (d) => {
+    if (!d || blocked.has(d.uid)) return;
+    (typing[d.room] = typing[d.room] || {})[d.uid] = { name: d.name, until: Date.now() + 3500 };
+    updTyping(); setTimeout(updTyping, 3700);
+  });
   socket.on('adchatok', (d) => { tab(1); showChat(d.room, d.name); });
   socket.on('onl', (l) => {
     const ns = new Set(l || []);
@@ -2344,7 +2378,13 @@ function start(token){
   });
   socket.on('chat', (m) => {
     bumpRoom(m.room);
+    if (typing[m.room]) delete typing[m.room][m.uid];
     if (m.room !== room || blocked.has(m.uid)) return;
+    updTyping();
+    if (m.uid === myUid && m.cid){
+      const pe = document.querySelector('#msgs [data-cid="' + m.cid + '"]');
+      if (pe){ pe.replaceWith(msgEl(m)); scrollDown(); return; }
+    }
     if (m.uid !== myUid) beep();
     addChat(m);
     if (m.uid !== myUid) markRead();
@@ -2533,29 +2573,55 @@ async function shrink(file){
   const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.75));
   return blob.arrayBuffer();
 }
-async function sendPhoto(file){
-  if (!file || !socket) return;
-  try {
-    const id = await upload('image/jpeg', await shrink(file));
-    socket.emit('chat', { room, kind: 'image', media: id, reply: takeReply() });
-  } catch (e) {
-    alert('Расм фиристода нашуд\n(' + ((e && e.message) || e) + ')');
+function pendEl(cid, kind, src, label){
+  const d = document.createElement('div'); d.className = 'b me'; d.dataset.cid = cid;
+  if (kind === 'image' && src){
+    const im = document.createElement('img'); im.src = src; im.style.opacity = '.65'; im.onload = scrollDown; d.append(im);
+  } else {
+    const p = document.createElement('div'); p.textContent = label; d.append(p);
+  }
+  const t = document.createElement('div'); t.className = 'tm'; d.append(t);
+  $('msgs').append(d); scrollDown();
+  return d;
+}
+function setPend(el, text, retry){
+  const t = el.querySelector('.tm'); if (!t) return;
+  if (text){ t.textContent = '⏳ ' + text; t.onclick = null; t.style.color = ''; }
+  else {
+    t.textContent = '❌ Фиристода нашуд · Дубора'; t.style.color = '#b00020'; t.style.cursor = 'pointer';
+    t.onclick = () => { if (retry) retry(); };
   }
 }
-
-async function sendVideo(file){
-  if (!file || !socket) return;
+function sendMedia(kind, label, preview, doUpload, extra){
+  if (!socket) return;
+  const cid = 'c' + Date.now() + Math.random().toString(36).slice(2, 6);
+  const rm = room, rid = takeReply();
+  const el = pendEl(cid, kind, preview, label);
+  const go = async () => {
+    setPend(el, 'Фиристода мешавад...');
+    try {
+      const id = await doUpload();
+      socket.emit('chat', Object.assign({ room: rm, kind, media: id, reply: rid, cid }, extra || {}));
+      setTimeout(() => { if (document.body.contains(el)) setPend(el, null, go); }, 25000);
+    } catch (e) { setPend(el, null, go); }
+  };
+  go();
+}
+function sendPhoto(file){
+  if (!file) return;
+  let url = ''; try { url = URL.createObjectURL(file); } catch (e) {}
+  sendMedia('image', '📷 Расм', url, async () => upload('image/jpeg', await shrink(file)));
+}
+function sendVideo(file){
+  if (!file) return;
   if (file.size > 15 * 1024 * 1024){ alert('Видео аз ҳад калон аст (то 15 MB)'); return; }
-  toast('Видео фиристода мешавад...');
-  try {
+  sendMedia('video', '🎬 Видео', '', async () => {
     const type = file.type || 'video/mp4';
     const r = await fetch('/api/upvideo?t=' + encodeURIComponent(tok) + '&type=' + encodeURIComponent(type), { method: 'POST', headers: { 'Content-Type': type }, body: file });
     const d = await r.json();
     if (!r.ok || !d.id) throw new Error(d.error || 'fail');
-    socket.emit('chat', { room, kind: 'video', media: d.id, reply: takeReply() });
-  } catch (e) {
-    alert('Видео фиристода нашуд');
-  }
+    return d.id;
+  });
 }
 
 function fmt(s){ return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
@@ -2585,12 +2651,7 @@ async function startRec(){
     const mime = rec.mimeType || 'audio/webm';
     const buf = await new Blob(chunks, { type: mime }).arrayBuffer();
     if (buf.byteLength > 1900000){ alert('Паём аз ҳад дароз аст'); return; }
-    try {
-      const id = await upload(mime.split(';')[0], buf);
-      socket.emit('chat', { room, kind: 'audio', media: id, dur, reply: takeReply() });
-    } catch (e) {
-      alert('Овоз фиристода нашуд');
-    }
+    sendMedia('audio', '🎤 Паёми овозӣ', '', () => upload(mime.split(';')[0], buf), { dur });
   };
   rec.start();
   recStart = Date.now();
