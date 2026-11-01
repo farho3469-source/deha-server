@@ -329,7 +329,7 @@ const myRooms = (u) => {
   l.push({ id: b + ':football', title: 'Футболистон' });
   return l;
 };
-const profOf = (u) => ({ name: u.name || '', village: u.village || '', district: u.district || '', gender: u.gender || '', avatar: u.avatar || '', admin: !!u.admin, first: u.first || u.name || '', surname: u.surname || '', age: u.age || '' });
+const profOf = (u) => ({ name: u.name || '', village: u.village || '', district: u.district || '', gender: u.gender || '', avatar: u.avatar || '', admin: !!u.admin, first: u.first || u.name || '', surname: u.surname || '', age: u.age || '', mood: u.mood || '', about: u.about || '' });
 const placesOut = async () => {
   const all = await places.find({}).sort({ ord: 1, name: 1 }).toArray();
   // шумораи одамон дар ҳар деҳа ва ноҳия
@@ -1691,7 +1691,7 @@ io.on('connection', (s) => {
       vid = String(vid);
       if (!HEX24.test(vid)) return;
       const list = await users
-        .find({ village: vid, _id: { $ne: s.user._id } }, { projection: { name: 1, avatar: 1, blocked: 1 } })
+        .find({ village: vid, _id: { $ne: s.user._id } }, { projection: { name: 1, avatar: 1, blocked: 1, mood: 1, about: 1 } })
         .limit(300)
         .toArray();
       const rq = await reqs.find({ $or: [{ from: uid }, { to: uid }] }).toArray();
@@ -1706,7 +1706,7 @@ io.on('connection', (s) => {
         village: vid,
         list: list
           .filter((x) => !(x.blocked || []).includes(uid))
-          .map((x) => ({ uid: String(x._id), name: x.name, av: x.avatar || '', state: st(String(x._id)) })),
+          .map((x) => ({ uid: String(x._id), name: x.name, av: x.avatar || '', mood: x.mood || '', about: x.about || '', state: st(String(x._id)) })),
       });
     } catch (e) {
       console.error(e);
@@ -1874,7 +1874,7 @@ io.on('connection', (s) => {
       if (!vid) return;
       const bl = (s.user.blocked || []).filter((b) => HEX24.test(b)).map((b) => new ObjectId(b));
       const list = await users
-        .find({ village: vid, banned: { $ne: true }, blocked: { $ne: uid }, _id: { $nin: bl } }, { projection: { name: 1, avatar: 1 } })
+        .find({ village: vid, banned: { $ne: true }, blocked: { $ne: uid }, _id: { $nin: bl } }, { projection: { name: 1, avatar: 1, mood: 1, about: 1 } })
         .limit(500)
         .toArray();
       const socks = await io.in('vil:' + vid).fetchSockets();
@@ -1883,7 +1883,7 @@ io.on('connection', (s) => {
         village: vid,
         total: list.length,
         online: list.filter((x) => on.has(String(x._id))).length,
-        list: list.map((x) => ({ uid: String(x._id), name: x.name, av: x.avatar || '', on: on.has(String(x._id)), me: String(x._id) === uid })),
+        list: list.map((x) => ({ uid: String(x._id), name: x.name, av: x.avatar || '', mood: x.mood || '', about: x.about || '', on: on.has(String(x._id)), me: String(x._id) === uid })),
       });
     } catch (e) {
       console.error(e);
@@ -1937,6 +1937,21 @@ io.on('connection', (s) => {
       }
       sendSocial(uid);
       sendSocial(to);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  // Ҳолат / кайфият (эмоджӣ + матни кӯтоҳ)
+  s.on('setstatus', async (m) => {
+    try {
+      if (!m) return;
+      const mood = String(m.mood || '').slice(0, 8);
+      const about = String(m.about || '').trim().slice(0, 60);
+      await users.updateOne({ _id: s.user._id }, { $set: { mood, about } });
+      s.user.mood = mood;
+      s.user.about = about;
+      s.emit('profile', profOf(s.user));
     } catch (e) {
       console.error(e);
     }
