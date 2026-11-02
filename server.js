@@ -35,7 +35,7 @@ try {
   console.log('Mongo корбар:', mm ? decodeURIComponent(mm[1]) + ' @ ' + mm[2] : 'URI нодуруст (шакл)');
 } catch (e) {}
 const client = new MongoClient(MONGO_URI);
-let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, groups, dbh;
+let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, groups, events, services, albums, favs, dbh;
 let VAPID_PUBLIC = '';
 
 /* ---------- Firebase (FCM) барои барномаи Android ---------- */
@@ -995,10 +995,17 @@ async function deleteUser(u) {
   const uid = String(u._id);
   const msgs = await chat.find({ uid }, { projection: { media: 1 } }).toArray();
   const myAds = await ads.find({ uid }).toArray();
-  const mids = msgs.map((d) => d.media).concat(myAds.map((a) => a.photo), [u.avatar]).filter((x) => HEX24.test(String(x || ''))).map((x) => new ObjectId(x));
+  const myAlb = await albums.find({ uid }).toArray();
+  const mySv = await services.find({ uid }).toArray();
+  const myFav = await favs.find({ uid }).toArray();
+  const mids = msgs.map((d) => d.media).concat(myAds.map((a) => a.photo), myAlb.map((x) => x.media), mySv.map((x) => x.photo), myFav.map((x) => x.media), [u.avatar]).filter((x) => HEX24.test(String(x || ''))).map((x) => new ObjectId(x));
   if (mids.length) await media.deleteMany({ _id: { $in: mids } });
   await chat.deleteMany({ uid });
   await ads.deleteMany({ uid });
+  await events.deleteMany({ uid });
+  await services.deleteMany({ uid });
+  await albums.deleteMany({ uid });
+  await favs.deleteMany({ uid });
   await subs.deleteMany({ uid });
   await unread.deleteMany({ uid });
   await fcm.deleteMany({ uid });
@@ -1096,6 +1103,16 @@ async function cleanup() {
       console.log('cleanup', olds.length);
     }
     await reports.deleteMany({ status: { $ne: 'new' }, time: { $lt: now - 90 * D } });
+    await events.deleteMany({ date: { $lt: new Date(now - 30 * D).toISOString().slice(0, 10) } });
+    const aOld = await albums
+      .find({ time: { $lt: now - (Number(process.env.KEEP_ALBUM_DAYS) || 120) * D } }, { projection: { media: 1 } })
+      .limit(500)
+      .toArray();
+    if (aOld.length) {
+      const am = aOld.map((d) => d.media).filter((x) => HEX24.test(String(x || ''))).map((x) => new ObjectId(x));
+      if (am.length) await media.deleteMany({ _id: { $in: am } });
+      await albums.deleteMany({ _id: { $in: aOld.map((d) => d._id) } });
+    }
   } catch (e) {
     console.error('cleanup', e);
   }
@@ -1987,6 +2004,172 @@ io.on('connection', (s) => {
     }
   });
 
+  /* ---------- рӯйдодҳо, хизматрасониҳо, албом, избранное ---------- */
+  const EV_KINDS = ['wedding', 'funeral', 'celebration', 'meeting', 'other'];
+  const SV_CATS = ['master', 'transport', 'trade', 'medical', 'other'];
+  const FAV_TYPES = ['msg', 'ad', 'news', 'service', 'event', 'photo'];
+  const okMedia = async (id) => HEX24.test(String(id || '')) && !!(await media.findOne({ _id: new ObjectId(String(id)) }, { projection: { _id: 1 } }));
+  const clip = (v, n) => String(v || '').trim().slice(0, n);
+
+  s.on('evlist', async () => {
+    try {
+      if (!s.user.village) return s.emit('evlist', []);
+      const from = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+      const list = await events.find({ village: s.user.village, date: { $gte: from } }).sort({ date: 1, tm: 1 }).limit(100).toArray();
+      s.emit('evlist', list.map((x) => ({ id: String(x._id), uid: x.uid, name: x.name, title: x.title, kind: x.kind, date: x.date, tm: x.tm || '', place: x.place || '', desc: x.desc || '', time: x.time })));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('evadd', async (m) => {
+    try {
+      if (!m) return;
+      if (!s.user.village) return s.emit('err', 'Деҳаро интихоб кунед');
+      const title = clip(m.title, 100);
+      if (!title) return s.emit('err', 'Сарлавҳа нависед');
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(String(m.date || '')) ? String(m.date) : '';
+      if (!date) return s.emit('err', 'Санаро интихоб кунед');
+      if ((await events.countDocuments({ uid, time: { $gt: Date.now() - 86400000 } })) >= 10) return s.emit('err', 'Имрӯз аз ҳад зиёд илова кардед. Фардо кӯшиш кунед');
+      await events.insertOne({ uid, name: s.user.name, village: s.user.village, title, kind: EV_KINDS.includes(m.kind) ? m.kind : 'other', date, tm: clip(m.tm, 20), place: clip(m.place, 100), desc: clip(m.desc, 500), time: Date.now() });
+      io.to('vil:' + s.user.village).emit('secchanged', { sec: 'ev' });
+      const vs = await users.find({ village: s.user.village, banned: { $ne: true } }, { projection: { _id: 1 } }).limit(1000).toArray();
+      pushTo(vs.map((x) => String(x._id)).filter((x) => x !== uid), (l) => ({ title: l === 'ru' ? '📅 Новое событие' : '📅 Рӯйдоди нав', body: title + ' · ' + date, tag: 'ev', type: 'msg' })).catch(console.error);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('evdel', async (id) => {
+    try {
+      id = String(id);
+      if (!HEX24.test(id)) return;
+      const d = await events.findOne({ _id: new ObjectId(id) });
+      if (!d) return;
+      if (!(d.uid === uid || isAdmin({}, s.user))) return s.emit('err', 'Нест кардан мумкин нест');
+      await events.deleteOne({ _id: d._id });
+      io.to('vil:' + d.village).emit('secchanged', { sec: 'ev' });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('svlist', async () => {
+    try {
+      const list = await services.find({}).sort({ time: -1 }).limit(200).toArray();
+      s.emit('svlist', list.map((x) => ({ id: String(x._id), uid: x.uid, name: x.name, phone: x.phone || '', village: x.village || '', cat: x.cat, title: x.title, price: x.price || '', desc: x.desc || '', photo: x.photo || '', time: x.time })));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('svadd', async (m) => {
+    try {
+      if (!m) return;
+      const title = clip(m.title, 100);
+      if (!title) return s.emit('err', 'Сарлавҳа нависед');
+      if ((await services.countDocuments({ uid })) >= 5) return s.emit('err', 'Хизматрасониҳо аз ҳад зиёданд');
+      const photo = (await okMedia(m.photo)) ? String(m.photo) : '';
+      await services.insertOne({ uid, name: s.user.name, phone: s.user.phone, village: s.user.village || '', cat: SV_CATS.includes(m.cat) ? m.cat : 'other', title, price: clip(m.price, 40), desc: clip(m.desc, 500), photo, time: Date.now() });
+      io.emit('secchanged', { sec: 'sv' });
+    } catch (e) {
+      console.error(e);
+      s.emit('err', 'Эълон нашр нашуд');
+    }
+  });
+  s.on('svdel', async (id) => {
+    try {
+      id = String(id);
+      if (!HEX24.test(id)) return;
+      const d = await services.findOne({ _id: new ObjectId(id) });
+      if (!d) return;
+      if (!(d.uid === uid || isAdmin({}, s.user))) return s.emit('err', 'Нест кардан мумкин нест');
+      await services.deleteOne({ _id: d._id });
+      if (d.photo && HEX24.test(d.photo)) await media.deleteOne({ _id: new ObjectId(d.photo) }).catch(() => {});
+      io.emit('secchanged', { sec: 'sv' });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('alblist', async () => {
+    try {
+      if (!s.user.village) return s.emit('alblist', []);
+      const list = await albums.find({ village: s.user.village }).sort({ time: -1 }).limit(200).toArray();
+      s.emit('alblist', list.map((x) => ({ id: String(x._id), uid: x.uid, name: x.name, media: x.media, cap: x.cap || '', time: x.time })));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('albadd', async (m) => {
+    try {
+      if (!m) return;
+      if (!s.user.village) return s.emit('err', 'Деҳаро интихоб кунед');
+      if (!(await okMedia(m.media))) return s.emit('err', 'Файл нодуруст аст');
+      if ((await albums.countDocuments({ village: s.user.village })) >= 300) return s.emit('err', 'Албом пур шуд');
+      if ((await albums.countDocuments({ uid, time: { $gt: Date.now() - 86400000 } })) >= 20) return s.emit('err', 'Имрӯз аз ҳад зиёд расм илова кардед');
+      await albums.insertOne({ uid, name: s.user.name, village: s.user.village, media: String(m.media), cap: clip(m.cap, 140), time: Date.now() });
+      io.to('vil:' + s.user.village).emit('secchanged', { sec: 'alb' });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('albdel', async (id) => {
+    try {
+      id = String(id);
+      if (!HEX24.test(id)) return;
+      const d = await albums.findOne({ _id: new ObjectId(id) });
+      if (!d) return;
+      if (!(d.uid === uid || isAdmin({}, s.user))) return s.emit('err', 'Нест кардан мумкин нест');
+      await albums.deleteOne({ _id: d._id });
+      if (d.media && HEX24.test(d.media)) await media.deleteOne({ _id: new ObjectId(d.media) }).catch(() => {});
+      io.to('vil:' + d.village).emit('secchanged', { sec: 'alb' });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  s.on('favlist', async () => {
+    try {
+      const list = await favs.find({ uid }).sort({ time: -1 }).limit(200).toArray();
+      s.emit('favlist', list.map((x) => ({ id: String(x._id), type: x.type, title: x.title || '', text: x.text || '', media: x.media || '', extra: x.extra || '', time: x.time })));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('favadd', async (m) => {
+    try {
+      if (!m || !FAV_TYPES.includes(m.type)) return;
+      if ((await favs.countDocuments({ uid })) >= 100) return s.emit('err', 'Избранное пур шуд');
+      let mid = '';
+      const src = String(m.media || '');
+      if (HEX24.test(src) && (await favs.countDocuments({ uid, media: { $ne: '' } })) < 30) {
+        const doc = await media.findOne({ _id: new ObjectId(src) });
+        if (doc && String(doc.type).startsWith('image/')) {
+          const r = await media.insertOne({ type: doc.type, data: doc.data, time: Date.now() });
+          mid = String(r.insertedId);
+        }
+      }
+      const title = clip(m.title, 100);
+      const text = clip(m.text, 600);
+      if (!title && !text && !mid) return;
+      await favs.insertOne({ uid, type: m.type, title, text, media: mid, extra: clip(m.extra, 200), time: Date.now() });
+      s.emit('favok');
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('favdel', async (id) => {
+    try {
+      id = String(id);
+      if (!HEX24.test(id)) return;
+      const d = await favs.findOne({ _id: new ObjectId(id), uid });
+      if (!d) return;
+      await favs.deleteOne({ _id: d._id });
+      if (d.media && HEX24.test(d.media)) await media.deleteOne({ _id: new ObjectId(d.media) }).catch(() => {});
+      s.emit('favlist', (await favs.find({ uid }).sort({ time: -1 }).limit(200).toArray()).map((x) => ({ id: String(x._id), type: x.type, title: x.title || '', text: x.text || '', media: x.media || '', extra: x.extra || '', time: x.time })));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   // Чати мустақим бо соҳиби эълон (бе дархост)
   s.on('adchat', async (to) => {
     try {
@@ -1995,7 +2178,7 @@ io.on('connection', (s) => {
       const other = await users.findOne({ _id: new ObjectId(to) }, { projection: { name: 1, blocked: 1, banned: 1 } });
       if (!other || other.banned) return;
       if ((other.blocked || []).includes(uid)) return s.emit('err', 'Дархост фиристода нашуд');
-      if (!(await ads.findOne({ uid: to }, { projection: { _id: 1 } }))) return;
+      if (!(await ads.findOne({ uid: to }, { projection: { _id: 1 } })) && !(await services.findOne({ uid: to }, { projection: { _id: 1 } }))) return;
       const ex = await reqs.findOne({ $or: [{ from: uid, to }, { from: to, to: uid }] });
       if (!ex) await reqs.insertOne({ from: uid, to, status: 'accepted', time: Date.now() });
       else if (ex.status !== 'accepted') await reqs.updateOne({ _id: ex._id }, { $set: { status: 'accepted' } });
@@ -2251,6 +2434,10 @@ io.on('connection', (s) => {
     unread = db.collection('unread');
     fcm = db.collection('fcm');
     groups = db.collection('groups');
+    events = db.collection('events');
+    services = db.collection('services');
+    albums = db.collection('albums');
+    favs = db.collection('favs');
     dbh = db;
     await users.createIndex({ phone: 1 }, { unique: true });
     await users.createIndex({ village: 1 });
@@ -2264,6 +2451,10 @@ io.on('connection', (s) => {
     await fcm.createIndex({ token: 1 }, { unique: true });
     await fcm.createIndex({ uid: 1 });
     await groups.createIndex({ members: 1 });
+    await events.createIndex({ village: 1, date: 1 });
+    await services.createIndex({ time: -1 });
+    await albums.createIndex({ village: 1, time: -1 });
+    await favs.createIndex({ uid: 1, time: -1 });
     let ord = 0;
     for (const [region, names] of Object.entries(SEED)) {
       for (const name of names) {
