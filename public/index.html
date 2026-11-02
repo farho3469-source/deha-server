@@ -235,6 +235,26 @@ mark{background:#ffe58f;border-radius:3px}
 .rowx.add{background:#e3f1df;margin:6px 8px 8px;width:auto;border-radius:14px;border-bottom:0}
 .rowx.add .ico{background:#2f8f4a;color:#fff}
 .rowx .dotx{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1fa855;margin-left:6px}
+#pg{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:var(--appbg,#e9f2e5);z-index:9;flex-direction:column}
+#pg .top,#fm .top{background:#2f6b3a;color:#fff;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;font-size:18px;font-weight:600;flex:none;display:flex;align-items:center;gap:10px}
+#pg .top span{flex:1}
+#pg .body{flex:1;overflow-y:auto;padding:12px}
+#fm{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:10;flex-direction:column}
+#fm .body{flex:1;overflow-y:auto;padding:14px}
+.evc{display:flex;gap:12px;background:#fff;border-radius:14px;padding:12px;margin-bottom:10px}
+.evd{flex:none;width:54px;height:60px;text-align:center;background:#e3f1df;border-radius:12px;padding-top:6px;color:#27500A}
+.evd b{display:block;font-size:22px;line-height:1.1}
+.evd small{font-size:12px}
+.evb{flex:1;min-width:0}
+.evb .t1{font-size:16px;font-weight:700;word-break:break-word}
+.evb .t2{font-size:13px;color:#2f6b3a;margin-top:2px}
+.evb .t3{font-size:14px;color:#444;margin-top:4px;word-break:break-word;white-space:pre-wrap}
+.evb .t4{font-size:12px;color:#777;margin-top:4px}
+.alg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.alg .cell{position:relative;aspect-ratio:1;background:#ddd;border-radius:8px;overflow:hidden}
+.alg img{width:100%;height:100%;object-fit:cover;display:block}
+.alg .cb{position:absolute;bottom:3px;right:3px;display:flex;gap:3px}
+.alg .cb button{border:0;border-radius:8px;background:rgba(0,0,0,.5);color:#fff;font-size:14px;padding:3px 6px}
 </style>
 </head>
 <body>
@@ -357,6 +377,18 @@ mark{background:#ffe58f;border-radius:3px}
   </div>
 </div>
 
+<div id="pg">
+  <div class="top"><button class="ic g" style="width:36px;height:36px;font-size:16px" onclick="closePg()">←</button><span id="pgt"></span><button id="pgadd" class="mini" onclick="pgAdd()">＋</button></div>
+  <div id="pgc" class="chips" style="display:none"></div>
+  <div class="body" id="pgb"></div>
+</div>
+<div id="fm">
+  <div class="top" id="fmt"></div>
+  <div class="body" id="fmb"></div>
+  <div class="gfoot"><button class="btn g" onclick="closeFm()">Бекор кардан</button><button class="btn" id="fmok" onclick="fmSubmit()">Нашр кардан</button></div>
+</div>
+<input type="file" id="fmphoto" accept="image/*" style="display:none">
+
 <div id="adform">
   <div class="top">Эълони нав</div>
   <div class="body">
@@ -477,6 +509,7 @@ mark{background:#ffe58f;border-radius:3px}
     <button class="btn" id="mdm">💬 Шахсӣ нависед</button>
     <button class="btn g" id="mhide">🙈 Аз худам нест кардан</button>
     <button class="btn" id="mdel" style="background:#b00020">🗑 Аз ҳама нест кардан</button>
+    <button class="btn g" id="mfav">⭐ Дар избранное</button>
     <button class="btn g" id="mrpt">🚩 Шикоят кардан</button>
     <button class="btn g" id="mblk">🚫 Корбарро манъ кардан</button>
     <button class="btn g" onclick="closeMenu()">Бекор кардан</button>
@@ -1111,6 +1144,13 @@ $('mhide').onclick = () => {
   if (confirm('Паём танҳо аз назди шумо нест карда шавад?')) socket.emit('msghide', { id: m.id });
 };
 
+$('mfav').onclick = () => {
+  const m = menuMsg; closeMenu();
+  if (!m || !socket) return;
+  if (m.kind === 'text') socket.emit('favadd', { type: 'msg', title: m.name, text: m.text });
+  else if (m.kind === 'image') socket.emit('favadd', { type: 'msg', title: m.name, media: m.media });
+  else toast('Танҳо матн ва расм');
+};
 $('mrpt').onclick = () => {
   const m = menuMsg; closeMenu();
   if (m && socket && confirm('Ин паём ба админ шикоят карда шавад?')) socket.emit('report', { id: m.id });
@@ -1869,6 +1909,190 @@ function sendTyping(){
 }
 $('text').addEventListener('input', () => { if ($('text').value.trim()) sendTyping(); });
 
+/* ---------- рӯйдодҳо, хизматрасониҳо, албом, избранное ---------- */
+Object.assign(RU, {
+  'Рӯйдодҳо': 'События', 'Хизматрасониҳо': 'Услуги', 'Албоми деҳа': 'Альбом деревни', 'Избранное': 'Избранное',
+  '(Тӯй, маърака...)': '(Свадьбы, мероприятия...)', '(Усто, нақлиёт...)': '(Мастера, транспорт...)',
+  '🎊 Тӯй': '🎊 Свадьба', '🕊 Маърака': '🕊 Поминки', '🎉 Ҷашн': '🎉 Праздник', '👥 Ҷамъомад': '👥 Собрание', '📌 Дигар': '📌 Другое',
+  '🔧 Усто': '🔧 Мастер', '🚗 Нақлиёт': '🚗 Транспорт', '🛒 Тиҷорат': '🛒 Торговля', '⚕️ Тиб': '⚕️ Медицина',
+  'Имрӯз': 'Сегодня', 'Гузашта': 'Прошло', 'Навъ': 'Тип', 'Сана': 'Дата', 'Рӯйдоди нав': 'Новое событие', 'Хизматрасонии нав': 'Новая услуга', 'Расм ба албом': 'Фото в альбом',
+  'Сарлавҳа (масалан: Тӯйи Ҳасан)': 'Заголовок (например: Свадьба Хасана)', 'Вақт (масалан: 18:00)': 'Время (например: 18:00)', 'Ҷой': 'Место', 'Тавсиф': 'Описание',
+  'Сарлавҳа (масалан: Устои сохтмон)': 'Заголовок (например: Мастер-строитель)', 'Нарх (ихтиёрӣ)': 'Цена (необязательно)', 'Тавсиф (ихтиёрӣ)': 'Описание (необязательно)',
+  'Ҳоло рӯйдод нест. Аввалин шумо илова кунед!': 'Событий пока нет. Добавьте первое!', 'Ҳоло хизматрасон нест. Аввалин шумо илова кунед!': 'Услуг пока нет. Добавьте первую!',
+  'Ҳоло расм нест. Аввалин шумо илова кунед!': 'Фото пока нет. Добавьте первое!', 'Избранное холӣ аст': 'Избранное пусто',
+  'Ҳамаи майдонҳои заруриро пур кунед': 'Заполните обязательные поля', 'Расм интихоб кунед': 'Выберите фото', 'Санаро интихоб кунед': 'Выберите дату',
+  'Албом пур шуд': 'Альбом заполнен', 'Избранное пур шуд': 'Избранное заполнено', 'Танҳо матн ва расм': 'Только текст и фото',
+  'Дар избранное сабт шуд ⭐': 'Сохранено в избранное ⭐', '⭐ Дар избранное': '⭐ В избранное',
+  'Хизматрасониҳо аз ҳад зиёданд': 'Слишком много услуг', 'Имрӯз аз ҳад зиёд илова кардед. Фардо кӯшиш кунед': 'Сегодня добавлено слишком много. Попробуйте завтра',
+  'Имрӯз аз ҳад зиёд расм илова кардед': 'Сегодня добавлено слишком много фото', 'Нест кардан шавад?': 'Удалить?'
+});
+let pgState = null, fmSec = '', fmFiles = {}, fmPhotoKey = '';
+const EV_KIND = { wedding: '🎊 Тӯй', funeral: '🕊 Маърака', celebration: '🎉 Ҷашн', meeting: '👥 Ҷамъомад', other: '📌 Дигар' };
+const SV_CAT = { master: '🔧 Усто', transport: '🚗 Нақлиёт', trade: '🛒 Тиҷорат', medical: '⚕️ Тиб', other: '📌 Дигар' };
+const FAV_ICON = { msg: '💬', ad: '🛒', news: '📰', service: '🛠️', event: '📅', photo: '🖼️' };
+const MON = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+const PG_TITLE = { ev: 'Рӯйдодҳо', sv: 'Хизматрасониҳо', alb: 'Албоми деҳа', fav: 'Избранное' };
+const PG_REQ = { ev: 'evlist', sv: 'svlist', alb: 'alblist', fav: 'favlist' };
+const FORMS = {
+  ev: { title: 'Рӯйдоди нав', emit: 'evadd', fields: [
+    { k: 'kind', t: 'select', l: 'Навъ', o: [['wedding', '🎊 Тӯй'], ['funeral', '🕊 Маърака'], ['celebration', '🎉 Ҷашн'], ['meeting', '👥 Ҷамъомад'], ['other', '📌 Дигар']] },
+    { k: 'title', t: 'text', p: 'Сарлавҳа (масалан: Тӯйи Ҳасан)', req: 1 },
+    { k: 'date', t: 'date', l: 'Сана', req: 1 },
+    { k: 'tm', t: 'text', p: 'Вақт (масалан: 18:00)' },
+    { k: 'place', t: 'text', p: 'Ҷой' },
+    { k: 'desc', t: 'area', p: 'Тавсиф' }] },
+  sv: { title: 'Хизматрасонии нав', emit: 'svadd', fields: [
+    { k: 'cat', t: 'select', l: 'Навъ', o: [['master', '🔧 Усто'], ['transport', '🚗 Нақлиёт'], ['trade', '🛒 Тиҷорат'], ['medical', '⚕️ Тиб'], ['other', '📌 Дигар']] },
+    { k: 'title', t: 'text', p: 'Сарлавҳа (масалан: Устои сохтмон)', req: 1 },
+    { k: 'price', t: 'text', p: 'Нарх (ихтиёрӣ)' },
+    { k: 'desc', t: 'area', p: 'Тавсиф (ихтиёрӣ)' },
+    { k: 'photo', t: 'photo' }] },
+  alb: { title: 'Расм ба албом', emit: 'albadd', fields: [
+    { k: 'media', t: 'photo', req: 1 },
+    { k: 'cap', t: 'text', p: 'Тавсиф (ихтиёрӣ)' }] }
+};
+function localDate(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function btn(text, fn, css){ const b = document.createElement('button'); b.textContent = text; b.onclick = fn; if (css) b.style.cssText = css; return b; }
+function canDel(o){ return o.uid === myUid || !!prof.admin; }
+function emptyCard(t){ const e = document.createElement('div'); e.className = 'card'; e.textContent = t; return e; }
+const FAVCSS = 'flex:0 0 52px;background:#fff3cd;color:#664d03', SHCSS = 'flex:0 0 52px;background:#e6e3d9;color:#222';
+function openPg(sec){
+  if (!socket) return;
+  pgState = { sec, items: [], cat: 'all' };
+  $('pgt').textContent = PG_TITLE[sec];
+  $('pgadd').style.display = sec === 'fav' ? 'none' : 'inline-block';
+  $('pgc').style.display = 'none'; $('pgb').innerHTML = '';
+  $('pg').style.display = 'flex';
+  socket.emit(PG_REQ[sec]);
+}
+function closePg(){ $('pg').style.display = 'none'; pgState = null; }
+function pgAdd(){ if (pgState && FORMS[pgState.sec]) openFm(pgState.sec); }
+function pgSet(sec, l){ if (pgState && pgState.sec === sec){ pgState.items = l || []; renderPg(); } }
+function renderPg(){
+  if (!pgState) return;
+  const box = $('pgb'); box.innerHTML = '';
+  const s = pgState.sec, items = pgState.items;
+  const chips = $('pgc'); chips.style.display = s === 'sv' ? 'flex' : 'none';
+  if (s === 'sv'){
+    chips.innerHTML = '';
+    [['all', 'Ҳама']].concat(Object.keys(SV_CAT).map((k) => [k, SV_CAT[k]])).forEach(([k, t]) => {
+      const b = document.createElement('button'); b.className = 'chip' + (pgState.cat === k ? ' on' : ''); b.textContent = t;
+      b.onclick = () => { pgState.cat = k; renderPg(); }; chips.append(b);
+    });
+  }
+  if (s === 'ev'){
+    if (!items.length){ box.append(emptyCard('Ҳоло рӯйдод нест. Аввалин шумо илова кунед!')); return; }
+    const today = localDate();
+    items.forEach((e) => {
+      const c = document.createElement('div'); c.className = 'evc';
+      const dp = e.date.split('-'), dd = document.createElement('div'); dd.className = 'evd';
+      const b1 = document.createElement('b'); b1.textContent = String(Number(dp[2]));
+      const sm = document.createElement('small'); sm.textContent = MON[Number(dp[1]) - 1] || ''; dd.append(b1, sm);
+      const bd = document.createElement('div'); bd.className = 'evb';
+      const t1 = document.createElement('div'); t1.className = 't1'; t1.textContent = e.title; bd.append(t1);
+      const when = e.date === today ? ' · Имрӯз' : e.date < today ? ' · Гузашта' : '';
+      const t2 = document.createElement('div'); t2.className = 't2'; t2.textContent = (EV_KIND[e.kind] || '') + when; bd.append(t2);
+      const wp = [e.tm, e.place].filter(Boolean).join(' · ');
+      if (wp){ const t3 = document.createElement('div'); t3.className = 't3'; t3.textContent = '🕐 ' + wp; bd.append(t3); }
+      if (e.desc){ const t3 = document.createElement('div'); t3.className = 't3'; t3.textContent = e.desc; bd.append(t3); }
+      const t4 = document.createElement('div'); t4.className = 't4'; t4.textContent = e.name; bd.append(t4);
+      const acts = document.createElement('div'); acts.className = 'acts';
+      const txt = [e.title, (EV_KIND[e.kind] || ''), e.date + (e.tm ? ' ' + e.tm : ''), e.place, e.desc].filter(Boolean).join('\n');
+      acts.append(btn('⭐', () => socket.emit('favadd', { type: 'event', title: e.title, text: txt }), FAVCSS));
+      acts.append(btn('📤', () => shareIt({ title: e.title, text: txt, url: location.origin }), SHCSS));
+      if (canDel(e)) acts.append(btn('🗑', () => { if (confirm('Нест кардан шавад?')) socket.emit('evdel', e.id); }));
+      bd.append(acts); c.append(dd, bd); box.append(c);
+    });
+  } else if (s === 'sv'){
+    const list = items.filter((x) => pgState.cat === 'all' || x.cat === pgState.cat);
+    if (!list.length){ box.append(emptyCard('Ҳоло хизматрасон нест. Аввалин шумо илова кунед!')); return; }
+    list.forEach((x) => {
+      const c = document.createElement('div'); c.className = 'card';
+      if (x.photo){ const im = document.createElement('img'); im.loading = 'lazy'; im.src = mediaUrl(x.photo); im.onclick = () => openImg(im.src); c.append(im); }
+      const h = document.createElement('b'); h.textContent = x.title; c.append(h);
+      if (x.price){ const p = document.createElement('div'); p.className = 'price'; p.textContent = x.price; c.append(p); }
+      if (x.desc){ const d = document.createElement('div'); d.textContent = x.desc; d.style.whiteSpace = 'pre-wrap'; c.append(d); }
+      const w = document.createElement('div'); w.className = 'd'; w.textContent = (SV_CAT[x.cat] || '') + ' · ' + x.name + (x.village ? ' · ' + vname(x.village) : ''); c.append(w);
+      const acts = document.createElement('div'); acts.className = 'acts';
+      if (x.phone){ const tel = document.createElement('a'); tel.href = 'tel:+' + x.phone; tel.textContent = '📞 Занг задан'; acts.append(tel); }
+      if (x.uid !== myUid) acts.append(btn('💬 Чат', () => socket.emit('adchat', x.uid), 'background:#dcf0d2;color:#27500A'));
+      const txt = [x.title, x.price, x.desc].filter(Boolean).join('\n');
+      acts.append(btn('⭐', () => socket.emit('favadd', { type: 'service', title: x.title, text: txt, media: x.photo, extra: x.name }), FAVCSS));
+      acts.append(btn('📤', () => shareIt({ title: x.title, text: txt, url: location.origin }), SHCSS));
+      if (canDel(x)) acts.append(btn('🗑', () => { if (confirm('Нест кардан шавад?')) socket.emit('svdel', x.id); }));
+      c.append(acts); box.append(c);
+    });
+  } else if (s === 'alb'){
+    if (!items.length){ box.append(emptyCard('Ҳоло расм нест. Аввалин шумо илова кунед!')); return; }
+    const g = document.createElement('div'); g.className = 'alg';
+    items.forEach((x) => {
+      const cell = document.createElement('div'); cell.className = 'cell';
+      const im = document.createElement('img'); im.loading = 'lazy'; im.src = mediaUrl(x.media);
+      im.onclick = () => { openImg(im.src); $('lbcap').textContent = (x.cap ? x.cap + ' · ' : '') + x.name; };
+      cell.append(im);
+      const cb = document.createElement('div'); cb.className = 'cb';
+      cb.append(btn('⭐', () => socket.emit('favadd', { type: 'photo', title: x.cap || x.name, media: x.media })));
+      if (canDel(x)) cb.append(btn('🗑', () => { if (confirm('Нест кардан шавад?')) socket.emit('albdel', x.id); }));
+      cell.append(cb); g.append(cell);
+    });
+    box.append(g);
+  } else if (s === 'fav'){
+    if (!items.length){ box.append(emptyCard('Избранное холӣ аст')); return; }
+    items.forEach((x) => {
+      const c = document.createElement('div'); c.className = 'card';
+      if (x.media){ const im = document.createElement('img'); im.loading = 'lazy'; im.src = mediaUrl(x.media); im.onclick = () => openImg(im.src); c.append(im); }
+      if (x.title){ const h = document.createElement('b'); h.textContent = (FAV_ICON[x.type] || '') + ' ' + x.title; c.append(h); }
+      if (x.text){ const d = document.createElement('div'); d.textContent = x.text; d.style.whiteSpace = 'pre-wrap'; c.append(d); }
+      const w = document.createElement('div'); w.className = 'd'; w.textContent = (x.extra ? x.extra + ' · ' : '') + new Date(x.time).toLocaleDateString(); c.append(w);
+      const acts = document.createElement('div'); acts.className = 'acts';
+      acts.append(btn('📤', () => shareIt({ title: x.title, text: [x.title, x.text].filter(Boolean).join('\n'), url: location.origin }), SHCSS));
+      acts.append(btn('🗑', () => socket.emit('favdel', x.id)));
+      c.append(acts); box.append(c);
+    });
+  }
+}
+function openFm(sec){
+  const f = FORMS[sec]; fmSec = sec; fmFiles = {};
+  $('fmt').textContent = f.title;
+  const b = $('fmb'); b.innerHTML = '';
+  f.fields.forEach((fd) => {
+    if (fd.l){ const l = document.createElement('div'); l.style.cssText = 'font-size:13px;color:#777;margin:8px 2px 0'; l.textContent = fd.l; b.append(l); }
+    if (fd.t === 'photo'){
+      const bt = btn('📷 Расм интихоб кунед', () => { fmPhotoKey = fd.k; $('fmphoto').click(); }, 'width:100%;margin:6px 0');
+      bt.className = 'btn g';
+      const nm = document.createElement('div'); nm.id = 'fmn_' + fd.k; nm.style.cssText = 'font-size:13px;color:#777;margin-bottom:10px'; nm.textContent = 'Расм интихоб нашудааст';
+      b.append(bt, nm); return;
+    }
+    let el;
+    if (fd.t === 'select'){ el = document.createElement('select'); fd.o.forEach(([v, t]) => el.add(new Option(t, v))); }
+    else if (fd.t === 'area'){ el = document.createElement('textarea'); el.rows = 4; el.placeholder = fd.p || ''; el.maxLength = 500; }
+    else if (fd.t === 'date'){ el = document.createElement('input'); el.type = 'date'; el.min = localDate(); el.value = localDate(); }
+    else { el = document.createElement('input'); el.placeholder = fd.p || ''; el.maxLength = 100; }
+    el.id = 'fm_' + fd.k; b.append(el);
+  });
+  $('fm').style.display = 'flex';
+}
+function closeFm(){ $('fm').style.display = 'none'; }
+$('fmphoto').onchange = () => {
+  const f = $('fmphoto').files[0]; if (!f) return;
+  fmFiles[fmPhotoKey] = f;
+  const n = $('fmn_' + fmPhotoKey); if (n) n.textContent = '✔ ' + f.name;
+};
+async function fmSubmit(){
+  const f = FORMS[fmSec], v = {};
+  for (const fd of f.fields){
+    if (fd.t === 'photo'){ if (fd.req && !fmFiles[fd.k]){ alert('Расм интихоб кунед'); return; } continue; }
+    v[fd.k] = $('fm_' + fd.k).value.trim();
+    if (fd.req && !v[fd.k]){ alert(fd.t === 'date' ? 'Санаро интихоб кунед' : 'Ҳамаи майдонҳои заруриро пур кунед'); return; }
+  }
+  $('fmok').disabled = true; $('fmok').textContent = 'Интизор шавед...';
+  try {
+    for (const fd of f.fields) if (fd.t === 'photo' && fmFiles[fd.k]) v[fd.k] = await upload('image/jpeg', await shrink(fmFiles[fd.k]));
+    socket.emit(f.emit, v); closeFm();
+  } catch (e) { alert('Фиристода нашуд. Дубора кӯшиш кунед.'); }
+  $('fmok').disabled = false; $('fmok').textContent = 'Нашр кардан';
+}
+
 /* ---------- ҳолат / кайфият ---------- */
 Object.assign(RU, { 'Ҳолати ман': 'Моё состояние', 'Ҳолатро нависед': 'Укажите состояние', 'Матн нависед (ихтиёрӣ)...': 'Текст (необязательно)...', 'Тоза кардан': 'Очистить', 'Озод': 'Свободен', 'Банд': 'Занят', 'Дар кор': 'На работе', 'Дар роҳ': 'В пути', 'Хобидаам': 'Сплю' });
 const MOODS = ['😊', '😍', '😎', '🤔', '😴', '🤒', '😢', '😡', '🙏', '💪', '🎉', '❤️', '🚗', '🏠', '💼', '🌾', '🐄', '✈️'];
@@ -1972,10 +2196,10 @@ function renderDrawer(){
   box.append(drwItem('💬', 'Чатҳои ман', homeList, { badge: totalUnread() }));
   box.append(drwItem('🛒', 'Бозор', () => tab(2), { sub: '(Хариду фурӯш)' }));
   box.append(drwItem('📰', 'Ахбори деҳа', () => tab(3)));
-  box.append(drwItem('📅', 'Рӯйдодҳо', soon, { sub: '(Тӯй, маърака...)', soon: true }));
-  box.append(drwItem('🛠️', 'Хизматрасониҳо', soon, { sub: '(Усто, нақлиёт...)', soon: true }));
-  box.append(drwItem('🖼️', 'Албоми деҳа', soon, { soon: true }));
-  box.append(drwItem('🔖', 'Избранное', soon, { soon: true }));
+  box.append(drwItem('📅', 'Рӯйдодҳо', () => openPg('ev'), { sub: '(Тӯй, маърака...)' }));
+  box.append(drwItem('🛠️', 'Хизматрасониҳо', () => openPg('sv'), { sub: '(Усто, нақлиёт...)' }));
+  box.append(drwItem('🖼️', 'Албоми деҳа', () => openPg('alb')));
+  box.append(drwItem('🔖', 'Избранное', () => openPg('fav')));
   box.append(drwItem('⚙️', 'Танзимот', openSettings, { sep: true }));
   box.append(drwItem('ℹ️', 'Дар бораи барнома', () => alert('Деҳа\nЧат, бозор ва хабарҳои деҳа\n' + location.origin)));
   box.append(drwItem('🔗', 'Мубодилаи барнома', () => shareIt({ title: 'Деҳа', text: 'Деҳа — чат, бозор ва хабарҳои деҳа', url: location.origin })));
@@ -2303,6 +2527,7 @@ function adEl(a){
   sh.style.cssText = 'flex:0 0 52px;background:#e6e3d9;color:#222';
   sh.onclick = () => shareIt({ title: a.title, text: [a.title, a.price, a.desc].filter(Boolean).join('\n'), url: location.origin });
   acts.append(sh);
+  acts.append(btn('⭐', () => socket.emit('favadd', { type: 'ad', title: a.title, text: [a.price, a.desc].filter(Boolean).join('\n'), media: a.photo, extra: a.name }), 'flex:0 0 52px;background:#fff3cd;color:#664d03'));
   c.append(acts);
   return c;
 }
@@ -2359,6 +2584,7 @@ function addNews(n, top){
     sh.style.cssText = 'flex:0 0 52px;background:#e6e3d9;color:#222';
     sh.onclick = () => shareIt({ title: n.title || 'Деҳа', text: [n.title, (n.text || '').slice(0, 400)].filter(Boolean).join('\n'), url: location.origin });
     a.append(sh);
+    a.append(btn('⭐', () => socket.emit('favadd', { type: 'news', title: n.title || 'Хабар', text: (n.text || '').slice(0, 600), media: n.photo }), 'flex:0 0 52px;background:#fff3cd;color:#664d03'));
     if (n.uid === myUid || prof.admin){
       const del = document.createElement('button'); del.textContent = '🗑 Нест кардан';
       del.onclick = () => { if (confirm('Хабар нест шавад?')) socket.emit('newsdel', { id: n.id }); };
@@ -2546,7 +2772,13 @@ function start(token){
     (typing[d.room] = typing[d.room] || {})[d.uid] = { name: d.name, until: Date.now() + 3500 };
     updTyping(); setTimeout(updTyping, 3700);
   });
-  socket.on('adchatok', (d) => { tab(1); showChat(d.room, d.name); });
+  socket.on('evlist', (l) => pgSet('ev', l));
+  socket.on('svlist', (l) => pgSet('sv', l));
+  socket.on('alblist', (l) => pgSet('alb', l));
+  socket.on('favlist', (l) => pgSet('fav', l));
+  socket.on('secchanged', (d) => { if (pgState && pgState.sec === d.sec) socket.emit(PG_REQ[d.sec]); });
+  socket.on('favok', () => toast('Дар избранное сабт шуд ⭐'));
+  socket.on('adchatok', (d) => { closePg(); tab(1); showChat(d.room, d.name); });
   socket.on('onl', (l) => {
     const ns = new Set(l || []);
     let ch = false;
@@ -2902,7 +3134,7 @@ let guard = false, ignorePop = false;
 function isOpen(id){ return $(id).style.display === 'flex'; }
 function atRoot(){
   if ($('app').style.display !== 'flex') return true;
-  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('mem') || isOpen('nform') || isOpen('gpick') || isOpen('ginfo') || isOpen('mood') || isOpen('call') || $('drw').style.display === 'block'
+  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('mem') || isOpen('nform') || isOpen('gpick') || isOpen('ginfo') || isOpen('pg') || isOpen('fm') || isOpen('mood') || isOpen('call') || $('drw').style.display === 'block'
     || $('chatv').style.display === 'flex' || nav.v !== 'home' || !$('s1').classList.contains('on'));
 }
 function appBack(){
@@ -2910,7 +3142,7 @@ function appBack(){
   if (isOpen('lb')){ $('lb').style.display = 'none'; return true; }
   if ($('drw').style.display === 'block'){ closeDrawer(); return true; }
   if (isOpen('menu')){ closeMenu(); return true; }
-  for (const id of ['mood', 'nform', 'gpick', 'ginfo', 'sform', 'pform', 'gform', 'adform', 'mem']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
+  for (const id of ['fm', 'pg', 'mood', 'nform', 'gpick', 'ginfo', 'sform', 'pform', 'gform', 'adform', 'mem']) if (isOpen(id)){ $(id).style.display = 'none'; return true; }
   if (isOpen('call')) return true;
   if (isOpen('sbar')){ toggleSearch(); return true; }
   if ($('chatv').style.display === 'flex'){ goHome(); return true; }
