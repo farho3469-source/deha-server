@@ -35,7 +35,7 @@ try {
   console.log('Mongo корбар:', mm ? decodeURIComponent(mm[1]) + ' @ ' + mm[2] : 'URI нодуруст (шакл)');
 } catch (e) {}
 const client = new MongoClient(MONGO_URI);
-let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, groups, events, services, albums, favs, dbh;
+let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, groups, events, services, albums, favs, likes, comments, dbh;
 let VAPID_PUBLIC = '';
 
 /* ---------- Firebase (FCM) барои барномаи Android ---------- */
@@ -965,6 +965,28 @@ async function dropMember(g, u) {
   await Promise.all([u, ...rest].map(sendGroups));
 }
 
+/* ---------- лайк ва шарҳ (эълон, хабар, рӯйдод, хизматрасонӣ, расми албом) ---------- */
+const RX_T = ['ad', 'news', 'ev', 'sv', 'alb'];
+const rxCol = (t) => ({ ad: ads, news: news, ev: events, sv: services, alb: albums }[t]);
+async function rxOwner(t, id) {
+  if (!RX_T.includes(t) || !HEX24.test(String(id))) return null;
+  const d = await rxCol(t).findOne({ _id: new ObjectId(id) }, { projection: { uid: 1 } });
+  return d ? { uid: d.uid || '' } : null;
+}
+async function rxCounts(t, id) {
+  const [l, c] = await Promise.all([likes.countDocuments({ t, id }), comments.countDocuments({ t, id })]);
+  return { l, c };
+}
+async function rxPurge(t, id) {
+  try {
+    await likes.deleteMany({ t, id });
+    await comments.deleteMany({ t, id });
+  } catch (e) {
+    console.error(e);
+  }
+}
+const cmOut = (d) => ({ id: String(d._id), uid: d.uid, name: d.name, av: d.av || '', text: d.text, time: d.time });
+
 /* ---------- занги гурӯҳӣ (WebRTC mesh) ---------- */
 const groupCalls = new Map(); // gid -> { video, users:Set, time }
 const GCALL_MAX = 5;
@@ -1006,6 +1028,8 @@ async function deleteUser(u) {
   await services.deleteMany({ uid });
   await albums.deleteMany({ uid });
   await favs.deleteMany({ uid });
+  await likes.deleteMany({ uid });
+  await comments.deleteMany({ uid });
   await subs.deleteMany({ uid });
   await unread.deleteMany({ uid });
   await fcm.deleteMany({ uid });
@@ -2046,6 +2070,7 @@ io.on('connection', (s) => {
       if (!d) return;
       if (!(d.uid === uid || isAdmin({}, s.user))) return s.emit('err', 'Нест кардан мумкин нест');
       await events.deleteOne({ _id: d._id });
+      rxPurge('ev', id);
       io.to('vil:' + d.village).emit('secchanged', { sec: 'ev' });
     } catch (e) {
       console.error(e);
@@ -2082,6 +2107,7 @@ io.on('connection', (s) => {
       if (!d) return;
       if (!(d.uid === uid || isAdmin({}, s.user))) return s.emit('err', 'Нест кардан мумкин нест');
       await services.deleteOne({ _id: d._id });
+      rxPurge('sv', id);
       if (d.photo && HEX24.test(d.photo)) await media.deleteOne({ _id: new ObjectId(d.photo) }).catch(() => {});
       io.emit('secchanged', { sec: 'sv' });
     } catch (e) {
@@ -2119,6 +2145,7 @@ io.on('connection', (s) => {
       if (!d) return;
       if (!(d.uid === uid || isAdmin({}, s.user))) return s.emit('err', 'Нест кардан мумкин нест');
       await albums.deleteOne({ _id: d._id });
+      rxPurge('alb', id);
       if (d.media && HEX24.test(d.media)) await media.deleteOne({ _id: new ObjectId(d.media) }).catch(() => {});
       io.to('vil:' + d.village).emit('secchanged', { sec: 'alb' });
     } catch (e) {
@@ -2165,6 +2192,91 @@ io.on('connection', (s) => {
       await favs.deleteOne({ _id: d._id });
       if (d.media && HEX24.test(d.media)) await media.deleteOne({ _id: new ObjectId(d.media) }).catch(() => {});
       s.emit('favlist', (await favs.find({ uid }).sort({ time: -1 }).limit(200).toArray()).map((x) => ({ id: String(x._id), type: x.type, title: x.title || '', text: x.text || '', media: x.media || '', extra: x.extra || '', time: x.time })));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  /* ---------- лайк ва шарҳ ---------- */
+  s.on('rxget', async (m) => {
+    try {
+      const t = String((m && m.t) || '');
+      if (!RX_T.includes(t) || !Array.isArray(m.ids)) return;
+      const ids = m.ids.map(String).filter((x) => HEX24.test(x)).slice(0, 200);
+      if (!ids.length) return;
+      const grp = [{ $match: { t, id: { $in: ids } } }, { $group: { _id: '$id', n: { $sum: 1 } } }];
+      const [lk, cm, mine] = await Promise.all([
+        likes.aggregate(grp).toArray(),
+        comments.aggregate(grp).toArray(),
+        likes.find({ t, id: { $in: ids }, uid }, { projection: { id: 1 } }).toArray(),
+      ]);
+      const map = {};
+      ids.forEach((i) => (map[i] = { l: 0, c: 0, m: false }));
+      lk.forEach((x) => { if (map[x._id]) map[x._id].l = x.n; });
+      cm.forEach((x) => { if (map[x._id]) map[x._id].c = x.n; });
+      mine.forEach((x) => { if (map[x.id]) map[x.id].m = true; });
+      s.emit('rx', { t, map });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('rxlike', async (m) => {
+    try {
+      const t = String((m && m.t) || ''), id = String((m && m.id) || '');
+      if (!(await rxOwner(t, id))) return;
+      const ex = await likes.findOne({ t, id, uid });
+      if (ex) await likes.deleteOne({ _id: ex._id });
+      else await likes.insertOne({ t, id, uid, time: Date.now() }).catch(() => {});
+      io.emit('rxcount', { t, id, ...(await rxCounts(t, id)) });
+      s.emit('rxmine', { t, id, m: !ex });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('cmlist', async (m) => {
+    try {
+      const t = String((m && m.t) || ''), id = String((m && m.id) || '');
+      if (!(await rxOwner(t, id))) return;
+      [...s.rooms].filter((x) => x.startsWith('cm:')).forEach((x) => s.leave(x));
+      s.join('cm:' + t + ':' + id);
+      const list = await comments.find({ t, id }).sort({ time: 1 }).limit(200).toArray();
+      s.emit('cms', { t, id, list: list.map(cmOut) });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('cmleave', () => {
+    [...s.rooms].filter((x) => x.startsWith('cm:')).forEach((x) => s.leave(x));
+  });
+  s.on('cmadd', async (m) => {
+    try {
+      const t = String((m && m.t) || ''), id = String((m && m.id) || '');
+      const text = String((m && m.text) || '').trim().slice(0, 300);
+      if (!text) return;
+      const o = await rxOwner(t, id);
+      if (!o) return;
+      if ((await comments.countDocuments({ uid, time: { $gt: Date.now() - 60000 } })) >= 10) return s.emit('err', 'Хеле зуд-зуд менависед. Каме интизор шавед');
+      const doc = { t, id, uid, name: s.user.name, av: s.user.avatar || '', text, time: Date.now() };
+      const r = await comments.insertOne(doc);
+      io.to('cm:' + t + ':' + id).emit('cmnew', { t, id, c: cmOut({ ...doc, _id: r.insertedId }) });
+      io.emit('rxcount', { t, id, ...(await rxCounts(t, id)) });
+      if (o.uid && o.uid !== uid) {
+        pushTo([o.uid], (l) => ({ title: s.user.name, body: (l === 'ru' ? '💬 Комментарий: ' : '💬 Шарҳ: ') + text.slice(0, 80), tag: 'cm-' + t + id, type: 'msg' })).catch(console.error);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('cmdel', async (m) => {
+    try {
+      const cid = String((m && m.id) || '');
+      if (!HEX24.test(cid)) return;
+      const d = await comments.findOne({ _id: new ObjectId(cid) });
+      if (!d) return;
+      if (!(d.uid === uid || isAdmin({}, s.user))) return s.emit('err', 'Нест кардан мумкин нест');
+      await comments.deleteOne({ _id: d._id });
+      io.to('cm:' + d.t + ':' + d.id).emit('cmgone', { t: d.t, id: d.id, cid });
+      io.emit('rxcount', { t: d.t, id: d.id, ...(await rxCounts(d.t, d.id)) });
     } catch (e) {
       console.error(e);
     }
@@ -2337,7 +2449,10 @@ io.on('connection', (s) => {
       id = String(id);
       if (!HEX24.test(id)) return;
       const r = await ads.deleteOne({ _id: new ObjectId(id), uid });
-      if (r.deletedCount) io.emit('addel', id);
+      if (r.deletedCount) {
+        io.emit('addel', id);
+        rxPurge('ad', id);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -2372,6 +2487,7 @@ io.on('connection', (s) => {
       if (!(isAdmin(m, s.user) || d.uid === uid)) return s.emit('err', 'Нест кардан мумкин нест');
       await news.deleteOne({ _id: d._id });
       if (d.photo && HEX24.test(d.photo)) await media.deleteOne({ _id: new ObjectId(d.photo) }).catch(() => {});
+      rxPurge('news', id);
       io.emit('newsdel', id);
     } catch (e) {
       console.error(e);
@@ -2438,6 +2554,8 @@ io.on('connection', (s) => {
     services = db.collection('services');
     albums = db.collection('albums');
     favs = db.collection('favs');
+    likes = db.collection('likes');
+    comments = db.collection('comments');
     dbh = db;
     await users.createIndex({ phone: 1 }, { unique: true });
     await users.createIndex({ village: 1 });
@@ -2455,6 +2573,10 @@ io.on('connection', (s) => {
     await services.createIndex({ time: -1 });
     await albums.createIndex({ village: 1, time: -1 });
     await favs.createIndex({ uid: 1, time: -1 });
+    await likes.createIndex({ t: 1, id: 1, uid: 1 }, { unique: true });
+    await likes.createIndex({ uid: 1 });
+    await comments.createIndex({ t: 1, id: 1, time: 1 });
+    await comments.createIndex({ uid: 1 });
     let ord = 0;
     for (const [region, names] of Object.entries(SEED)) {
       for (const name of names) {
