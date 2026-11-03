@@ -2393,6 +2393,33 @@ io.on('connection', (s) => {
     }
   });
 
+  // Реаксия ба паём (як корбар = як эмоджӣ; бори дуюм ҳамонро пахш кунад, бардошта мешавад)
+  s.on('react', async (m) => {
+    try {
+      const id = String((m && m.id) || '');
+      const e = String((m && m.e) || '');
+      if (!HEX24.test(id) || !['👍', '❤️', '😂', '😮', '😢', '🙏'].includes(e)) return;
+      const doc = await chat.findOne({ _id: new ObjectId(id) });
+      if (!doc || !(await canEnter(s.user, doc.room))) return;
+      const cur = (doc.rc || {})[uid];
+      if (cur === e) await chat.updateOne({ _id: doc._id }, { $unset: { ['rc.' + uid]: '' } });
+      else await chat.updateOne({ _id: doc._id }, { $set: { ['rc.' + uid]: e } });
+      const nd = await chat.findOne({ _id: doc._id }, { projection: { rc: 1 } });
+      io.to('r:' + doc.room).emit('reacted', { id, rc: (nd && nd.rc) || {} });
+      if (cur !== e && doc.uid && doc.uid !== uid) {
+        pushTo([doc.uid], (l) => ({
+          title: s.user.name,
+          body: e + ' ' + (l === 'ru' ? 'реакция на ваше сообщение' : 'реаксия ба паёми шумо') + ': ' + previewOf(doc, l).slice(0, 40),
+          tag: 'rx-' + id,
+          type: 'msg',
+          room: doc.room,
+        })).catch(() => {});
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
   // «Аз худам нест кардан»: паём танҳо барои ҳамин корбар пинҳон мешавад
   s.on('msghide', async (m) => {
     try {
