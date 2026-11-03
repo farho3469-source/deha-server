@@ -274,6 +274,10 @@ mark{background:#ffe58f;border-radius:3px}
 .rcs:not(:empty){margin-top:4px}
 .rcs button{border:0;border-radius:12px;padding:1px 8px;font-size:13px;background:rgba(0,0,0,.07);font-family:inherit}
 .rcs button.me{background:#d4edcf;outline:1px solid #2f6b3a}
+#hwx{position:absolute;left:14px;right:14px;bottom:8px;z-index:2;display:flex;justify-content:space-between;align-items:flex-end;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.65);pointer-events:none}
+#hwt{font-size:26px;font-weight:700;line-height:1}
+#hwd{font-size:13px;margin-top:3px}
+#hww{font-size:22px;font-weight:700;display:none}
 </style>
 </head>
 <body>
@@ -283,6 +287,7 @@ mark{background:#ffe58f;border-radius:3px}
   <div class="t" data-nt>Деҳа</div>
   <div class="s" data-nt>Чат, бозор ва хабарҳои деҳа</div>
   <div id="hdrr"><button id="bell" onclick="bellTap()" aria-label="Огоҳӣ">🔔<i id="bellb"></i></button><button id="lang" class="hb" data-nt onclick="toggleLang()"></button></div>
+  <div id="hwx" data-nt><div><div id="hwt"></div><div id="hwd"></div></div><div id="hww"></div></div>
 </div>
 
 <div id="auth">
@@ -2373,6 +2378,60 @@ document.addEventListener('touchend', (e) => {
   if (dx > 70 && swX < window.innerWidth * 0.3 && swCanOpen(e.target)) openDrawer();
 }, { passive: true });
 
+/* ---------- соат, сана ва ҳарорат дар сарлавҳа ---------- */
+const WD_TG = ['Якшанбе', 'Душанбе', 'Сешанбе', 'Чоршанбе', 'Панҷшанбе', 'Ҷумъа', 'Шанбе'];
+const MO_TG = ['Январ', 'Феврал', 'Март', 'Апрел', 'Май', 'Июн', 'Июл', 'Август', 'Сентябр', 'Октябр', 'Ноябр', 'Декабр'];
+function hdrClock(){
+  const d = new Date(), p = (n) => String(n).padStart(2, '0');
+  $('hwt').textContent = p(d.getHours()) + ':' + p(d.getMinutes());
+  if (LANG === 'ru'){
+    const s = d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+    $('hwd').textContent = s.charAt(0).toUpperCase() + s.slice(1);
+  } else {
+    $('hwd').textContent = WD_TG[d.getDay()] + ', ' + d.getDate() + ' ' + MO_TG[d.getMonth()];
+  }
+}
+hdrClock(); setInterval(hdrClock, 15000);
+const WX_REG = { 'Душанбе': [38.56, 68.77], 'Суғд': [40.28, 69.62], 'Хатлон': [37.84, 68.78], 'Бадахшон': [37.49, 71.55], 'НТҶ': [38.52, 68.55] };
+const WX_PT = { 'Хуҷанд': [40.28, 69.62], 'Конибодом': [40.29, 70.43], 'Исфара': [40.12, 70.63], 'Истаравшан': [39.91, 69.0], 'Панҷакент': [39.49, 67.61], 'Бохтар': [37.84, 68.78], 'Кӯлоб': [37.91, 69.78], 'Норак': [38.39, 69.32], 'Хоруғ': [37.49, 71.55], 'Ҳисор': [38.52, 68.55], 'Рогун': [38.69, 69.77], 'Ванҷ': [38.37, 71.45], 'Мурғоб': [38.17, 73.95] };
+function wxIcon(code, hour){
+  const night = hour < 6 || hour >= 19;
+  if (code === 0) return night ? '🌙' : '☀️';
+  if (code <= 2) return night ? '☁️' : '🌤️';
+  if (code === 3) return '☁️';
+  if (code === 45 || code === 48) return '🌫️';
+  if (code >= 51 && code <= 57) return '🌦️';
+  if (code >= 61 && code <= 67) return '🌧️';
+  if (code >= 71 && code <= 77) return '🌨️';
+  if (code >= 80 && code <= 82) return '🌦️';
+  if (code === 85 || code === 86) return '🌨️';
+  if (code >= 95) return '⛈️';
+  return '🌡️';
+}
+function wxShow(w){
+  const el = $('hww');
+  if (!w){ el.style.display = 'none'; return; }
+  el.textContent = wxIcon(w.code, new Date().getHours()) + ' ' + Math.round(w.temp) + '°';
+  el.style.display = 'block';
+}
+async function wxInit(){
+  try {
+    const d = places.districts.find((x) => x.id === prof.district);
+    const pt = d && (WX_PT[d.name] || WX_REG[d.region]);
+    if (!pt){ wxShow(null); return; }
+    const key = pt.join(',');
+    let cache = null; try { cache = JSON.parse(localStorage.getItem('wx') || 'null'); } catch (e) {}
+    if (cache && cache.key === key){ wxShow(cache); if (Date.now() - cache.t < 20 * 60000) return; }
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + pt[0] + '&longitude=' + pt[1] + '&current=temperature_2m,weather_code&timezone=auto');
+    const j = await r.json();
+    if (!j.current) return;
+    const w = { key, t: Date.now(), temp: j.current.temperature_2m, code: j.current.weather_code };
+    try { localStorage.setItem('wx', JSON.stringify(w)); } catch (e) {}
+    wxShow(w);
+  } catch (e) {}
+}
+setInterval(wxInit, 25 * 60000);
+
 /* ---------- поделиться ---------- */
 Object.assign(RU, { '📤 Барномаро ба дигарон фиристодан': '📤 Поделиться приложением', '✔ Нусха шуд, ҳоло ба ҷои дилхоҳ часпонед': '✔ Скопировано, вставьте куда нужно', 'Нусха кунед:': 'Скопируйте:', 'Расм фиристода нашуд. Нусха ёфт нашуд': 'Не удалось поделиться фото' });
 async function shareIt(o){
@@ -2795,9 +2854,9 @@ function start(token){
   socket.on('me', (id) => { myUid = id; });
   socket.on('needgender', () => { $('gform').style.display = 'flex'; });
   socket.on('rooms', (list) => { roomList = list; renderRooms(); });
-  socket.on('profile', (p) => { prof = p; renderHome(); updAdmin(); renderNews(); renderHeaderAvatar(); updHdr(); });
+  socket.on('profile', (p) => { prof = p; renderHome(); updAdmin(); renderNews(); renderHeaderAvatar(); updHdr(); wxInit(); });
   socket.on('places', (p) => {
-    places = p; fillPlace('pdist', 'pvil'); fillPlace('rdist', 'rvil'); renderHome(); updHdr();
+    places = p; fillPlace('pdist', 'pvil'); fillPlace('rdist', 'rvil'); renderHome(); updHdr(); wxInit();
   });
   socket.on('needplace', () => { if (places.districts.length) $('pform').style.display = 'flex'; });
   socket.on('unreadall', (m) => {
