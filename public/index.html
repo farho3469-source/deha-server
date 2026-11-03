@@ -255,6 +255,21 @@ mark{background:#ffe58f;border-radius:3px}
 .alg img{width:100%;height:100%;object-fit:cover;display:block}
 .alg .cb{position:absolute;bottom:3px;right:3px;display:flex;gap:3px}
 .alg .cb button{border:0;border-radius:8px;background:rgba(0,0,0,.5);color:#fff;font-size:14px;padding:3px 6px}
+
+.rx{display:flex;gap:8px;margin-top:8px}
+.rx button{background:#f3f1ea;border:0;border-radius:14px;padding:6px 12px;font-size:14px;color:#444;font-family:inherit}
+.rx button.on{background:#ffe3e3;color:#c62828}
+.rx.lt button{background:rgba(255,255,255,.22);color:#fff}
+.rx.lt button.on{background:rgba(255,80,80,.45)}
+#lbrx{display:none;position:absolute;left:0;right:0;bottom:calc(22px + env(safe-area-inset-bottom));text-align:center;z-index:3}
+#lbrx .rx{justify-content:center}
+#cmsheet{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:17;align-items:flex-end;justify-content:center}
+#cmsheet .cmbox{background:#fff;width:100%;max-width:520px;height:72vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;min-height:0}
+#cmsheet .cmh{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #eee;font-size:17px;flex:none}
+#cmlist{flex:1;overflow-y:auto;padding:10px 12px;min-height:0}
+.cmi{display:flex;gap:8px;margin-bottom:12px}
+.cmf{display:flex;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));border-top:1px solid #eee;flex:none}
+.cmf input{margin:0;border-radius:22px;padding:10px 14px}
 </style>
 </head>
 <body>
@@ -389,6 +404,14 @@ mark{background:#ffe58f;border-radius:3px}
 </div>
 <input type="file" id="fmphoto" accept="image/*" style="display:none">
 
+<div id="cmsheet" onclick="closeCm()">
+  <div class="cmbox" onclick="event.stopPropagation()">
+    <div class="cmh"><b>Шарҳҳо</b><button class="ic g" style="width:34px;height:34px;font-size:15px" onclick="closeCm()" aria-label="Бастан">✕</button></div>
+    <div id="cmlist"></div>
+    <div class="cmf"><input id="cmtx" maxlength="300" placeholder="Шарҳ нависед..." autocomplete="off"><button class="ic" onclick="cmSend()" aria-label="Фиристодан">➤</button></div>
+  </div>
+</div>
+
 <div id="adform">
   <div class="top">Эълони нав</div>
   <div class="body">
@@ -522,7 +545,7 @@ mark{background:#ffe58f;border-radius:3px}
 <input type="file" id="adphoto" accept="image/*" style="display:none">
 <input type="file" id="bgfile" accept="image/*" style="display:none">
 <input type="file" id="avfile" accept="image/*" style="display:none">
-<div id="lb" onclick="this.style.display='none'"><button id="lbshare" class="ic" style="position:absolute;right:14px;top:calc(14px + env(safe-area-inset-top));z-index:2;background:rgba(255,255,255,.25)" onclick="event.stopPropagation();shareImg()" aria-label="Поделиться">📤</button><div id="lbbox"><img id="lbimg" alt=""><div id="lbcap"></div></div></div>
+<div id="lb" onclick="this.style.display='none'"><button id="lbshare" class="ic" style="position:absolute;right:14px;top:calc(14px + env(safe-area-inset-top));z-index:2;background:rgba(255,255,255,.25)" onclick="event.stopPropagation();shareImg()" aria-label="Поделиться">📤</button><div id="lbbox"><img id="lbimg" alt=""><div id="lbcap"></div></div><div id="lbrx" onclick="event.stopPropagation()"></div></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -1091,8 +1114,8 @@ function tab(n){
 function hhmm(t){ return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 function scrollDown(){ const b = $('msgs'); b.scrollTop = b.scrollHeight; }
 function mediaUrl(id){ return '/media/' + id + '?t=' + tok; }
-function openImg(src){ $('lbshare').style.display = 'block'; $('lbimg').className = ''; $('lbcap').textContent = ''; $('lbimg').src = src; $('lb').style.display = 'flex'; }
-function openAvatar(av, name){ $('lbshare').style.display = 'none'; $('lbimg').className = 'big'; $('lbcap').textContent = name || ''; $('lbimg').src = mediaUrl(av); $('lb').style.display = 'flex'; }
+function openImg(src){ $('lbrx').style.display = 'none'; $('lbshare').style.display = 'block'; $('lbimg').className = ''; $('lbcap').textContent = ''; $('lbimg').src = src; $('lb').style.display = 'flex'; }
+function openAvatar(av, name){ $('lbrx').style.display = 'none'; $('lbshare').style.display = 'none'; $('lbimg').className = 'big'; $('lbcap').textContent = name || ''; $('lbimg').src = mediaUrl(av); $('lb').style.display = 'flex'; }
 
 function setGender(g){
   if (socket) socket.emit('setgender', g);
@@ -1972,6 +1995,7 @@ function renderPg(){
   if (!pgState) return;
   const box = $('pgb'); box.innerHTML = '';
   const s = pgState.sec, items = pgState.items;
+  if (s === 'ev' || s === 'sv' || s === 'alb') rxFetch(s, items.map((x) => x.id));
   const chips = $('pgc'); chips.style.display = s === 'sv' ? 'flex' : 'none';
   if (s === 'sv'){
     chips.innerHTML = '';
@@ -2001,7 +2025,7 @@ function renderPg(){
       acts.append(btn('⭐', () => socket.emit('favadd', { type: 'event', title: e.title, text: txt }), FAVCSS));
       acts.append(btn('📤', () => shareIt({ title: e.title, text: txt, url: location.origin }), SHCSS));
       if (canDel(e)) acts.append(btn('🗑', () => { if (confirm('Нест кардан шавад?')) socket.emit('evdel', e.id); }));
-      bd.append(acts); c.append(dd, bd); box.append(c);
+      bd.append(rxBar('ev', e.id)); bd.append(acts); c.append(dd, bd); box.append(c);
     });
   } else if (s === 'sv'){
     const list = items.filter((x) => pgState.cat === 'all' || x.cat === pgState.cat);
@@ -2020,7 +2044,7 @@ function renderPg(){
       acts.append(btn('⭐', () => socket.emit('favadd', { type: 'service', title: x.title, text: txt, media: x.photo, extra: x.name }), FAVCSS));
       acts.append(btn('📤', () => shareIt({ title: x.title, text: txt, url: location.origin }), SHCSS));
       if (canDel(x)) acts.append(btn('🗑', () => { if (confirm('Нест кардан шавад?')) socket.emit('svdel', x.id); }));
-      c.append(acts); box.append(c);
+      c.append(rxBar('sv', x.id)); c.append(acts); box.append(c);
     });
   } else if (s === 'alb'){
     if (!items.length){ box.append(emptyCard('Ҳоло расм нест. Аввалин шумо илова кунед!')); return; }
@@ -2028,7 +2052,10 @@ function renderPg(){
     items.forEach((x) => {
       const cell = document.createElement('div'); cell.className = 'cell';
       const im = document.createElement('img'); im.loading = 'lazy'; im.src = mediaUrl(x.media);
-      im.onclick = () => { openImg(im.src); $('lbcap').textContent = (x.cap ? x.cap + ' · ' : '') + x.name; };
+      im.onclick = () => {
+        openImg(im.src); $('lbcap').textContent = (x.cap ? x.cap + ' · ' : '') + x.name;
+        const rb = $('lbrx'); rb.innerHTML = ''; rb.append(rxBar('alb', x.id, true)); rb.style.display = 'block';
+      };
       cell.append(im);
       const cb = document.createElement('div'); cb.className = 'cb';
       cb.append(btn('⭐', () => socket.emit('favadd', { type: 'photo', title: x.cap || x.name, media: x.media })));
@@ -2092,6 +2119,65 @@ async function fmSubmit(){
   } catch (e) { alert('Фиристода нашуд. Дубора кӯшиш кунед.'); }
   $('fmok').disabled = false; $('fmok').textContent = 'Нашр кардан';
 }
+
+/* ---------- лайк ва шарҳ ---------- */
+Object.assign(RU, { 'Шарҳҳо': 'Комментарии', 'Шарҳ нависед...': 'Напишите комментарий...', 'Ҳоло шарҳ нест. Аввалин шумо нависед!': 'Комментариев пока нет. Напишите первым!', 'Шарҳ нест шавад?': 'Удалить комментарий?', 'Хеле зуд-зуд менависед. Каме интизор шавед': 'Слишком часто. Подождите немного' });
+let rxMap = {}, cmCur = null;
+const rxKey = (t, id) => t + ':' + id;
+function rxPaint(d){
+  const o = rxMap[d.dataset.rx] || { l: 0, c: 0, m: false };
+  const l = d.querySelector('.rl'), cc = d.querySelector('.rc');
+  l.textContent = (o.m ? '❤️ ' : '🤍 ') + (o.l || 0); l.classList.toggle('on', !!o.m);
+  cc.textContent = '💬 ' + (o.c || 0);
+}
+function rxRefresh(k){ document.querySelectorAll('[data-rx="' + k + '"]').forEach(rxPaint); }
+function rxBar(t, id, light){
+  const d = document.createElement('div'); d.className = 'rx' + (light ? ' lt' : ''); d.dataset.rx = rxKey(t, id);
+  const l = document.createElement('button'); l.className = 'rl';
+  l.onclick = (e) => { e.stopPropagation(); rxToggle(t, id); };
+  const cc = document.createElement('button'); cc.className = 'rc';
+  cc.onclick = (e) => { e.stopPropagation(); openCm(t, id); };
+  d.append(l, cc); rxPaint(d);
+  return d;
+}
+function rxFetch(t, ids){ ids = (ids || []).filter(Boolean); if (socket && ids.length) socket.emit('rxget', { t, ids: ids.slice(0, 200) }); }
+function rxToggle(t, id){
+  if (!socket) return;
+  const k = rxKey(t, id), o = rxMap[k] || (rxMap[k] = { l: 0, c: 0, m: false });
+  o.m = !o.m; o.l = Math.max(0, (o.l || 0) + (o.m ? 1 : -1));
+  rxRefresh(k); socket.emit('rxlike', { t, id });
+}
+function cmEl(c){
+  const d = document.createElement('div'); d.className = 'cmi'; d.dataset.cid = c.id;
+  const a = avEl(c.av, c.name, 32); a.onclick = null; a.style.cursor = ''; d.append(a);
+  const b = document.createElement('div'); b.style.cssText = 'flex:1;min-width:0';
+  const h = document.createElement('div'); h.style.cssText = 'font-size:13px;color:#2f6b3a;font-weight:600'; h.textContent = c.uid === myUid ? 'Шумо' : c.name;
+  const t = document.createElement('div'); t.style.cssText = 'font-size:15px;white-space:pre-wrap;word-break:break-word'; t.textContent = c.text;
+  const m = document.createElement('div'); m.style.cssText = 'font-size:11px;color:#8696a0;margin-top:2px';
+  m.textContent = new Date(c.time).toLocaleDateString() + ' ' + hhmm(c.time);
+  if (c.uid === myUid || prof.admin){
+    const x = document.createElement('button'); x.textContent = '🗑'; x.style.cssText = 'border:0;background:none;font-size:14px;margin-left:8px;padding:0';
+    x.onclick = () => { if (confirm('Шарҳ нест шавад?')) socket.emit('cmdel', { id: c.id }); };
+    m.append(x);
+  }
+  b.append(h, t, m); d.append(b);
+  return d;
+}
+function openCm(t, id){
+  if (!socket) return;
+  cmCur = { t, id }; $('cmlist').innerHTML = ''; $('cmtx').value = '';
+  $('cmsheet').style.display = 'flex'; socket.emit('cmlist', { t, id });
+}
+function closeCm(){
+  if (cmCur && socket) socket.emit('cmleave');
+  cmCur = null; $('cmsheet').style.display = 'none';
+}
+function cmSend(){
+  const v = $('cmtx').value.trim();
+  if (!v || !cmCur || !socket) return;
+  socket.emit('cmadd', { t: cmCur.t, id: cmCur.id, text: v }); $('cmtx').value = '';
+}
+$('cmtx').addEventListener('keydown', (e) => { if (e.key === 'Enter') cmSend(); });
 
 /* ---------- ҳолат / кайфият ---------- */
 Object.assign(RU, { 'Ҳолати ман': 'Моё состояние', 'Ҳолатро нависед': 'Укажите состояние', 'Матн нависед (ихтиёрӣ)...': 'Текст (необязательно)...', 'Тоза кардан': 'Очистить', 'Озод': 'Свободен', 'Банд': 'Занят', 'Дар кор': 'На работе', 'Дар роҳ': 'В пути', 'Хобидаам': 'Сплю' });
@@ -2528,6 +2614,7 @@ function adEl(a){
   sh.onclick = () => shareIt({ title: a.title, text: [a.title, a.price, a.desc].filter(Boolean).join('\n'), url: location.origin });
   acts.append(sh);
   acts.append(btn('⭐', () => socket.emit('favadd', { type: 'ad', title: a.title, text: [a.price, a.desc].filter(Boolean).join('\n'), media: a.photo, extra: a.name }), 'flex:0 0 52px;background:#fff3cd;color:#664d03'));
+  c.append(rxBar('ad', a.id));
   c.append(acts);
   return c;
 }
@@ -2539,6 +2626,7 @@ function renderAds(){
     box.append(e); return;
   }
   list.forEach((a) => box.append(adEl(a)));
+  rxFetch('ad', list.map((a) => a.id));
 }
 function openAd(){ $('adform').style.display = 'flex'; }
 function closeAd(){ $('adform').style.display = 'none'; }
@@ -2595,6 +2683,7 @@ function addNews(n, top){
       rp.onclick = () => { if (confirm('Ин хабар ба админ шикоят карда шавад?')) socket.emit('newsreport', { id: n.id }); };
       a.append(rp);
     }
+    c.append(rxBar('news', n.id));
     c.append(a);
   }
   top ? $('news').prepend(c) : $('news').append(c);
@@ -2603,6 +2692,7 @@ let newsData = [], nFile = null;
 function renderNews(){
   const box = $('news'); box.innerHTML = '';
   newsData.forEach((n) => addNews(n, false));
+  rxFetch('news', newsData.map((n) => n.id));
   if (!box.children.length){
     const e = document.createElement('div'); e.className = 'card'; e.textContent = 'Ҳоло хабар нест';
     box.append(e);
@@ -2778,6 +2868,33 @@ function start(token){
   socket.on('favlist', (l) => pgSet('fav', l));
   socket.on('secchanged', (d) => { if (pgState && pgState.sec === d.sec) socket.emit(PG_REQ[d.sec]); });
   socket.on('favok', () => toast('Дар избранное сабт шуд ⭐'));
+  socket.on('rx', (d) => {
+    Object.keys(d.map || {}).forEach((id) => { const k = rxKey(d.t, id); rxMap[k] = d.map[id]; rxRefresh(k); });
+  });
+  socket.on('rxcount', (d) => {
+    const k = rxKey(d.t, d.id), o = rxMap[k] || (rxMap[k] = { l: 0, c: 0, m: false });
+    o.l = d.l; o.c = d.c; rxRefresh(k);
+  });
+  socket.on('rxmine', (d) => {
+    const k = rxKey(d.t, d.id), o = rxMap[k] || (rxMap[k] = { l: 0, c: 0, m: false });
+    o.m = !!d.m; rxRefresh(k);
+  });
+  socket.on('cms', (d) => {
+    if (!cmCur || cmCur.t !== d.t || cmCur.id !== d.id) return;
+    const box = $('cmlist'); box.innerHTML = '';
+    if (!d.list.length){ const e = document.createElement('div'); e.style.cssText = 'color:#8696a0;text-align:center;padding:30px 10px'; e.textContent = 'Ҳоло шарҳ нест. Аввалин шумо нависед!'; box.append(e); return; }
+    d.list.forEach((c) => box.append(cmEl(c)));
+    box.scrollTop = box.scrollHeight;
+  });
+  socket.on('cmnew', (d) => {
+    if (!cmCur || cmCur.t !== d.t || cmCur.id !== d.id) return;
+    const box = $('cmlist');
+    if (!box.querySelector('.cmi')) box.innerHTML = '';
+    box.append(cmEl(d.c)); box.scrollTop = box.scrollHeight;
+  });
+  socket.on('cmgone', (d) => {
+    const el = document.querySelector('#cmlist [data-cid="' + d.cid + '"]'); if (el) el.remove();
+  });
   socket.on('adchatok', (d) => { closePg(); tab(1); showChat(d.room, d.name); });
   socket.on('onl', (l) => {
     const ns = new Set(l || []);
@@ -3134,11 +3251,12 @@ let guard = false, ignorePop = false;
 function isOpen(id){ return $(id).style.display === 'flex'; }
 function atRoot(){
   if ($('app').style.display !== 'flex') return true;
-  return !(isOpen('lb') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('mem') || isOpen('nform') || isOpen('gpick') || isOpen('ginfo') || isOpen('pg') || isOpen('fm') || isOpen('mood') || isOpen('call') || $('drw').style.display === 'block'
+  return !(isOpen('lb') || isOpen('cmsheet') || isOpen('menu') || isOpen('sform') || isOpen('pform') || isOpen('gform') || isOpen('adform') || isOpen('mem') || isOpen('nform') || isOpen('gpick') || isOpen('ginfo') || isOpen('pg') || isOpen('fm') || isOpen('mood') || isOpen('call') || $('drw').style.display === 'block'
     || $('chatv').style.display === 'flex' || nav.v !== 'home' || !$('s1').classList.contains('on'));
 }
 function appBack(){
   if ($('app').style.display !== 'flex') return false;
+  if (isOpen('cmsheet')){ closeCm(); return true; }
   if (isOpen('lb')){ $('lb').style.display = 'none'; return true; }
   if ($('drw').style.display === 'block'){ closeDrawer(); return true; }
   if (isOpen('menu')){ closeMenu(); return true; }
