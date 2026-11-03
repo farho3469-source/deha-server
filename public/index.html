@@ -270,6 +270,10 @@ mark{background:#ffe58f;border-radius:3px}
 .cmi{display:flex;gap:8px;margin-bottom:12px}
 .cmf{display:flex;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));border-top:1px solid #eee;flex:none}
 .cmf input{margin:0;border-radius:22px;padding:10px 14px}
+.rcs{display:flex;flex-wrap:wrap;gap:4px}
+.rcs:not(:empty){margin-top:4px}
+.rcs button{border:0;border-radius:12px;padding:1px 8px;font-size:13px;background:rgba(0,0,0,.07);font-family:inherit}
+.rcs button.me{background:#d4edcf;outline:1px solid #2f6b3a}
 </style>
 </head>
 <body>
@@ -460,7 +464,7 @@ mark{background:#ffe58f;border-radius:3px}
   <video id="lv" autoplay playsinline muted></video>
   <div id="ctop"><div id="cname"></div><div id="cst"></div><div id="cdbg"></div></div>
   <div id="cin"><button class="cbtn red" onclick="declineCall()">✕</button><button class="cbtn grn" onclick="acceptCall()">✔</button></div>
-  <div id="cout"><button class="cbtn" id="btmic" onclick="toggleMic()">🎤</button><button class="cbtn" id="btcam" onclick="toggleCam()">📷</button><button class="cbtn red" onclick="endCall(true)">✕</button></div>
+  <div id="cout"><button class="cbtn" id="btmic" onclick="toggleMic()">🎤</button><button class="cbtn" id="btcam" onclick="toggleCam()">📷</button><button class="cbtn" id="btflip" onclick="flipCam()" aria-label="Камера">🔄</button><button class="cbtn red" onclick="endCall(true)">✕</button></div>
 </div>
 <div id="net">⏳ Пайваст мешавад…</div>
 <div id="upd" onclick="location.reload()">🔄 Нусхаи нав ҳаст. Барои навсозӣ ламс кунед</div>
@@ -528,6 +532,7 @@ mark{background:#ffe58f;border-radius:3px}
 <div id="menu" onclick="closeMenu()">
   <div class="mbox" onclick="event.stopPropagation()">
     <div id="mpv"></div>
+    <div id="mrx" style="display:flex;gap:4px;justify-content:space-between;margin:6px 0 8px"></div>
     <button class="btn" id="mrep">↩ Ҷавоб додан</button>
     <button class="btn" id="mdm">💬 Шахсӣ нависед</button>
     <button class="btn g" id="mhide">🙈 Аз худам нест кардан</button>
@@ -1139,9 +1144,32 @@ function takeReply(){
   setReply(null);
   return id;
 }
+const RC_LIST = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+function fillRc(box, m){
+  box.innerHTML = '';
+  const rc = m.rc || {}, cnt = {};
+  Object.keys(rc).forEach((u) => { cnt[rc[u]] = (cnt[rc[u]] || 0) + 1; });
+  RC_LIST.forEach((e) => {
+    if (!cnt[e]) return;
+    const b = document.createElement('button'); b.textContent = e + ' ' + cnt[e];
+    if (rc[myUid] === e) b.className = 'me';
+    b.onclick = (ev) => { ev.stopPropagation(); if (socket && m.id) socket.emit('react', { id: m.id, e }); };
+    box.append(b);
+  });
+}
+function buildMrx(m){
+  const box = $('mrx'); box.innerHTML = '';
+  const mine = (m.rc || {})[myUid];
+  RC_LIST.forEach((e) => {
+    const b = document.createElement('button'); b.textContent = e;
+    b.style.cssText = 'flex:1;font-size:24px;padding:6px 0;border:0;border-radius:12px;background:' + (mine === e ? '#d4edcf' : '#f3f1ea');
+    b.onclick = () => { const mm = menuMsg; closeMenu(); if (mm && socket) socket.emit('react', { id: mm.id, e }); };
+    box.append(b);
+  });
+}
 let menuT = 0;
 function openMenu(m){
-  menuMsg = m; menuT = Date.now();
+  menuMsg = m; menuT = Date.now(); buildMrx(m);
   $('mpv').textContent = (m.uid === myUid ? 'Шумо' : m.name) + ': ' + prevText(m);
   $('mdel').style.display = (m.uid === myUid || prof.admin || $('pw').value.trim()) ? 'block' : 'none';
   $('mrpt').style.display = $('mblk').style.display = (m.uid !== myUid) ? 'block' : 'none';
@@ -1269,6 +1297,7 @@ function msgEl(m){
   } else {
     const p = document.createElement('div'); p.textContent = m.text || ''; d.append(p);
   }
+  const rcs = document.createElement('div'); rcs.className = 'rcs'; fillRc(rcs, m); d.append(rcs); d._m = m;
   const t = document.createElement('div'); t.className = 'tm'; t.textContent = hhmm(m.time);
   if (mine && m.room && m.room.startsWith('dm:')){
     const k = document.createElement('span'); k.className = 'tk' + (m.rd ? ' rd' : ''); k.textContent = m.rd ? ' ✓✓' : ' ✓'; t.append(k);
@@ -1611,6 +1640,7 @@ function showCall(status, incoming){
   $('cin').style.display = incoming ? 'flex' : 'none';
   $('cout').style.display = incoming ? 'none' : 'flex';
   $('btcam').style.display = callVideo ? 'inline-block' : 'none';
+  $('btflip').style.display = callVideo ? 'inline-block' : 'none';
   $('lv').style.display = callVideo ? 'block' : 'none';
   $('btmic').classList.remove('off'); $('btcam').classList.remove('off');
 }
@@ -1710,6 +1740,7 @@ async function makePc(){
 }
 function resetCall(){
   gcCleanup();
+  camFacing = 'user'; $('lv').style.transform = '';
   clearTimeout(ringT); clearTimeout(connT); clearInterval(timerI); stopRing(); stopRingback(); clearTimeout(statT); nativeCall(false);
   $('cdbg').textContent = '';
   if (pc){ try { pc.close(); } catch (e) {} pc = null; }
@@ -1762,6 +1793,28 @@ function toggleMic(){
   const t = lstream.getAudioTracks(), on = !(t[0] && t[0].enabled);
   t.forEach((x) => { x.enabled = on; });
   $('btmic').classList.toggle('off', !on);
+}
+let camFacing = 'user';
+async function flipCam(){
+  if (!lstream || !callVideo) return;
+  const old = lstream.getVideoTracks()[0];
+  const wasOn = old ? old.enabled : true;
+  const want = camFacing === 'user' ? 'environment' : 'user';
+  const vc = callRole === 'group' ? { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15 } } : {};
+  if (old){ lstream.removeTrack(old); old.stop(); }
+  let ns = null;
+  try { ns = await navigator.mediaDevices.getUserMedia({ audio: false, video: Object.assign({ facingMode: { ideal: want } }, vc) }); camFacing = want; }
+  catch (e) {
+    try { ns = await navigator.mediaDevices.getUserMedia({ audio: false, video: Object.assign({ facingMode: { ideal: camFacing } }, vc) }); toast('Камера иваз нашуд'); }
+    catch (e2) { toast('Камера кор намекунад'); return; }
+  }
+  const nt = ns.getVideoTracks()[0]; if (!nt) return;
+  nt.enabled = wasOn;
+  const pcs = []; if (pc) pcs.push(pc); if (gc) gc.peers.forEach((p) => pcs.push(p.pc));
+  for (const cn of pcs) for (const sd of cn.getSenders()) if (sd.track && sd.track.kind === 'video') await sd.replaceTrack(nt).catch(() => {});
+  lstream.addTrack(nt);
+  $('lv').srcObject = lstream;
+  $('lv').style.transform = camFacing === 'user' ? 'scaleX(-1)' : 'none';
 }
 function toggleCam(){
   if (!lstream) return;
@@ -2894,6 +2947,10 @@ function start(token){
   });
   socket.on('cmgone', (d) => {
     const el = document.querySelector('#cmlist [data-cid="' + d.cid + '"]'); if (el) el.remove();
+  });
+  socket.on('reacted', (d) => {
+    const el = document.querySelector('#msgs [data-id="' + d.id + '"]');
+    if (el && el._m){ el._m.rc = d.rc; const bx = el.querySelector('.rcs'); if (bx) fillRc(bx, el._m); }
   });
   socket.on('adchatok', (d) => { closePg(); tab(1); showChat(d.room, d.name); });
   socket.on('onl', (l) => {
