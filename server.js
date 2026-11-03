@@ -968,10 +968,19 @@ async function dropMember(g, u) {
 /* ---------- лайк ва шарҳ (эълон, хабар, рӯйдод, хизматрасонӣ, расми албом) ---------- */
 const RX_T = ['ad', 'news', 'ev', 'sv', 'alb'];
 const rxCol = (t) => ({ ad: ads, news: news, ev: events, sv: services, alb: albums }[t]);
-async function rxOwner(t, id) {
+// u — корбар: рӯйдодҳо ва албом танҳо барои ҳамдеҳагон дастрасанд
+async function rxOwner(t, id, u) {
   if (!RX_T.includes(t) || !HEX24.test(String(id))) return null;
-  const d = await rxCol(t).findOne({ _id: new ObjectId(id) }, { projection: { uid: 1 } });
-  return d ? { uid: d.uid || '' } : null;
+  const d = await rxCol(t).findOne({ _id: new ObjectId(id) }, { projection: { uid: 1, village: 1 } });
+  if (!d) return null;
+  if (u && (t === 'ev' || t === 'alb') && d.village !== u.village && !u.admin) return null;
+  return { uid: d.uid || '', village: d.village || '' };
+}
+async function rxBroadcast(t, id) {
+  const o = await rxOwner(t, id);
+  const payload = { t, id, ...(await rxCounts(t, id)) };
+  if (o && (t === 'ev' || t === 'alb')) io.to('vil:' + o.village).emit('rxcount', payload);
+  else io.emit('rxcount', payload);
 }
 async function rxCounts(t, id) {
   const [l, c] = await Promise.all([likes.countDocuments({ t, id }), comments.countDocuments({ t, id })]);
@@ -2223,11 +2232,11 @@ io.on('connection', (s) => {
   s.on('rxlike', async (m) => {
     try {
       const t = String((m && m.t) || ''), id = String((m && m.id) || '');
-      if (!(await rxOwner(t, id))) return;
+      if (!(await rxOwner(t, id, s.user))) return;
       const ex = await likes.findOne({ t, id, uid });
       if (ex) await likes.deleteOne({ _id: ex._id });
       else await likes.insertOne({ t, id, uid, time: Date.now() }).catch(() => {});
-      io.emit('rxcount', { t, id, ...(await rxCounts(t, id)) });
+      await rxBroadcast(t, id);
       s.emit('rxmine', { t, id, m: !ex });
     } catch (e) {
       console.error(e);
@@ -2236,7 +2245,7 @@ io.on('connection', (s) => {
   s.on('cmlist', async (m) => {
     try {
       const t = String((m && m.t) || ''), id = String((m && m.id) || '');
-      if (!(await rxOwner(t, id))) return;
+      if (!(await rxOwner(t, id, s.user))) return;
       [...s.rooms].filter((x) => x.startsWith('cm:')).forEach((x) => s.leave(x));
       s.join('cm:' + t + ':' + id);
       const list = await comments.find({ t, id }).sort({ time: 1 }).limit(200).toArray();
@@ -2253,13 +2262,13 @@ io.on('connection', (s) => {
       const t = String((m && m.t) || ''), id = String((m && m.id) || '');
       const text = String((m && m.text) || '').trim().slice(0, 300);
       if (!text) return;
-      const o = await rxOwner(t, id);
+      const o = await rxOwner(t, id, s.user);
       if (!o) return;
       if ((await comments.countDocuments({ uid, time: { $gt: Date.now() - 60000 } })) >= 10) return s.emit('err', 'Хеле зуд-зуд менависед. Каме интизор шавед');
       const doc = { t, id, uid, name: s.user.name, av: s.user.avatar || '', text, time: Date.now() };
       const r = await comments.insertOne(doc);
       io.to('cm:' + t + ':' + id).emit('cmnew', { t, id, c: cmOut({ ...doc, _id: r.insertedId }) });
-      io.emit('rxcount', { t, id, ...(await rxCounts(t, id)) });
+      await rxBroadcast(t, id);
       if (o.uid && o.uid !== uid) {
         pushTo([o.uid], (l) => ({ title: s.user.name, body: (l === 'ru' ? '💬 Комментарий: ' : '💬 Шарҳ: ') + text.slice(0, 80), tag: 'cm-' + t + id, type: 'msg' })).catch(console.error);
       }
@@ -2276,7 +2285,7 @@ io.on('connection', (s) => {
       if (!(d.uid === uid || isAdmin({}, s.user))) return s.emit('err', 'Нест кардан мумкин нест');
       await comments.deleteOne({ _id: d._id });
       io.to('cm:' + d.t + ':' + d.id).emit('cmgone', { t: d.t, id: d.id, cid });
-      io.emit('rxcount', { t: d.t, id: d.id, ...(await rxCounts(d.t, d.id)) });
+      await rxBroadcast(d.t, d.id);
     } catch (e) {
       console.error(e);
     }
