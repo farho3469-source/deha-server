@@ -162,6 +162,9 @@ async function resolveVillage(b) {
 }
 const CONTACT = String(process.env.CONTACT_EMAIL || '').trim();
 const MIN_AGE = Number(process.env.MIN_AGE) || 13;
+const AD_DAYS = Number(process.env.AD_DAYS) || 3; // мӯҳлати эълон (рӯз)
+const AD_MS = AD_DAYS * 86400000;
+const AD_MAX = Number(process.env.AD_MAX) || 3; // ҳадди аксар эълони фаъол барои як корбар
 const ADMIN_PHONES = String(process.env.ADMIN_PHONES || '').split(',').map((x) => x.replace(/\D/g, '')).filter(Boolean);
 const isAdmin = (m, u) => (!!u && u.admin === true) || (!!m && String(m.password || '').trim() === ADMIN);
 
@@ -365,6 +368,7 @@ const adOut = (a, u) => ({
   cat: a.cat,
   photo: a.photo || '',
   time: a.time,
+  exp: a.time + AD_MS,
 });
 const newsOut = (d) => ({ id: String(d._id), uid: d.uid || '', name: d.name || '', title: d.title || '', text: d.text || '', photo: d.photo || '', time: d.time });
 const chatOut = (d) => {
@@ -407,7 +411,7 @@ const POLICY = {
     ['How we use it', ['To create your account and show you your village chat, marketplace and news.', 'To deliver notifications about new messages and chat requests.', 'To keep the community safe: reports, blocking and moderation.']],
     ['Who can see your data', ['Your name, photo and messages are visible to the people in the chats where you write.', 'When you post a marketplace ad, your phone number becomes visible to all signed-in users of the app (for the call button). It is not shown anywhere else.', 'A private chat with a person from another village starts only after that person accepts your request.']],
     ['Sharing', ['We do not sell your data and we do not show ads.', 'Service providers process data on our behalf: hosting (Render), database (MongoDB Atlas) and push delivery (your browser vendor, for example Google). Data may therefore be processed outside Tajikistan.']],
-    ['Retention', ['Text messages: 90 days. Photos and voice messages: 14 days. Marketplace ads: 90 days.', 'Account data is kept until you delete your account.']],
+    ['Retention', ['Text messages: 90 days. Photos and voice messages: 14 days. Marketplace ads: 3 days.', 'Account data is kept until you delete your account.']],
     ['Security', ['Data is sent over an encrypted HTTPS connection. Passwords are stored only as hashes.']],
     ['Children', ['The app is not intended for children under 13. We do not knowingly collect data from them. Age is entered at registration.']],
     ['Your rights and account deletion', ['You can edit your name, surname, age, village and photo in Settings.', 'You can delete your account in the app (Settings → Delete account) or on the page /delete-account. Deletion removes your account, messages, photos, voice messages, ads and notification tokens.']],
@@ -418,7 +422,7 @@ const POLICY = {
     ['Как мы их используем', ['Чтобы создать аккаунт и показывать чат вашей деревни, рынок и новости.', 'Чтобы доставлять уведомления о новых сообщениях и запросах на чат.', 'Чтобы поддерживать безопасность: жалобы, блокировка и модерация.']],
     ['Кто видит ваши данные', ['Ваше имя, фото и сообщения видят участники чатов, в которых вы пишете.', 'Когда вы публикуете объявление на рынке, ваш номер телефона становится виден всем авторизованным пользователям приложения (кнопка звонка). В других местах он не показывается.', 'Личный чат с жителем другой деревни начинается только после того, как он примет ваш запрос.']],
     ['Передача данных', ['Мы не продаём данные и не показываем рекламу.', 'Данные обрабатывают наши поставщики услуг: хостинг (Render), база данных (MongoDB Atlas) и доставка push (производитель браузера, например Google). Поэтому данные могут обрабатываться за пределами Таджикистана.']],
-    ['Сроки хранения', ['Текстовые сообщения — 90 дней. Фото и голосовые сообщения — 14 дней. Объявления — 90 дней.', 'Данные аккаунта хранятся, пока вы не удалите аккаунт.']],
+    ['Сроки хранения', ['Текстовые сообщения — 90 дней. Фото и голосовые сообщения — 14 дней. Объявления на рынке — 3 дня.', 'Данные аккаунта хранятся, пока вы не удалите аккаунт.']],
     ['Безопасность', ['Данные передаются по защищённому соединению HTTPS. Пароли хранятся только в виде хэшей.']],
     ['Дети', ['Приложение не предназначено для детей младше 13 лет. Мы сознательно не собираем их данные. Возраст указывается при регистрации.']],
     ['Ваши права и удаление аккаунта', ['Имя, фамилию, возраст, деревню и фото можно изменить в «Настройках».', 'Аккаунт можно удалить в приложении («Настройки» → «Удалить аккаунт») или на странице /delete-account. При удалении стираются аккаунт, сообщения, фото, голосовые, объявления и токены уведомлений.']],
@@ -429,7 +433,7 @@ const POLICY = {
     ['Чӣ тавр истифода мебарем', ['Барои сохтани ҳисоб ва нишон додани чати деҳа, бозор ва хабарҳо.', 'Барои расонидани огоҳинома дар бораи паёмҳои нав ва дархостҳои чат.', 'Барои амнияти ҷамъият: шикоят, манъ ва назорат.']],
     ['Кӣ маълумотро мебинад', ['Номи шумо, сурат ва паёмҳоятонро иштирокчиёни чатҳое мебинанд, ки дар онҳо менависед.', 'Вақте эълон мегузоред, рақами телефони шумо барои ҳамаи корбарони барнома намоён мешавад (тугмаи занг дар бозор). Дар ҷойҳои дигар нишон дода намешавад.', 'Чати шахсӣ бо одами деҳаи дигар танҳо баъд аз он оғоз мешавад, ки ӯ дархости шуморо қабул кунад.']],
     ['Додани маълумот', ['Мо маълумотро намефурӯшем ва реклама нишон намедиҳем.', 'Маълумотро хидматрасонҳо коркард мекунанд: ҳостинг (Render), база (MongoDB Atlas) ва расонидани push (истеҳсолкунандаи браузер, масалан Google). Бинобар ин маълумот метавонад берун аз Тоҷикистон коркард шавад.']],
-    ['Мӯҳлати нигоҳдорӣ', ['Паёмҳои матнӣ: 90 рӯз. Суратҳо ва паёмҳои овозӣ: 14 рӯз. Эълонҳо: 90 рӯз.', 'Маълумоти ҳисоб то нест кардани ҳисоб нигоҳ дошта мешавад.']],
+    ['Мӯҳлати нигоҳдорӣ', ['Паёмҳои матнӣ: 90 рӯз. Суратҳо ва паёмҳои овозӣ: 14 рӯз. Эълонҳо дар бозор: 3 рӯз.', 'Маълумоти ҳисоб то нест кардани ҳисоб нигоҳ дошта мешавад.']],
     ['Бехатарӣ', ['Маълумот тавассути пайвасти рамзгузоришудаи HTTPS ирсол мешавад. Паролҳо танҳо ҳамчун хэш нигоҳ дошта мешаванд.']],
     ['Кӯдакон', ['Барнома барои кӯдакони аз 13 хурд нест. Мо маълумоти онҳоро ҷамъ намекунем. Синну сол ҳангоми сабти ном навишта мешавад.']],
     ['Ҳуқуқи шумо ва нест кардани ҳисоб', ['Ном, насаб, синну сол, деҳа ва суратро дар «Танзимот» тағйир додан мумкин аст.', 'Ҳисобро дар барнома («Танзимот» → «Ҳисобро нест кардан») ё дар саҳифаи /delete-account нест кардан мумкин аст. Ҳангоми нест кардан ҳисоб, паёмҳо, суратҳо, паёмҳои овозӣ, эълонҳо ва токени огоҳиномаҳо нест мешаванд.']],
@@ -1151,6 +1155,23 @@ async function cleanup() {
   }
 }
 
+async function cleanupAds() {
+  try {
+    const old = await ads.find({ time: { $lt: Date.now() - AD_MS } }).limit(200).toArray();
+    if (!old.length) return;
+    const pm = old.map((a) => a.photo).filter((x) => HEX24.test(String(x || ''))).map((x) => new ObjectId(x));
+    if (pm.length) await media.deleteMany({ _id: { $in: pm } });
+    await ads.deleteMany({ _id: { $in: old.map((a) => a._id) } });
+    old.forEach((a) => {
+      io.emit('addel', String(a._id));
+      rxPurge('ad', String(a._id));
+    });
+    console.log('cleanupAds', old.length);
+  } catch (e) {
+    console.error('cleanupAds', e);
+  }
+}
+
 io.use(async (socket, next) => {
   try {
     const token = String((socket.handshake.auth || {}).token || '');
@@ -1222,7 +1243,7 @@ io.on('connection', (s) => {
   (async () => {
     try {
       const allNews = (await news.find({}).sort({ time: -1 }).limit(100).toArray()).map(newsOut);
-      const adList = await ads.find({}).sort({ time: -1 }).limit(100).toArray();
+      const adList = await ads.find({ time: { $gt: Date.now() - AD_MS } }).sort({ time: -1 }).limit(100).toArray();
       s.emit('init', { news: allNews, ads: adList.map((a) => adOut(a, s.user)) });
       s.emit('places', await placesOut());
       if (!s.user.village) s.emit('needplace');
@@ -2457,6 +2478,9 @@ io.on('connection', (s) => {
       if (!m) return;
       const title = String(m.title || '').trim().slice(0, 100);
       if (!title) return s.emit('err', 'Сарлавҳа нависед');
+      if (!isAdmin(null, s.user) && (await ads.countDocuments({ uid, time: { $gt: Date.now() - AD_MS } })) >= AD_MAX) {
+        return s.emit('err', 'Шумо ' + AD_MAX + ' эълон гузоштаед. Эълони кӯҳнаро нест кунед ё то тамом шудани мӯҳлат интизор шавед');
+      }
       const a = {
         uid,
         name: s.user.name,
@@ -2631,6 +2655,8 @@ io.on('connection', (s) => {
 
     server.listen(process.env.PORT || 3000, () => console.log('Деҳа кор мекунад'));
     setInterval(cleanup, 6 * 3600 * 1000);
+    setInterval(cleanupAds, 30 * 60000);
+    setTimeout(cleanupAds, 90000);
     setTimeout(cleanup, 60000);
   } catch (e) {
     console.error('Хатои база:', e);
