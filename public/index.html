@@ -434,7 +434,8 @@ mark{background:#ffe58f;border-radius:3px}
     <textarea id="add" rows="4" placeholder="Тавсиф (синну сол, ҷой ва ғайра)"></textarea>
     <button class="btn g" style="width:100%;margin:6px 0" onclick="$('adphoto').click()">📷 Расм интихоб кунед</button>
     <div id="adpn" style="font-size:13px;color:#777;margin-bottom:10px">Расм интихоб нашудааст</div>
-    <div style="font-size:13px;color:#777;margin-bottom:10px">Рақами шумо дар эълон барои ҳамаи корбарон намоён мешавад.</div>
+    <div style="font-size:13px;color:#777;margin-bottom:6px">Рақами шумо дар эълон барои ҳамаи корбарон намоён мешавад.</div>
+    <div style="font-size:13px;color:#777;margin-bottom:10px">Ҳар кас то 3 эълони фаъол дошта метавонад. Ҳар эълон 3 рӯз мемонад.</div>
     <button class="btn" id="adsend" style="width:100%" onclick="submitAd()">Нашр кардан</button>
     <button class="btn g" style="width:100%;margin-top:8px" onclick="closeAd()">Бекор кардан</button>
   </div>
@@ -663,6 +664,7 @@ const RU = {
 "Ҳама":"Все",
 "📷 Расм интихоб кунед":"📷 Выбрать фото",
 "Расм интихоб нашудааст":"Фото не выбрано",
+"Ҳар кас то 3 эълони фаъол дошта метавонад. Ҳар эълон 3 рӯз мемонад.":"У каждого может быть до 3 активных объявлений. Каждое объявление живёт 3 дня.",
 "Рақами шумо дар эълон барои ҳамаи корбарон намоён мешавад.":"Ваш номер в объявлении виден всем пользователям.",
 "Нашр кардан":"Опубликовать",
 "Сарлавҳа":"Заголовок",
@@ -817,6 +819,7 @@ Object.assign(RU, {
   'Ӯ дар шабака нест':'Он не в сети','Ҳамаи одамони барнома':'Все люди в приложении','Аз худам нест кардан':'Удалить у меня','Аз ҳама нест кардан':'Удалить у всех',
   'Паём аз ҳама нест карда шавад?':'Удалить сообщение у всех?','Паём танҳо аз назди шумо нест карда шавад?':'Удалить сообщение только у вас?'
 });
+RX.push([/^Шумо (\d+) эълон гузоштаед\..*$/, 'У вас уже $1 объявлений. Удалите старое или дождитесь окончания срока']);
 function tr(s){
   if (LANG !== 'ru' || !s) return s;
   const k = String(s);
@@ -2703,7 +2706,9 @@ function adEl(a){
   if (a.price){ const p = document.createElement('div'); p.className = 'price'; p.textContent = a.price; c.append(p); }
   if (a.desc){ const d = document.createElement('div'); d.textContent = a.desc; c.append(d); }
   const w = document.createElement('div'); w.className = 'd';
-  w.textContent = (CATS[a.cat] || '') + ' · ' + a.name + ' · ' + new Date(a.time).toLocaleDateString();
+  const left = (a.exp || 0) - Date.now();
+  const lt = left > 86400000 ? Math.ceil(left / 86400000) + ' рӯз боқӣ' : Math.max(1, Math.ceil(left / 3600000)) + ' соат боқӣ';
+  w.textContent = (CATS[a.cat] || '') + ' · ' + a.name + ' · ' + new Date(a.time).toLocaleDateString() + (a.exp ? ' · ⏳ ' + lt : '');
   c.append(w);
   const acts = document.createElement('div'); acts.className = 'acts';
   if (a.phone){
@@ -2732,7 +2737,7 @@ function adEl(a){
 }
 function renderAds(){
   const box = $('ads'); box.innerHTML = '';
-  const list = adsData.filter((a) => adFilter === 'all' || a.cat === adFilter);
+  const list = adsData.filter((a) => (!a.exp || a.exp > Date.now()) && (adFilter === 'all' || a.cat === adFilter));
   if (!list.length){
     const e = document.createElement('div'); e.className = 'card'; e.textContent = 'Ҳоло эълон нест. Аввалин шумо гузоред!';
     box.append(e); return;
