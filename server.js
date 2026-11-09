@@ -171,8 +171,12 @@ const VIP_MS = VIP_DAYS * 86400000;
 const ADS_PAID = String(process.env.ADS_PAID || '') === '1'; // 1 = дароз кардан ва VIP пулакӣ (бо тасдиқи админ)
 const PRICE_EXT = String(process.env.PRICE_EXTEND || '5 сомонӣ');
 const PRICE_VIP = String(process.env.PRICE_VIP || '20 сомонӣ');
+const TOP_DAYS = Number(process.env.TOP_DAYS) || 3; // мӯҳлати ТОП (рӯз)
+const TOP_MS = TOP_DAYS * 86400000;
+const PRICE_TOP = String(process.env.PRICE_TOP || '10 сомонӣ');
 const PAY_INFO = String(process.env.PAY_INFO || '');
-const adCfg = () => ({ paid: ADS_PAID, pe: PRICE_EXT, pv: PRICE_VIP, info: PAY_INFO, days: AD_DAYS, vipDays: VIP_DAYS });
+const actLabel = (a, l) => (a === 'vip' ? 'VIP' : a === 'top' ? 'ТОП' : l === 'ru' ? 'продлить' : 'дароз кардан');
+const adCfg = () => ({ paid: ADS_PAID, pe: PRICE_EXT, pv: PRICE_VIP, pt: PRICE_TOP, info: PAY_INFO, days: AD_DAYS, vipDays: VIP_DAYS, topDays: TOP_DAYS });
 const ADMIN_PHONES = String(process.env.ADMIN_PHONES || '').split(',').map((x) => x.replace(/\D/g, '')).filter(Boolean);
 const isAdmin = (m, u) => (!!u && u.admin === true) || (!!m && String(m.password || '').trim() === ADMIN);
 
@@ -378,6 +382,7 @@ const adOut = (a, u) => ({
   time: a.time,
   exp: a.exp || a.time + AD_MS,
   vip: a.vip && a.vip > Date.now() ? a.vip : 0,
+  top: a.top && a.top > Date.now() ? a.top : 0,
 });
 const newsOut = (d) => ({ id: String(d._id), uid: d.uid || '', name: d.name || '', title: d.title || '', text: d.text || '', photo: d.photo || '', time: d.time });
 const chatOut = (d) => {
@@ -1195,13 +1200,16 @@ async function applyAdAct(t, d, act) {
   if (act === 'vip') {
     set.vip = Math.min(Math.max(d.vip || 0, now) + VIP_MS, cap);
     set.exp = Math.max(exp0, set.vip);
+  } else if (act === 'top') {
+    set.top = Math.min(Math.max(d.top || 0, now) + TOP_MS, cap);
+    set.exp = Math.max(exp0, set.top);
   } else {
     set.exp = Math.min(exp0 + AD_MS, cap);
   }
   await col.updateOne({ _id: d._id }, { $set: set });
   const nd = await col.findOne({ _id: d._id });
   if (t === 'sv') io.emit('secchanged', { sec: 'sv' });
-  else io.emit('adupd', { id: String(d._id), exp: nd.exp, vip: nd.vip && nd.vip > now ? nd.vip : 0 });
+  else io.emit('adupd', { id: String(d._id), exp: nd.exp, vip: nd.vip && nd.vip > now ? nd.vip : 0, top: nd.top && nd.top > now ? nd.top : 0 });
   return nd;
 }
 
@@ -2146,7 +2154,7 @@ io.on('connection', (s) => {
     try {
       const nowT = Date.now();
       const list = await services.find({ $or: [{ exp: { $gt: nowT } }, { uid, exp: { $gt: nowT - GRACE_MS } }] }).sort({ time: -1 }).limit(200).toArray();
-      s.emit('svlist', list.map((x) => ({ id: String(x._id), uid: x.uid, name: x.name, phone: x.phone || '', village: x.village || '', cat: x.cat, title: x.title, price: x.price || '', desc: x.desc || '', photo: x.photo || '', time: x.time, exp: x.exp || x.time + AD_MS, vip: x.vip && x.vip > Date.now() ? x.vip : 0 })));
+      s.emit('svlist', list.map((x) => ({ id: String(x._id), uid: x.uid, name: x.name, phone: x.phone || '', village: x.village || '', cat: x.cat, title: x.title, price: x.price || '', desc: x.desc || '', photo: x.photo || '', time: x.time, exp: x.exp || x.time + AD_MS, vip: x.vip && x.vip > Date.now() ? x.vip : 0, top: x.top && x.top > Date.now() ? x.top : 0 })));
     } catch (e) {
       console.error(e);
     }
@@ -2546,7 +2554,7 @@ io.on('connection', (s) => {
   s.on('adact', async (m) => {
     try {
       const t = m && m.t === 'sv' ? 'sv' : 'ad';
-      const act = m && m.act === 'vip' ? 'vip' : 'extend';
+      const act = m && (m.act === 'vip' || m.act === 'top') ? m.act : 'extend';
       const id = String((m && m.id) || '');
       if (!HEX24.test(id)) return;
       const d = await (t === 'sv' ? services : ads).findOne({ _id: new ObjectId(id) });
@@ -2559,7 +2567,7 @@ io.on('connection', (s) => {
         const ad = await users.find({ $or: [{ admin: true }, { phone: { $in: ADMIN_PHONES } }] }, { projection: { _id: 1 } }).toArray();
         pushTo(ad.map((x) => String(x._id)).filter((x) => x !== uid), (l) => ({
           title: 'Деҳа · ' + (l === 'ru' ? 'платная услуга' : 'дархости пулакӣ'),
-          body: s.user.name + ': ' + (act === 'vip' ? 'VIP' : (l === 'ru' ? 'продлить' : 'дароз кардан')) + ' — ' + String(d.title).slice(0, 40),
+          body: s.user.name + ': ' + actLabel(act, l) + ' — ' + String(d.title).slice(0, 40),
           tag: 'preq',
           type: 'msg',
         })).catch(() => {});
@@ -2580,6 +2588,25 @@ io.on('connection', (s) => {
       console.error(e);
     }
   });
+  // Админ: VIP/ТОП-ро аз эълон ё хизматрасонӣ бардоштан
+  s.on('rankoff', async (m) => {
+    try {
+      if (!isAdmin(null, s.user)) return s.emit('err', 'Парол нодуруст');
+      const t = m && m.t === 'sv' ? 'sv' : 'ad';
+      const id = String((m && m.id) || '');
+      if (!HEX24.test(id)) return;
+      const col = t === 'sv' ? services : ads;
+      await col.updateOne({ _id: new ObjectId(id) }, { $set: { vip: 0, top: 0 } });
+      if (t === 'sv') io.emit('secchanged', { sec: 'sv' });
+      else {
+        const nd = await col.findOne({ _id: new ObjectId(id) });
+        if (nd) io.emit('adupd', { id, exp: nd.exp || nd.time + AD_MS, vip: 0, top: 0 });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   s.on('preqdo', async (m) => {
     try {
       if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
@@ -2597,7 +2624,7 @@ io.on('connection', (s) => {
       pushTo([r.uid], (l) => ({
         title: 'Деҳа',
         body: ok
-          ? (l === 'ru' ? 'Готово: ' : 'Иҷро шуд: ') + (r.act === 'vip' ? 'VIP' : (l === 'ru' ? 'продление' : 'дароз кардан')) + ' — ' + String(r.title).slice(0, 40)
+          ? (l === 'ru' ? 'Готово: ' : 'Иҷро шуд: ') + actLabel(r.act, l) + ' — ' + String(r.title).slice(0, 40)
           : (l === 'ru' ? 'Запрос отклонён' : 'Дархост рад шуд') + ' — ' + String(r.title).slice(0, 40),
         tag: 'preq-' + id,
         type: 'msg',
