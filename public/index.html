@@ -3816,5 +3816,164 @@ else toggleMode();
   start = function (t) { _start(t); hook(); };
 })();
 </script>
+  <script>
+/* ===== Бозори нав ===== */
+(function () {
+  Object.keys(CATS).forEach((k) => delete CATS[k]);
+  Object.assign(CATS, { cow: '🐄 Гов', sheep: '🐑 Гӯсфанд', poultry: '🐔 Паранда', crops: '🌾 Ҳосил ва маҳсулот', transport: '🚗 Нақлиёт', realty: '🏠 Амвол', phones: '📱 Телефон ва электроника', home: '🛋 Мебел ва барои хона', build: '🛠 Сохтмон ва таъмир', clothes: '👕 Либос', other: '📦 Дигар' });
+  Object.assign(RU, { 'Паранда': 'Птица', 'Ҳосил ва маҳсулот': 'Урожай и продукты', 'Нақлиёт': 'Транспорт', 'Амвол': 'Недвижимость', 'Телефон ва электроника': 'Телефоны и электроника', 'Мебел ва барои хона': 'Мебель и для дома', 'Сохтмон ва таъмир': 'Строительство и ремонт', 'Либос': 'Одежда', 'Ҳамаи категорияҳо': 'Все категории', 'Ҳамаи эълонҳо': 'Все объявления', 'Эълон': 'Объявление' });
+  $('adc').innerHTML = '';
+  Object.keys(CATS).forEach((k) => $('adc').add(new Option(CATS[k], k)));
+
+  const st = document.createElement('style');
+  st.textContent = '#ads.gridm{display:grid;grid-template-columns:1fr 1fr;gap:14px 12px;align-content:start}' +
+    '.gc{position:relative;min-width:0}.gc .ph{position:relative;aspect-ratio:1/.75;border-radius:14px;overflow:hidden;background:#e3e6ea;display:flex;align-items:center;justify-content:center;font-size:48px}' +
+    '.gc .ph img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;margin:0;border-radius:0;max-height:none}' +
+    '.gc.vip .ph{outline:3px solid #ffab00}.gc.top .ph{outline:3px solid #ffd600}' +
+    '.gc .bd{position:absolute;left:6px;top:6px;background:#ffab00;color:#3a2600;font-weight:700;font-size:12px;border-radius:8px;padding:2px 8px;z-index:2}.gc .bd.t{background:#ffd600}' +
+    '.gc .pr{font-size:19px;font-weight:700;margin-top:6px;padding-right:34px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '.gc .tt{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gc .mt{font-size:13px;color:#7a828c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '.gc .hr{position:absolute;right:0;top:calc(100% - 0px);transform:translateY(-100%);}';
+  document.head.append(st);
+
+  /* навори ҷустуҷӯ */
+  const top = document.createElement('div');
+  top.style.cssText = 'flex:none;padding:8px 10px;background:#fff;border-bottom:1px solid #ddd';
+  top.innerHTML = '<div style="display:flex;gap:8px;align-items:center"><input id="mq" autocomplete="off" style="margin:0;flex:1;background:#f0f1f4;border:0;border-radius:12px"><button class="btn g" id="mcat" style="padding:11px 14px;font-size:15px;white-space:nowrap">☰ Категория</button></div><div id="mcur" style="display:none;margin-top:8px"></div>';
+  $('adchips').after(top);
+  renderAdChips = function () { $('adchips').style.display = 'none'; };
+  renderAdChips();
+  let q = '';
+  const favd = new Set();
+  $('mq').oninput = () => { q = $('mq').value.trim(); renderAds(); };
+
+  /* экрани ҳамаи категорияҳо */
+  const ovCss = 'display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:12;flex-direction:column;';
+  const hdCss = 'background:#fff;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;display:flex;align-items:center;gap:10px;font-size:20px;font-weight:600;flex:none';
+  const cv = document.createElement('div');
+  cv.id = 'catov'; cv.style.cssText = ovCss + 'background:#fff';
+  cv.innerHTML = '<div style="' + hdCss + '"><button class="ic g" id="catback" style="width:36px;height:36px;font-size:16px">←</button><span>Ҳамаи категорияҳо</span></div><div id="catb" style="flex:1;overflow-y:auto;padding:6px 14px 20px"></div>';
+  document.body.append(cv);
+  function closeCats() { cv.style.display = 'none'; }
+  $('catback').onclick = closeCats;
+  function openCats() {
+    const act = adsData.filter((a) => !a.exp || a.exp > Date.now());
+    const b = $('catb'); b.innerHTML = '';
+    const row = (ic, name, n, k) => {
+      const r = document.createElement('button');
+      r.style.cssText = 'display:flex;align-items:center;gap:14px;width:100%;background:#f0f1f4;border:0;border-radius:14px;padding:16px;margin-top:10px;font-size:17px;text-align:left;font-family:inherit;color:#222';
+      const i = document.createElement('span'); i.textContent = ic; i.style.fontSize = '26px';
+      const t = document.createElement('span'); t.textContent = name; t.style.flex = '1';
+      const c = document.createElement('span'); c.textContent = n; c.style.cssText = 'color:#7a828c;font-size:14px';
+      r.append(i, t, c);
+      r.onclick = () => { adFilter = k; closeCats(); renderAds(); };
+      b.append(r);
+    };
+    row('📋', 'Ҳамаи эълонҳо', act.length, 'all');
+    Object.keys(CATS).forEach((k) => {
+      const p = CATS[k].split(' ');
+      row(p[0], p.slice(1).join(' '), act.filter((a) => a.cat === k).length, k);
+    });
+    cv.style.display = 'flex';
+  }
+  $('mcat').onclick = openCats;
+
+  /* корти пурра */
+  const det = document.createElement('div');
+  det.id = 'addet'; det.style.cssText = ovCss + 'background:#e9f2e5';
+  det.innerHTML = '<div style="' + hdCss + ';background:#2f6b3a;color:#fff;font-size:18px"><button class="ic g" id="detback" style="width:36px;height:36px;font-size:16px">←</button><span>Эълон</span></div><div id="detb" style="flex:1;overflow-y:auto;overflow-x:hidden;padding:12px"></div>';
+  document.body.append(det);
+  const oldRender = renderAds;
+  let detId = null;
+  function closeDet() { det.style.display = 'none'; detId = null; $('detb').innerHTML = ''; }
+  $('detback').onclick = closeDet;
+  function fillDet() {
+    const a = adsData.find((x) => x.id === detId);
+    if (!a || (a.exp && a.exp <= Date.now())) { closeDet(); return; }
+    const real = $('ads'); real.id = 'ads_grid';
+    const h = document.createElement('div'); h.id = 'ads';
+    $('detb').innerHTML = ''; $('detb').append(h);
+    const sd = adsData, sf = adFilter;
+    adsData = [a]; adFilter = 'all';
+    try { oldRender(); } finally { adsData = sd; adFilter = sf; h.id = ''; real.id = 'ads'; }
+  }
+  function openDet(id) { detId = id; det.style.display = 'flex'; fillDet(); }
+
+  function ago(t) {
+    const ru = LANG === 'ru', d = Math.floor((Date.now() - t) / 86400000);
+    if (d <= 0) return ru ? 'Сегодня' : 'Имрӯз';
+    if (d === 1) return ru ? 'Вчера' : 'Дирӯз';
+    return d + (ru ? ' дн. назад' : ' рӯз пеш');
+  }
+  function gcard(a) {
+    const c = document.createElement('div');
+    c.className = 'gc' + (isVip(a) ? ' vip' : isTop(a) ? ' top' : '');
+    const ph = document.createElement('div'); ph.className = 'ph';
+    if (a.photo) {
+      const im = document.createElement('img'); im.loading = 'lazy'; im.alt = ''; im.src = mediaUrl(a.photo); ph.append(im);
+    } else ph.textContent = (CATS[a.cat] || '📦').split(' ')[0];
+    if (isVip(a) || isTop(a)) {
+      const b = document.createElement('span'); b.className = 'bd' + (isVip(a) ? '' : ' t'); b.textContent = isVip(a) ? 'VIP' : 'ТОП'; ph.append(b);
+    }
+    const hr = document.createElement('button');
+    hr.className = 'hr'; hr.style.cssText = 'position:absolute;right:0;bottom:44px;border:0;background:none;font-size:26px;padding:0 2px;line-height:1';
+    hr.textContent = favd.has(a.id) ? '❤️' : '🤍';
+    hr.onclick = (e) => {
+      e.stopPropagation();
+      if (favd.has(a.id)) return;
+      favd.add(a.id); hr.textContent = '❤️';
+      socket.emit('favadd', { type: 'ad', title: a.title, text: [a.price, a.desc].filter(Boolean).join('\n'), media: a.photo, extra: a.name });
+    };
+    const pr = document.createElement('div'); pr.className = 'pr'; pr.textContent = a.price || '—';
+    const tt = document.createElement('div'); tt.className = 'tt'; tt.textContent = a.title;
+    const mt = document.createElement('div'); mt.className = 'mt'; mt.textContent = ago(a.time) + ', ' + a.name;
+    c.append(ph, hr, pr, tt, mt);
+    c.onclick = () => openDet(a.id);
+    return c;
+  }
+  renderAds = function () {
+    const box = $('ads'); box.innerHTML = ''; box.classList.add('gridm');
+    const act = adsData.filter((a) => !a.exp || a.exp > Date.now());
+    $('mq').placeholder = (LANG === 'ru' ? 'Поиск по ' : 'Ҷустуҷӯ дар ') + act.length + (LANG === 'ru' ? ' объявлениям' : ' эълон');
+    const ql = q.toLowerCase();
+    const list = act.filter((a) => (adFilter === 'all' || a.cat === adFilter) && (!ql || ((a.title || '') + ' ' + (a.desc || '')).toLowerCase().includes(ql)));
+    const cur = $('mcur'); cur.innerHTML = '';
+    if (adFilter !== 'all') {
+      cur.style.display = 'block';
+      const ch = document.createElement('button'); ch.className = 'chip on'; ch.textContent = (CATS[adFilter] || '') + '  ✕';
+      ch.onclick = () => { adFilter = 'all'; renderAds(); };
+      cur.append(ch);
+    } else cur.style.display = 'none';
+    if (!list.length) {
+      const e = document.createElement('div'); e.className = 'card'; e.style.gridColumn = '1/-1';
+      e.textContent = 'Ҳоло эълон нест. Аввалин шумо гузоред!'; box.append(e);
+    } else sortVip(list).forEach((a) => box.append(gcard(a)));
+    if (detId) fillDet();
+  };
+  renderAds();
+
+  /* тугмаи бозгашти телефон */
+  const _atRoot = atRoot;
+  atRoot = function () { return !(isOpen('addet') || isOpen('catov')) && _atRoot(); };
+  const _appBack = appBack;
+  appBack = function () {
+    if (isOpen('addet')) { closeDet(); return true; }
+    if (isOpen('catov')) { closeCats(); return true; }
+    return _appBack();
+  };
+  const _swCanOpen = swCanOpen;
+  swCanOpen = function (el) { return !(isOpen('addet') || isOpen('catov')) && _swCanOpen(el); };
+
+  let hooked = null;
+  function hook() {
+    if (!socket || hooked === socket) return;
+    hooked = socket;
+    socket.on('adchatok', closeDet);
+  }
+  hook();
+  const _start = start;
+  start = function (t) { _start(t); hook(); };
+})();
+</script>
 </body>
 </html>
