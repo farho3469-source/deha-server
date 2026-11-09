@@ -278,6 +278,8 @@ mark{background:#ffe58f;border-radius:3px}
 #hwt{font-size:26px;font-weight:700;line-height:1}
 #hwd{font-size:13px;margin-top:3px}
 #hww{font-size:22px;font-weight:700;display:none}
+.card.vip{border:2px solid #f5b400;box-shadow:0 0 0 3px rgba(245,180,0,.18)}
+.vipt{display:inline-block;background:#f5b400;color:#4a3300;font-weight:700;font-size:12px;border-radius:10px;padding:2px 8px;margin-bottom:6px}
 </style>
 </head>
 <body>
@@ -364,6 +366,8 @@ mark{background:#ffe58f;border-radius:3px}
         <div class="sh">Модератсия</div>
         <button class="btn g" style="width:100%" onclick="loadReports()">🚩 Шикоятҳо</button>
         <div id="rlist"></div>
+        <button class="btn g" style="width:100%;margin-top:8px" onclick="loadPreqs()">💰 Дархостҳои пулакӣ</button>
+        <div id="preqs"></div>
         <input id="unph" placeholder="Рақами телефон (барои кушодани манъ)">
         <button class="btn g" style="width:100%" onclick="unban()">Кушодани манъ</button>
         <button class="btn g" style="width:100%;margin-top:8px" onclick="loadStats()">📊 Ҳолати база</button>
@@ -2091,19 +2095,21 @@ function renderPg(){
   } else if (s === 'sv'){
     const list = items.filter((x) => pgState.cat === 'all' || x.cat === pgState.cat);
     if (!list.length){ box.append(emptyCard('Ҳоло хизматрасон нест. Аввалин шумо илова кунед!')); return; }
-    list.forEach((x) => {
+    sortVip(list).forEach((x) => {
       const c = document.createElement('div'); c.className = 'card';
+      vipTag(c, x);
       if (x.photo){ const im = document.createElement('img'); im.loading = 'lazy'; im.src = mediaUrl(x.photo); im.onclick = () => openImg(im.src); c.append(im); }
       const h = document.createElement('b'); h.textContent = x.title; c.append(h);
       if (x.price){ const p = document.createElement('div'); p.className = 'price'; p.textContent = x.price; c.append(p); }
       if (x.desc){ const d = document.createElement('div'); d.textContent = x.desc; d.style.whiteSpace = 'pre-wrap'; c.append(d); }
-      const w = document.createElement('div'); w.className = 'd'; w.textContent = (SV_CAT[x.cat] || '') + ' · ' + x.name + (x.village ? ' · ' + vname(x.village) : ''); c.append(w);
+      const w = document.createElement('div'); w.className = 'd'; const lf = (x.exp || 0) - Date.now(); w.textContent = (SV_CAT[x.cat] || '') + ' · ' + x.name + (x.village ? ' · ' + vname(x.village) : '') + (x.exp ? ' · ⏳ ' + (lf > 86400000 ? Math.ceil(lf / 86400000) + ' рӯз боқӣ' : Math.max(1, Math.ceil(lf / 3600000)) + ' соат боқӣ') : ''); c.append(w);
       const acts = document.createElement('div'); acts.className = 'acts';
       if (x.phone){ const tel = document.createElement('a'); tel.href = 'tel:+' + x.phone; tel.textContent = '📞 Занг задан'; acts.append(tel); }
       if (x.uid !== myUid) acts.append(btn('💬 Чат', () => socket.emit('adchat', x.uid), 'background:#dcf0d2;color:#27500A'));
       const txt = [x.title, x.price, x.desc].filter(Boolean).join('\n');
       acts.append(btn('⭐', () => socket.emit('favadd', { type: 'service', title: x.title, text: txt, media: x.photo, extra: x.name }), FAVCSS));
       acts.append(btn('📤', () => shareIt({ title: x.title, text: txt, url: location.origin }), SHCSS));
+      ownerBtns('sv', x, acts);
       if (canDel(x)) acts.append(btn('🗑', () => { if (confirm('Нест кардан шавад?')) socket.emit('svdel', x.id); }));
       c.append(rxBar('sv', x.id)); c.append(acts); box.append(c);
     });
@@ -2473,6 +2479,32 @@ async function shareImg(){
   } catch (e) { alert('Расм фиристода нашуд'); }
 }
 
+/* ---------- дароз кардан ва VIP ---------- */
+let adCfg = { paid: false, pe: '', pv: '', info: '', days: 3, vipDays: 7 };
+Object.assign(RU, { '🔄 Дароз кардан': '🔄 Продлить', '(Ҳоло ройгон)': '(Сейчас бесплатно)', 'Баъд аз пардохт админ тасдиқ мекунад.': 'После оплаты администратор подтвердит.', '✔ Иҷро шуд': '✔ Готово', 'Дархост фиристода шуд. Баъд аз пардохт админ тасдиқ мекунад.': 'Запрос отправлен. После оплаты администратор подтвердит.', '💰 Дархостҳои пулакӣ': '💰 Платные запросы' });
+RX.push([/^Нарх: (.*)$/, 'Цена: $1']);
+RX.push([/^Пардохт: (.*)$/, 'Оплата: $1']);
+RX.push([/^Дароз кардан \(\+(\d+) рӯз\)\?$/, 'Продлить (+$1 дн.)?']);
+RX.push([/^VIP \((\d+) рӯз, дар боло\)\?$/, 'VIP ($1 дн., вверху)?']);
+function isVip(x){ return !!(x && x.vip && x.vip > Date.now()); }
+function sortVip(l){ return [...l].sort((a, b) => (isVip(b) - isVip(a)) || (b.time - a.time)); }
+function vipTag(c, x){ if (isVip(x)){ c.classList.add('vip'); const t = document.createElement('div'); t.className = 'vipt'; t.textContent = '⭐ VIP'; c.append(t); } }
+function adAct(t, x, act){
+  let msg = act === 'vip' ? 'VIP (' + adCfg.vipDays + ' рӯз, дар боло)?' : 'Дароз кардан (+' + adCfg.days + ' рӯз)?';
+  if (adCfg.paid){
+    msg += '\nНарх: ' + (act === 'vip' ? adCfg.pv : adCfg.pe);
+    if (adCfg.info) msg += '\nПардохт: ' + adCfg.info;
+    msg += '\nБаъд аз пардохт админ тасдиқ мекунад.';
+  } else msg += '\n(Ҳоло ройгон)';
+  if (confirm(msg) && socket) socket.emit('adact', { t, id: x.id, act });
+}
+function ownerBtns(t, x, acts){
+  if (x.uid !== myUid) return;
+  acts.append(btn('🔄 Дароз кардан', () => adAct(t, x, 'extend'), 'background:#dcf0d2;color:#27500A'));
+  acts.append(btn('⭐ VIP', () => adAct(t, x, 'vip'), 'flex:0 0 76px;background:#fff3c4;color:#6b4b00'));
+}
+function loadPreqs(){ if (socket) socket.emit('preqlist', { password: $('pw').value }); }
+
 /* ---------- сурат, манъ, модератсия ---------- */
 function avEl(av, name, sz){
   const d = document.createElement('span'); d.className = 'avt';
@@ -2696,6 +2728,7 @@ function renderAdChips(){
 }
 function adEl(a){
   const c = document.createElement('div'); c.className = 'card';
+  vipTag(c, a);
   if (a.photo){
     const im = document.createElement('img');
     im.loading = 'lazy'; im.src = mediaUrl(a.photo); im.alt = a.title;
@@ -2721,6 +2754,7 @@ function adEl(a){
     rq.onclick = () => { socket.emit('adchat', a.uid); };
     acts.append(rq);
   }
+  ownerBtns('ad', a, acts);
   if (a.uid === myUid){
     const del = document.createElement('button'); del.textContent = '🗑 Нест кардан';
     del.onclick = () => { if (confirm('Эълон нест шавад?')) socket.emit('addel', a.id); };
@@ -2742,7 +2776,7 @@ function renderAds(){
     const e = document.createElement('div'); e.className = 'card'; e.textContent = 'Ҳоло эълон нест. Аввалин шумо гузоред!';
     box.append(e); return;
   }
-  list.forEach((a) => box.append(adEl(a)));
+  sortVip(list).forEach((a) => box.append(adEl(a)));
   rxFetch('ad', list.map((a) => a.id));
 }
 function openAd(){ $('adform').style.display = 'flex'; }
@@ -3015,6 +3049,26 @@ function start(token){
   socket.on('reacted', (d) => {
     const el = document.querySelector('#msgs [data-id="' + d.id + '"]');
     if (el && el._m){ el._m.rc = d.rc; const bx = el.querySelector('.rcs'); if (bx) fillRc(bx, el._m); }
+  });
+  socket.on('adcfg', (d) => { adCfg = d || adCfg; });
+  socket.on('adupd', (d) => {
+    const a = adsData.find((x) => x.id === d.id);
+    if (a){ a.exp = d.exp; a.vip = d.vip; renderAds(); }
+  });
+  socket.on('adreq', (d) => {
+    toast(d.dup ? 'Дархост аллакай фиристода шудааст' : d.ok ? 'Дархост фиристода шуд. Баъд аз пардохт админ тасдиқ мекунад.' : '✔ Иҷро шуд');
+  });
+  socket.on('preqs', (l) => {
+    const box = $('preqs'); box.innerHTML = '';
+    if (!l.length){ box.append(item('Дархост нест ✔', '')); return; }
+    l.forEach((r) => {
+      const cd = document.createElement('div'); cd.className = 'card';
+      const t = document.createElement('div'); t.textContent = r.name + ': ' + (r.act === 'vip' ? '⭐ VIP' : '🔄 Дароз кардан') + ' — ' + r.title + (r.t === 'sv' ? ' (хизматрасонӣ)' : ' (бозор)');
+      const a = document.createElement('div'); a.className = 'acts';
+      a.append(btn('✔ Тасдиқ', () => socket.emit('preqdo', { password: $('pw').value, id: r.id, ok: true }), 'background:#dcf0d2;color:#27500A'));
+      a.append(btn('✖ Рад', () => socket.emit('preqdo', { password: $('pw').value, id: r.id, ok: false })));
+      cd.append(t, a); box.append(cd);
+    });
   });
   socket.on('adchatok', (d) => { closePg(); tab(1); showChat(d.room, d.name); });
   socket.on('onl', (l) => {
