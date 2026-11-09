@@ -35,7 +35,7 @@ try {
   console.log('Mongo корбар:', mm ? decodeURIComponent(mm[1]) + ' @ ' + mm[2] : 'URI нодуруст (шакл)');
 } catch (e) {}
 const client = new MongoClient(MONGO_URI);
-let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, groups, events, services, albums, favs, likes, comments, dbh;
+let users, chat, news, media, ads, subs, config, places, reqs, reports, unread, fcm, groups, events, services, albums, favs, likes, comments, payreqs, dbh;
 let VAPID_PUBLIC = '';
 
 /* ---------- Firebase (FCM) барои барномаи Android ---------- */
@@ -165,6 +165,14 @@ const MIN_AGE = Number(process.env.MIN_AGE) || 13;
 const AD_DAYS = Number(process.env.AD_DAYS) || 3; // мӯҳлати эълон (рӯз)
 const AD_MS = AD_DAYS * 86400000;
 const AD_MAX = Number(process.env.AD_MAX) || 3; // ҳадди аксар эълони фаъол барои як корбар
+const GRACE_MS = (Number(process.env.GRACE_DAYS) || 7) * 86400000; // баъд аз тамом шудани мӯҳлат то чанд рӯз барои соҳиб мемонад
+const VIP_DAYS = Number(process.env.VIP_DAYS) || 7; // мӯҳлати VIP (рӯз)
+const VIP_MS = VIP_DAYS * 86400000;
+const ADS_PAID = String(process.env.ADS_PAID || '') === '1'; // 1 = дароз кардан ва VIP пулакӣ (бо тасдиқи админ)
+const PRICE_EXT = String(process.env.PRICE_EXTEND || '5 сомонӣ');
+const PRICE_VIP = String(process.env.PRICE_VIP || '20 сомонӣ');
+const PAY_INFO = String(process.env.PAY_INFO || '');
+const adCfg = () => ({ paid: ADS_PAID, pe: PRICE_EXT, pv: PRICE_VIP, info: PAY_INFO, days: AD_DAYS, vipDays: VIP_DAYS });
 const ADMIN_PHONES = String(process.env.ADMIN_PHONES || '').split(',').map((x) => x.replace(/\D/g, '')).filter(Boolean);
 const isAdmin = (m, u) => (!!u && u.admin === true) || (!!m && String(m.password || '').trim() === ADMIN);
 
@@ -368,7 +376,8 @@ const adOut = (a, u) => ({
   cat: a.cat,
   photo: a.photo || '',
   time: a.time,
-  exp: a.time + AD_MS,
+  exp: a.exp || a.time + AD_MS,
+  vip: a.vip && a.vip > Date.now() ? a.vip : 0,
 });
 const newsOut = (d) => ({ id: String(d._id), uid: d.uid || '', name: d.name || '', title: d.title || '', text: d.text || '', photo: d.photo || '', time: d.time });
 const chatOut = (d) => {
@@ -1037,6 +1046,7 @@ async function deleteUser(u) {
   if (mids.length) await media.deleteMany({ _id: { $in: mids } });
   await chat.deleteMany({ uid });
   await ads.deleteMany({ uid });
+  await payreqs.deleteMany({ uid });
   await events.deleteMany({ uid });
   await services.deleteMany({ uid });
   await albums.deleteMany({ uid });
@@ -1157,19 +1167,42 @@ async function cleanup() {
 
 async function cleanupAds() {
   try {
-    const old = await ads.find({ time: { $lt: Date.now() - AD_MS } }).limit(200).toArray();
-    if (!old.length) return;
-    const pm = old.map((a) => a.photo).filter((x) => HEX24.test(String(x || ''))).map((x) => new ObjectId(x));
-    if (pm.length) await media.deleteMany({ _id: { $in: pm } });
-    await ads.deleteMany({ _id: { $in: old.map((a) => a._id) } });
-    old.forEach((a) => {
-      io.emit('addel', String(a._id));
-      rxPurge('ad', String(a._id));
-    });
-    console.log('cleanupAds', old.length);
+    for (const [col, t] of [[ads, 'ad'], [services, 'sv']]) {
+      const old = await col.find({ exp: { $lt: Date.now() - GRACE_MS } }).limit(200).toArray();
+      if (!old.length) continue;
+      const pm = old.map((a) => a.photo).filter((x) => HEX24.test(String(x || ''))).map((x) => new ObjectId(x));
+      if (pm.length) await media.deleteMany({ _id: { $in: pm } });
+      await col.deleteMany({ _id: { $in: old.map((a) => a._id) } });
+      old.forEach((a) => {
+        if (t === 'ad') io.emit('addel', String(a._id));
+        rxPurge(t, String(a._id));
+      });
+      if (t === 'sv') io.emit('secchanged', { sec: 'sv' });
+      console.log('cleanupAds', t, old.length);
+    }
   } catch (e) {
     console.error('cleanupAds', e);
   }
+}
+
+// «Дароз кардан» ва «VIP»
+async function applyAdAct(t, d, act) {
+  const col = t === 'sv' ? services : ads;
+  const now = Date.now();
+  const exp0 = Math.max(d.exp || d.time + AD_MS, now);
+  const cap = now + 30 * 86400000;
+  const set = {};
+  if (act === 'vip') {
+    set.vip = Math.min(Math.max(d.vip || 0, now) + VIP_MS, cap);
+    set.exp = Math.max(exp0, set.vip);
+  } else {
+    set.exp = Math.min(exp0 + AD_MS, cap);
+  }
+  await col.updateOne({ _id: d._id }, { $set: set });
+  const nd = await col.findOne({ _id: d._id });
+  if (t === 'sv') io.emit('secchanged', { sec: 'sv' });
+  else io.emit('adupd', { id: String(d._id), exp: nd.exp, vip: nd.vip && nd.vip > now ? nd.vip : 0 });
+  return nd;
 }
 
 io.use(async (socket, next) => {
@@ -1199,6 +1232,7 @@ io.on('connection', (s) => {
   s.join('u:' + uid);
   if (s.user.village) s.join('vil:' + s.user.village);
   s.emit('me', uid);
+  s.emit('adcfg', adCfg());
   s.emit('profile', profOf(s.user));
   s.emit('rooms', myRooms(s.user));
   if (!s.user.gender) s.emit('needgender');
@@ -1243,7 +1277,8 @@ io.on('connection', (s) => {
   (async () => {
     try {
       const allNews = (await news.find({}).sort({ time: -1 }).limit(100).toArray()).map(newsOut);
-      const adList = await ads.find({ time: { $gt: Date.now() - AD_MS } }).sort({ time: -1 }).limit(100).toArray();
+      const nowT = Date.now();
+      const adList = await ads.find({ $or: [{ exp: { $gt: nowT } }, { uid, exp: { $gt: nowT - GRACE_MS } }] }).sort({ time: -1 }).limit(100).toArray();
       s.emit('init', { news: allNews, ads: adList.map((a) => adOut(a, s.user)) });
       s.emit('places', await placesOut());
       if (!s.user.village) s.emit('needplace');
@@ -2109,8 +2144,9 @@ io.on('connection', (s) => {
 
   s.on('svlist', async () => {
     try {
-      const list = await services.find({}).sort({ time: -1 }).limit(200).toArray();
-      s.emit('svlist', list.map((x) => ({ id: String(x._id), uid: x.uid, name: x.name, phone: x.phone || '', village: x.village || '', cat: x.cat, title: x.title, price: x.price || '', desc: x.desc || '', photo: x.photo || '', time: x.time })));
+      const nowT = Date.now();
+      const list = await services.find({ $or: [{ exp: { $gt: nowT } }, { uid, exp: { $gt: nowT - GRACE_MS } }] }).sort({ time: -1 }).limit(200).toArray();
+      s.emit('svlist', list.map((x) => ({ id: String(x._id), uid: x.uid, name: x.name, phone: x.phone || '', village: x.village || '', cat: x.cat, title: x.title, price: x.price || '', desc: x.desc || '', photo: x.photo || '', time: x.time, exp: x.exp || x.time + AD_MS, vip: x.vip && x.vip > Date.now() ? x.vip : 0 })));
     } catch (e) {
       console.error(e);
     }
@@ -2120,9 +2156,11 @@ io.on('connection', (s) => {
       if (!m) return;
       const title = clip(m.title, 100);
       if (!title) return s.emit('err', 'Сарлавҳа нависед');
-      if ((await services.countDocuments({ uid })) >= 5) return s.emit('err', 'Хизматрасониҳо аз ҳад зиёданд');
+      if (!isAdmin(null, s.user) && (await services.countDocuments({ uid, exp: { $gt: Date.now() } })) >= AD_MAX) {
+        return s.emit('err', 'Шумо ' + AD_MAX + ' эълон гузоштаед. Эълони кӯҳнаро нест кунед ё то тамом шудани мӯҳлат интизор шавед');
+      }
       const photo = (await okMedia(m.photo)) ? String(m.photo) : '';
-      await services.insertOne({ uid, name: s.user.name, phone: s.user.phone, village: s.user.village || '', cat: SV_CATS.includes(m.cat) ? m.cat : 'other', title, price: clip(m.price, 40), desc: clip(m.desc, 500), photo, time: Date.now() });
+      await services.insertOne({ uid, name: s.user.name, phone: s.user.phone, village: s.user.village || '', cat: SV_CATS.includes(m.cat) ? m.cat : 'other', title, price: clip(m.price, 40), desc: clip(m.desc, 500), photo, time: Date.now(), exp: Date.now() + AD_MS });
       io.emit('secchanged', { sec: 'sv' });
     } catch (e) {
       console.error(e);
@@ -2478,7 +2516,7 @@ io.on('connection', (s) => {
       if (!m) return;
       const title = String(m.title || '').trim().slice(0, 100);
       if (!title) return s.emit('err', 'Сарлавҳа нависед');
-      if (!isAdmin(null, s.user) && (await ads.countDocuments({ uid, time: { $gt: Date.now() - AD_MS } })) >= AD_MAX) {
+      if (!isAdmin(null, s.user) && (await ads.countDocuments({ uid, exp: { $gt: Date.now() } })) >= AD_MAX) {
         return s.emit('err', 'Шумо ' + AD_MAX + ' эълон гузоштаед. Эълони кӯҳнаро нест кунед ё то тамом шудани мӯҳлат интизор шавед');
       }
       const a = {
@@ -2492,6 +2530,7 @@ io.on('connection', (s) => {
         cat: ['cow', 'sheep', 'other'].includes(m.cat) ? m.cat : 'other',
         photo: HEX24.test(String(m.photo || '')) ? String(m.photo) : '',
         time: Date.now(),
+        exp: Date.now() + AD_MS,
       };
       const r = await ads.insertOne({ ...a });
       const full = { ...a, _id: r.insertedId };
@@ -2501,6 +2540,72 @@ io.on('connection', (s) => {
     } catch (e) {
       console.error(e);
       s.emit('err', 'Эълон нашр нашуд');
+    }
+  });
+
+  s.on('adact', async (m) => {
+    try {
+      const t = m && m.t === 'sv' ? 'sv' : 'ad';
+      const act = m && m.act === 'vip' ? 'vip' : 'extend';
+      const id = String((m && m.id) || '');
+      if (!HEX24.test(id)) return;
+      const d = await (t === 'sv' ? services : ads).findOne({ _id: new ObjectId(id) });
+      if (!d) return;
+      const admin = isAdmin(null, s.user);
+      if (d.uid !== uid && !admin) return s.emit('err', 'Нест кардан мумкин нест');
+      if (ADS_PAID && !admin) {
+        if (await payreqs.findOne({ t, ref: id, act, status: 'new' })) return s.emit('adreq', { dup: true });
+        await payreqs.insertOne({ t, ref: id, act, uid, name: s.user.name, title: d.title, time: Date.now(), status: 'new' });
+        const ad = await users.find({ $or: [{ admin: true }, { phone: { $in: ADMIN_PHONES } }] }, { projection: { _id: 1 } }).toArray();
+        pushTo(ad.map((x) => String(x._id)).filter((x) => x !== uid), (l) => ({
+          title: 'Деҳа · ' + (l === 'ru' ? 'платная услуга' : 'дархости пулакӣ'),
+          body: s.user.name + ': ' + (act === 'vip' ? 'VIP' : (l === 'ru' ? 'продлить' : 'дароз кардан')) + ' — ' + String(d.title).slice(0, 40),
+          tag: 'preq',
+          type: 'msg',
+        })).catch(() => {});
+        return s.emit('adreq', { ok: true });
+      }
+      await applyAdAct(t, d, act);
+      s.emit('adreq', { done: true, act });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('preqlist', async (m) => {
+    try {
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+      const list = await payreqs.find({ status: 'new' }).sort({ time: -1 }).limit(100).toArray();
+      s.emit('preqs', list.map((r) => ({ id: String(r._id), t: r.t, act: r.act, name: r.name, title: r.title, time: r.time })));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  s.on('preqdo', async (m) => {
+    try {
+      if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+      const id = String((m && m.id) || '');
+      if (!HEX24.test(id)) return;
+      const r = await payreqs.findOne({ _id: new ObjectId(id), status: 'new' });
+      if (!r) return;
+      let ok = !!m.ok;
+      if (ok) {
+        const d = await (r.t === 'sv' ? services : ads).findOne({ _id: new ObjectId(r.ref) });
+        if (d) await applyAdAct(r.t, d, r.act);
+        else ok = false;
+      }
+      await payreqs.updateOne({ _id: r._id }, { $set: { status: ok ? 'done' : 'rejected' } });
+      pushTo([r.uid], (l) => ({
+        title: 'Деҳа',
+        body: ok
+          ? (l === 'ru' ? 'Готово: ' : 'Иҷро шуд: ') + (r.act === 'vip' ? 'VIP' : (l === 'ru' ? 'продление' : 'дароз кардан')) + ' — ' + String(r.title).slice(0, 40)
+          : (l === 'ru' ? 'Запрос отклонён' : 'Дархост рад шуд') + ' — ' + String(r.title).slice(0, 40),
+        tag: 'preq-' + id,
+        type: 'msg',
+      })).catch(() => {});
+      const list = await payreqs.find({ status: 'new' }).sort({ time: -1 }).limit(100).toArray();
+      s.emit('preqs', list.map((x) => ({ id: String(x._id), t: x.t, act: x.act, name: x.name, title: x.title, time: x.time })));
+    } catch (e) {
+      console.error(e);
     }
   });
 
@@ -2612,6 +2717,7 @@ io.on('connection', (s) => {
     groups = db.collection('groups');
     events = db.collection('events');
     services = db.collection('services');
+    payreqs = db.collection('payreqs');
     albums = db.collection('albums');
     favs = db.collection('favs');
     likes = db.collection('likes');
@@ -2629,6 +2735,8 @@ io.on('connection', (s) => {
     await fcm.createIndex({ token: 1 }, { unique: true });
     await fcm.createIndex({ uid: 1 });
     await groups.createIndex({ members: 1 });
+    await ads.updateMany({ exp: { $exists: false } }, [{ $set: { exp: { $add: ['$time', AD_MS] } } }]).catch(console.error);
+    await services.updateMany({ exp: { $exists: false } }, [{ $set: { exp: { $add: ['$time', AD_MS] } } }]).catch(console.error);
     await events.createIndex({ village: 1, date: 1 });
     await services.createIndex({ time: -1 });
     await albums.createIndex({ village: 1, time: -1 });
