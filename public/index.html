@@ -278,8 +278,10 @@ mark{background:#ffe58f;border-radius:3px}
 #hwt{font-size:26px;font-weight:700;line-height:1}
 #hwd{font-size:13px;margin-top:3px}
 #hww{font-size:22px;font-weight:700;display:none}
-.card.vip{border:2px solid #f5b400;box-shadow:0 0 0 3px rgba(245,180,0,.18)}
-.vipt{display:inline-block;background:#f5b400;color:#4a3300;font-weight:700;font-size:12px;border-radius:10px;padding:2px 8px;margin-bottom:6px}
+.card.vip{border:2px solid #ffab00;box-shadow:0 0 0 3px rgba(255,171,0,.2)}
+.card.top{border:2px solid #ffd600}
+.vipt.topt{background:#ffd600;color:#3b3000}
+.vipt{display:inline-block;background:#ffab00;color:#3a2600;font-weight:700;font-size:12px;border-radius:10px;padding:2px 8px;margin-bottom:6px}
 </style>
 </head>
 <body>
@@ -2480,28 +2482,41 @@ async function shareImg(){
 }
 
 /* ---------- дароз кардан ва VIP ---------- */
-let adCfg = { paid: false, pe: '', pv: '', info: '', days: 3, vipDays: 7 };
+let adCfg = { paid: false, pe: '', pv: '', pt: '', info: '', days: 3, vipDays: 7, topDays: 3 };
 Object.assign(RU, { '🔄 Дароз кардан': '🔄 Продлить', '(Ҳоло ройгон)': '(Сейчас бесплатно)', 'Баъд аз пардохт админ тасдиқ мекунад.': 'После оплаты администратор подтвердит.', '✔ Иҷро шуд': '✔ Готово', 'Дархост фиристода шуд. Баъд аз пардохт админ тасдиқ мекунад.': 'Запрос отправлен. После оплаты администратор подтвердит.', '💰 Дархостҳои пулакӣ': '💰 Платные запросы' });
 RX.push([/^Нарх: (.*)$/, 'Цена: $1']);
 RX.push([/^Пардохт: (.*)$/, 'Оплата: $1']);
 RX.push([/^Дароз кардан \(\+(\d+) рӯз\)\?$/, 'Продлить (+$1 дн.)?']);
 RX.push([/^VIP \((\d+) рӯз, дар боло\)\?$/, 'VIP ($1 дн., вверху)?']);
+RX.push([/^ТОП \((\d+) рӯз, дар боло\)\?$/, 'ТОП ($1 дн., вверху)?']);
+Object.assign(RU, { '✖ VIP/ТОП бардоштан': '✖ Снять VIP/ТОП', 'VIP/ТОП-ро бардоштан?': 'Снять VIP/ТОП?' });
 function isVip(x){ return !!(x && x.vip && x.vip > Date.now()); }
-function sortVip(l){ return [...l].sort((a, b) => (isVip(b) - isVip(a)) || (b.time - a.time)); }
-function vipTag(c, x){ if (isVip(x)){ c.classList.add('vip'); const t = document.createElement('div'); t.className = 'vipt'; t.textContent = '⭐ VIP'; c.append(t); } }
+function isTop(x){ return !!(x && x.top && x.top > Date.now()); }
+function rankOf(x){ return isVip(x) ? 2 : isTop(x) ? 1 : 0; }
+function sortVip(l){ return [...l].sort((a, b) => (rankOf(b) - rankOf(a)) || (b.time - a.time)); }
+function vipTag(c, x){
+  const v = isVip(x), tp = !v && isTop(x);
+  if (!v && !tp) return;
+  c.classList.add(v ? 'vip' : 'top');
+  const t = document.createElement('div'); t.className = v ? 'vipt' : 'vipt topt'; t.textContent = v ? 'VIP' : 'ТОП'; c.append(t);
+}
 function adAct(t, x, act){
-  let msg = act === 'vip' ? 'VIP (' + adCfg.vipDays + ' рӯз, дар боло)?' : 'Дароз кардан (+' + adCfg.days + ' рӯз)?';
+  let msg = act === 'vip' ? 'VIP (' + adCfg.vipDays + ' рӯз, дар боло)?' : act === 'top' ? 'ТОП (' + adCfg.topDays + ' рӯз, дар боло)?' : 'Дароз кардан (+' + adCfg.days + ' рӯз)?';
   if (adCfg.paid){
-    msg += '\nНарх: ' + (act === 'vip' ? adCfg.pv : adCfg.pe);
+    msg += '\nНарх: ' + (act === 'vip' ? adCfg.pv : act === 'top' ? adCfg.pt : adCfg.pe);
     if (adCfg.info) msg += '\nПардохт: ' + adCfg.info;
     msg += '\nБаъд аз пардохт админ тасдиқ мекунад.';
   } else msg += '\n(Ҳоло ройгон)';
   if (confirm(msg) && socket) socket.emit('adact', { t, id: x.id, act });
 }
 function ownerBtns(t, x, acts){
+  if (prof.admin && (isVip(x) || isTop(x))){
+    acts.append(btn('✖ VIP/ТОП бардоштан', () => { if (confirm('VIP/ТОП-ро бардоштан?') && socket) socket.emit('rankoff', { t, id: x.id }); }, 'background:#f3d6d6;color:#8a1c1c'));
+  }
   if (x.uid !== myUid) return;
   acts.append(btn('🔄 Дароз кардан', () => adAct(t, x, 'extend'), 'background:#dcf0d2;color:#27500A'));
-  acts.append(btn('⭐ VIP', () => adAct(t, x, 'vip'), 'flex:0 0 76px;background:#fff3c4;color:#6b4b00'));
+  acts.append(btn('🔝 ТОП', () => adAct(t, x, 'top'), 'flex:0 0 72px;background:#fff7c2;color:#5a4a00'));
+  acts.append(btn('⭐ VIP', () => adAct(t, x, 'vip'), 'flex:0 0 72px;background:#ffe2a8;color:#6b4b00'));
 }
 function loadPreqs(){ if (socket) socket.emit('preqlist', { password: $('pw').value }); }
 
@@ -3053,7 +3068,7 @@ function start(token){
   socket.on('adcfg', (d) => { adCfg = d || adCfg; });
   socket.on('adupd', (d) => {
     const a = adsData.find((x) => x.id === d.id);
-    if (a){ a.exp = d.exp; a.vip = d.vip; renderAds(); }
+    if (a){ a.exp = d.exp; a.vip = d.vip; a.top = d.top; renderAds(); }
   });
   socket.on('adreq', (d) => {
     toast(d.dup ? 'Дархост аллакай фиристода шудааст' : d.ok ? 'Дархост фиристода шуд. Баъд аз пардохт админ тасдиқ мекунад.' : '✔ Иҷро шуд');
@@ -3063,7 +3078,7 @@ function start(token){
     if (!l.length){ box.append(item('Дархост нест ✔', '')); return; }
     l.forEach((r) => {
       const cd = document.createElement('div'); cd.className = 'card';
-      const t = document.createElement('div'); t.textContent = r.name + ': ' + (r.act === 'vip' ? '⭐ VIP' : '🔄 Дароз кардан') + ' — ' + r.title + (r.t === 'sv' ? ' (хизматрасонӣ)' : ' (бозор)');
+      const t = document.createElement('div'); t.textContent = r.name + ': ' + ({ vip: '⭐ VIP', top: '🔝 ТОП' }[r.act] || '🔄 Дароз кардан') + ' — ' + r.title + (r.t === 'sv' ? ' (хизматрасонӣ)' : ' (бозор)');
       const a = document.createElement('div'); a.className = 'acts';
       a.append(btn('✔ Тасдиқ', () => socket.emit('preqdo', { password: $('pw').value, id: r.id, ok: true }), 'background:#dcf0d2;color:#27500A'));
       a.append(btn('✖ Рад', () => socket.emit('preqdo', { password: $('pw').value, id: r.id, ok: false })));
