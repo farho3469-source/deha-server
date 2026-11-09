@@ -2911,3 +2911,37 @@ io.on('connection', (s) => {
     } catch (e) { console.error(e); }
   });
 });
+/* ===== Категорияҳои нав барои бозор ===== */
+io.on('connection', (s) => {
+  const uid = String(s.user._id);
+  const CX = ['cow', 'sheep', 'poultry', 'crops', 'transport', 'realty', 'phones', 'home', 'build', 'clothes', 'other'];
+  const OLD = ['cow', 'sheep', 'other'];
+  const setCat = (id, cat, delay) => setTimeout(async () => {
+    try {
+      const d = await ads.findOne({ _id: new ObjectId(id) });
+      if (!d || !(d.uid === uid || isAdmin(null, s.user))) return;
+      await ads.updateOne({ _id: d._id }, { $set: { cat } });
+      io.emit('edited', { t: 'ad', id, f: { cat } });
+    } catch (e) { console.error(e); }
+  }, delay);
+  s.use((pk, next) => {
+    try {
+      const ev = pk[0], m = pk[1];
+      if (ev === 'ad' && m && CX.includes(m.cat) && !OLD.includes(m.cat)) {
+        const cat = m.cat;
+        m.cat = 'other';
+        setTimeout(async () => {
+          try {
+            const d = await ads.findOne({ uid, time: { $gt: Date.now() - 20000 } }, { sort: { time: -1 } });
+            if (d && d.cat === 'other') setCat(String(d._id), cat, 0);
+          } catch (e) { console.error(e); }
+        }, 1500);
+      } else if (ev === 'edit' && m && m.t === 'ad' && m.f && CX.includes(m.f.cat) && !OLD.includes(m.f.cat) && HEX24.test(String(m.id || ''))) {
+        const cat = m.f.cat;
+        delete m.f.cat;
+        setCat(String(m.id), cat, 1200);
+      }
+    } catch (e) {}
+    next();
+  });
+});
