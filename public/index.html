@@ -3975,5 +3975,161 @@ else toggleMode();
   start = function (t) { _start(t); hook(); };
 })();
 </script>
+  <script>
+/* ===== Нақшаи пешбарӣ ===== */
+(function () {
+  Object.assign(RU, {
+    'Нақшаи пешбарӣ': 'План продвижения', 'Дароз кардан': 'Продлить', 'Давомнокӣ': 'Длительность', 'Нарх': 'Цена',
+    'Ҷамъ': 'Итого', 'Усули пардохтро интихоб кунед': 'Выберите способ оплаты', 'Нусха кардан': 'Копировать',
+    'Ман пардохт кардам': 'Я оплатил', 'Бозгашт': 'Назад', 'Фаъол кардан': 'Включить', 'Нусха шуд ✔': 'Скопировано ✔',
+    'Дар шарҳи пардохт рақами телефони худро нависед, то админ пардохти шуморо ёбад. Баъд аз пардохт тугмаи «Ман пардохт кардам»-ро пахш кунед.': 'В комментарии к платежу укажите свой номер телефона. После оплаты нажмите «Я оплатил».',
+    'Тарзи пардохт ҳоло муайян нашудааст. Бо админ тамос гиред.': 'Способ оплаты пока не указан. Свяжитесь с админом.'
+  });
+  RX.push([/^(\d+) рӯз$/, '$1 дн.']);
+  RX.push([/^(.*) сомонӣ$/, '$1 сомони']);
+  $('toast').style.zIndex = 30;
+
+  let PL = null, cur = null;
+  const oldAct = adAct;
+  const INFO = {
+    vip: { n: 'VIP', bg: '#9b1c1c', fg: '#fff', d: 'Аз ҳамаи эълонҳо боло меистад ва бештар намоён мешавад', f: ['Болотар аз ҳамаи ТОП-эълонҳо', 'Нишонаи VIP ва ҳошияи тиллоӣ', 'Дидан ва занги бештар'] },
+    top: { n: 'ТОП', bg: '#ffd600', fg: '#3b3000', d: 'Эълон дар боло меистад', f: ['Болотар аз эълонҳои оддӣ', 'Нишонаи ТОП', 'Дидани бештар'] },
+    extend: { n: 'Дароз кардан', bg: '#2f6b3a', fg: '#fff', d: 'Эълон муддати дарозтар дар бозор мемонад', f: ['Муҳлати эълон дароз мешавад', 'Эълон дер нест мешавад', 'Барои фурӯш вақти бештар'] }
+  };
+  const el = (tag, css, txt) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; };
+  const fmtP = (p) => String(p).replace('.', ',') + ' сомонӣ';
+  const isFree = () => !PL.paid || !!prof.admin;
+
+  const ov = document.createElement('div');
+  ov.id = 'planov';
+  ov.style.cssText = 'display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#fff;z-index:14;flex-direction:column';
+  ov.innerHTML = '<div style="padding:calc(10px + env(safe-area-inset-top)) 12px 10px;display:flex;align-items:center;gap:10px;font-size:20px;font-weight:600;flex:none"><button class="ic g" id="planback" style="width:36px;height:36px;font-size:16px">←</button><span>Нақшаи пешбарӣ</span></div><div id="planb" style="flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 14px 14px"></div><div id="planf" style="flex:none;padding:10px 14px calc(14px + env(safe-area-inset-bottom))"></div>';
+  document.body.append(ov);
+  function closePlan() { ov.style.display = 'none'; cur = null; }
+  $('planback').onclick = () => { if (cur && cur.step === 2) { cur.step = 1; render(); } else closePlan(); };
+
+  function openPlan(t, x, act) {
+    if (!PL) { oldAct(t, x, act); return; }
+    cur = { t, x, act, days: 0, step: 1, method: 0 };
+    ov.style.display = 'flex';
+    render();
+  }
+  adAct = openPlan;
+
+  const bigBtn = (txt, sub, fn, dis) => {
+    const b = el('button', 'width:100%;border:0;border-radius:14px;padding:14px;background:#1f2328;color:#fff;font-family:inherit;font-size:18px;opacity:' + (dis ? '.4' : '1'));
+    b.append(document.createTextNode(txt));
+    if (sub) { const s = el('div', 'font-size:14px;margin-top:2px;font-weight:400', sub); b.append(s); }
+    if (!dis) b.onclick = fn; else b.disabled = true;
+    return b;
+  };
+  const radio = (on) => el('span', 'flex:none;width:26px;height:26px;border-radius:50%;box-sizing:border-box;border:2px solid ' + (on ? '#1f2328' : '#d5d9e0') + ';background:' + (on ? 'radial-gradient(#1f2328 0 45%,#fff 50%)' : '#fff'));
+
+  function render() {
+    const b = $('planb'), f = $('planf');
+    b.innerHTML = ''; f.innerHTML = '';
+    const plans = PL.plans[cur.act];
+    if (!plans.some((p) => p.d === cur.days)) cur.days = (plans[1] || plans[0]).d;
+    const pl = plans.find((p) => p.d === cur.days);
+    if (cur.step === 2) { renderPay(b, f, pl); return; }
+
+    const tabs = el('div', 'display:flex;gap:8px;margin:6px 0 14px');
+    ['vip', 'top', 'extend'].forEach((k) => {
+      const on = k === cur.act;
+      const s = el('button', 'flex:1;border:0;border-radius:12px;padding:10px 4px;font-family:inherit;font-size:15px;font-weight:600;background:' + (on ? '#1f2328' : '#eef0f3') + ';color:' + (on ? '#fff' : '#333'), INFO[k].n);
+      s.onclick = () => { cur.act = k; cur.days = 0; render(); };
+      tabs.append(s);
+    });
+    b.append(tabs);
+
+    const info = INFO[cur.act];
+    const card = el('div', 'background:#eef4ff;border-radius:20px;padding:0 12px 12px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.08)');
+    card.append(el('div', 'display:inline-block;margin-top:-6px;background:' + info.bg + ';color:' + info.fg + ';font-weight:800;border-radius:14px;padding:8px 26px;font-size:' + (cur.act === 'extend' ? '24px' : '36px'), info.n));
+    card.append(el('div', 'margin:14px 6px;font-size:16px;color:#222', info.d));
+    const ck = el('div', 'background:#fff;border-radius:14px;padding:10px 14px;text-align:left');
+    info.f.forEach((x) => {
+      const r = el('div', 'display:flex;gap:10px;padding:7px 0;font-size:16px');
+      r.append(el('span', 'color:#1fa855;font-weight:700', '✓'), el('span', '', x));
+      ck.append(r);
+    });
+    card.append(ck);
+    b.append(card);
+
+    b.append(el('div', 'font-size:20px;font-weight:700;margin:18px 2px 4px', 'Давомнокӣ'));
+    plans.forEach((p) => {
+      const r = el('div', 'display:flex;align-items:center;gap:14px;padding:13px 4px;cursor:pointer');
+      r.append(radio(p.d === cur.days), el('span', 'flex:1;font-size:17px', p.d + ' рӯз'), el('b', 'font-size:17px', fmtP(p.p)));
+      r.onclick = () => { cur.days = p.d; render(); };
+      b.append(r);
+    });
+    const sm = el('div', 'background:#fdf1c6;border-radius:14px;padding:12px 14px;margin-top:8px');
+    const l1 = el('div', 'display:flex;justify-content:space-between;font-size:15px;padding:2px 0');
+    l1.append(el('span', '', 'Давомнокӣ'), el('span', '', pl.d + ' рӯз'));
+    const l2 = el('div', 'display:flex;justify-content:space-between;font-size:20px;font-weight:700;padding-top:4px');
+    l2.append(el('span', '', 'Ҷамъ'), el('span', '', isFree() ? 'Ройгон' : fmtP(pl.p)));
+    sm.append(l1, l2);
+    b.append(sm);
+
+    if (isFree()) {
+      f.append(bigBtn('Фаъол кардан', pl.d + ' рӯз · ' + (PL.paid ? 'админ' : 'ройгон'), () => {
+        socket.emit('adact', { t: cur.t, id: cur.x.id, act: cur.act, days: cur.days });
+        closePlan();
+      }));
+    } else {
+      f.append(bigBtn('Пардохт · ' + info.n, fmtP(pl.p) + ' · ' + pl.d + ' рӯз', () => { cur.step = 2; render(); }));
+    }
+  }
+
+  function renderPay(b, f, pl) {
+    const ms = PL.methods || [];
+    b.append(el('div', 'font-size:20px;font-weight:700;margin:10px 2px 6px', 'Усули пардохтро интихоб кунед'));
+    if (!ms.length) b.append(el('div', 'color:#b00020;padding:12px 2px', 'Тарзи пардохт ҳоло муайян нашудааст. Бо админ тамос гиред.'));
+    if (cur.method >= ms.length) cur.method = 0;
+    ms.forEach((m, i) => {
+      const r = el('div', 'display:flex;align-items:center;gap:14px;padding:14px 4px;cursor:pointer');
+      r.append(radio(i === cur.method), el('span', 'flex:1;font-size:17px', m.n));
+      r.onclick = () => { cur.method = i; render(); };
+      b.append(r);
+    });
+    if (ms.length) {
+      const m = ms[cur.method];
+      const bx = el('div', 'background:#eef4ff;border-radius:14px;padding:12px 14px;margin-top:10px');
+      bx.append(el('div', 'font-size:15px;color:#444', 'Фиристед: ' + fmtP(pl.p)));
+      if (m.v) {
+        bx.append(el('div', 'font-size:20px;font-weight:700;margin:6px 0;word-break:break-all', m.v));
+        const cp = el('button', 'border:0;border-radius:10px;padding:8px 14px;background:#fff;font-family:inherit;font-size:15px', 'Нусха кардан');
+        cp.onclick = () => { try { navigator.clipboard.writeText(m.v); toast('Нусха шуд ✔'); } catch (e) {} };
+        bx.append(cp);
+      }
+      b.append(bx);
+      b.append(el('div', 'font-size:14px;color:#667781;margin-top:12px', 'Дар шарҳи пардохт рақами телефони худро нависед, то админ пардохти шуморо ёбад. Баъд аз пардохт тугмаи «Ман пардохт кардам»-ро пахш кунед.'));
+    }
+    f.append(bigBtn('Ман пардохт кардам', fmtP(pl.p) + ' · ' + pl.d + ' рӯз', () => {
+      socket.emit('adact', { t: cur.t, id: cur.x.id, act: cur.act, days: cur.days, paid: true });
+      closePlan();
+    }, !ms.length));
+  }
+
+  const _atRoot = atRoot;
+  atRoot = function () { return !isOpen('planov') && _atRoot(); };
+  const _appBack = appBack;
+  appBack = function () {
+    if (isOpen('planov')) { $('planback').onclick(); return true; }
+    return _appBack();
+  };
+  const _swCanOpen = swCanOpen;
+  swCanOpen = function (el2) { return !isOpen('planov') && _swCanOpen(el2); };
+
+  let hooked = null;
+  function hook() {
+    if (!socket || hooked === socket) return;
+    hooked = socket;
+    socket.on('plans', (d) => { PL = d; });
+  }
+  hook();
+  const _start = start;
+  start = function (t) { _start(t); hook(); };
+})();
+</script>
 </body>
 </html>
