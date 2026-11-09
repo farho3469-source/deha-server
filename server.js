@@ -2798,3 +2798,116 @@ io.on('connection', (s) => {
     process.exit(1);
   }
 })();
+/* ===== Профил ва таҳрир ===== */
+io.on('connection', (s) => {
+  const uid = String(s.user._id);
+  const cl = (v, n) => String(v || '').trim().slice(0, n);
+  const EVK = ['wedding', 'funeral', 'celebration', 'meeting', 'other'];
+  const SVC = ['master', 'transport', 'trade', 'medical', 'other'];
+  const ADC = ['cow', 'sheep', 'other'];
+
+  s.emit('mybio', { bio: s.user.bio || '', showphone: s.user.showphone !== false });
+
+  s.on('mybioq', async () => {
+    try {
+      const u = await users.findOne({ _id: s.user._id }, { projection: { bio: 1, showphone: 1 } });
+      s.emit('mybio', { bio: (u && u.bio) || '', showphone: !(u && u.showphone === false) });
+    } catch (e) { console.error(e); }
+  });
+
+  s.on('setbio', async (m) => {
+    try {
+      if (!m) return;
+      const bio = cl(m.bio, 300);
+      const showphone = m.showphone !== false;
+      await users.updateOne({ _id: s.user._id }, { $set: { bio, showphone } });
+      s.user.bio = bio;
+      s.user.showphone = showphone;
+      s.emit('mybio', { bio, showphone });
+    } catch (e) { console.error(e); }
+  });
+
+  s.on('profq', async (id) => {
+    try {
+      id = String(id);
+      if (!HEX24.test(id)) return;
+      const u = await users.findOne({ _id: new ObjectId(id), banned: { $ne: true } });
+      if (!u || (u.blocked || []).includes(uid)) {
+        s.emit('prof', { uid: id, none: true });
+        return s.emit('err', 'Корбар ёфт нашуд');
+      }
+      const me = id === uid;
+      const fr = me ? null : await reqs.findOne({ status: 'accepted', $or: [{ from: uid, to: id }, { from: id, to: uid }] });
+      const canPhone = me || isAdmin(null, s.user) || (!!fr && u.showphone !== false);
+      const vil = HEX24.test(u.village || '') ? await places.findOne({ _id: new ObjectId(u.village) }) : null;
+      const dis = HEX24.test(u.district || '') ? await places.findOne({ _id: new ObjectId(u.district) }) : null;
+      const on = (await io.in('u:' + id).fetchSockets()).length > 0;
+      s.emit('prof', {
+        uid: id,
+        name: u.name || '',
+        av: u.avatar || '',
+        village: vil ? vil.name : '',
+        district: dis ? dis.name : '',
+        bio: u.bio || '',
+        mood: u.mood || '',
+        about: u.about || '',
+        phone: canPhone ? '+' + u.phone : '',
+        phoneHidden: !canPhone && !me,
+        friend: !!fr,
+        me,
+        on,
+      });
+    } catch (e) { console.error(e); }
+  });
+
+  s.on('edit', async (m) => {
+    try {
+      if (!m || !m.f || typeof m.f !== 'object') return;
+      const t = String(m.t || ''), id = String(m.id || ''), f = m.f;
+      if (!HEX24.test(id)) return;
+      const _id = new ObjectId(id);
+      const admin = isAdmin(null, s.user);
+      const deny = () => s.emit('err', 'Таҳрир кардан мумкин нест');
+      if (t === 'ad' || t === 'sv') {
+        const col = t === 'sv' ? services : ads;
+        const d = await col.findOne({ _id });
+        if (!d || !(d.uid === uid || admin)) return deny();
+        const title = cl(f.title, 100);
+        if (!title) return s.emit('err', 'Сарлавҳа нависед');
+        const set = { title, price: cl(f.price, 40), desc: cl(f.desc, 500) };
+        if ((t === 'sv' ? SVC : ADC).includes(f.cat)) set.cat = f.cat;
+        await col.updateOne({ _id }, { $set: set });
+        if (t === 'sv') io.emit('secchanged', { sec: 'sv' });
+        else io.emit('edited', { t, id, f: set });
+      } else if (t === 'news') {
+        const d = await news.findOne({ _id });
+        if (!d || !(d.uid === uid || admin)) return deny();
+        const title = cl(f.title, 100), text = cl(f.text, 3000);
+        if (!title && !text && !d.photo) return s.emit('err', 'Сарлавҳа ё матн нависед');
+        await news.updateOne({ _id }, { $set: { title, text } });
+        io.emit('edited', { t, id, f: { title, text } });
+      } else if (t === 'ev') {
+        const d = await events.findOne({ _id });
+        if (!d || !(d.uid === uid || admin)) return deny();
+        const title = cl(f.title, 100);
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(String(f.date || '')) ? String(f.date) : '';
+        if (!title) return s.emit('err', 'Сарлавҳа нависед');
+        if (!date) return s.emit('err', 'Санаро интихоб кунед');
+        await events.updateOne({ _id }, { $set: { title, date, kind: EVK.includes(f.kind) ? f.kind : d.kind, tm: cl(f.tm, 20), place: cl(f.place, 100), desc: cl(f.desc, 500) } });
+        io.to('vil:' + d.village).emit('secchanged', { sec: 'ev' });
+      } else if (t === 'alb') {
+        const d = await albums.findOne({ _id });
+        if (!d || !(d.uid === uid || admin)) return deny();
+        await albums.updateOne({ _id }, { $set: { cap: cl(f.cap, 140) } });
+        io.to('vil:' + d.village).emit('secchanged', { sec: 'alb' });
+      } else if (t === 'msg') {
+        const d = await chat.findOne({ _id });
+        if (!d || d.uid !== uid || d.kind !== 'text' || !(await canEnter(s.user, d.room))) return deny();
+        const text = cl(f.text, 500);
+        if (!text) return;
+        await chat.updateOne({ _id }, { $set: { text, ed: true } });
+        io.to('r:' + d.room).emit('msgedited', { id, text });
+      }
+    } catch (e) { console.error(e); }
+  });
+});
