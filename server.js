@@ -2945,3 +2945,120 @@ io.on('connection', (s) => {
     next();
   });
 });
+/* ===== Нақшаи пешбарӣ: VIP / ТОП / Дароз кардан ===== */
+function parsePlansX(env, def) {
+  const out = [];
+  String(env || def).split(',').forEach((x) => {
+    const p = x.split(':');
+    const d = parseInt(p[0], 10);
+    const pr = parseFloat(String(p[1]).replace(',', '.'));
+    if (d > 0 && d <= 30 && pr >= 0) out.push({ d, p: pr });
+  });
+  return out.length ? out : [{ d: 3, p: 10 }];
+}
+const PLANX = {
+  vip: parsePlansX(process.env.PLAN_VIP, '3:15,5:25,7:35'),
+  top: parsePlansX(process.env.PLAN_TOP, '3:8,5:12,7:16'),
+  extend: parsePlansX(process.env.PLAN_EXTEND, '3:5,5:8,7:11'),
+};
+const PAYX = String(process.env.PAY_METHODS || process.env.PAY_INFO || '')
+  .split('|').map((x) => x.trim()).filter(Boolean)
+  .map((x) => { const i = x.indexOf(':'); return i > 0 ? { n: x.slice(0, i).trim(), v: x.slice(i + 1).trim() } : { n: x, v: '' }; });
+const cfgX = () => ({ paid: ADS_PAID, methods: PAYX, plans: PLANX });
+const defDaysX = (act) => (act === 'vip' ? VIP_DAYS : act === 'top' ? TOP_DAYS : AD_DAYS);
+
+async function applyDays(t, d, act, days) {
+  const col = t === 'sv' ? services : ads;
+  const now = Date.now();
+  const ms = days * 86400000;
+  const exp0 = Math.max(d.exp || d.time + AD_MS, now);
+  const cap = now + 30 * 86400000;
+  const set = {};
+  if (act === 'vip') {
+    set.vip = Math.min(Math.max(d.vip || 0, now) + ms, cap);
+    set.exp = Math.max(exp0, set.vip);
+  } else if (act === 'top') {
+    set.top = Math.min(Math.max(d.top || 0, now) + ms, cap);
+    set.exp = Math.max(exp0, set.top);
+  } else {
+    set.exp = Math.min(exp0 + ms, cap);
+  }
+  await col.updateOne({ _id: d._id }, { $set: set });
+  const nd = await col.findOne({ _id: d._id });
+  if (t === 'sv') io.emit('secchanged', { sec: 'sv' });
+  else io.emit('adupd', { id: String(d._id), exp: nd.exp, vip: nd.vip && nd.vip > now ? nd.vip : 0, top: nd.top && nd.top > now ? nd.top : 0 });
+}
+
+io.on('connection', (s) => {
+  const uid = String(s.user._id);
+  s.emit('plans', cfgX());
+
+  const sendPreqs = async () => {
+    const list = await payreqs.find({ status: 'new' }).sort({ time: -1 }).limit(100).toArray();
+    s.emit('preqs', list.map((x) => ({
+      id: String(x._id), t: x.t, act: x.act, name: x.name, time: x.time,
+      title: x.title + ' · ' + (x.days || defDaysX(x.act)) + ' рӯз' + (x.price ? ' · ' + x.price + ' сомонӣ' : ''),
+    })));
+  };
+
+  const doAct = async (m) => {
+    const t = m && m.t === 'sv' ? 'sv' : 'ad';
+    const act = m && (m.act === 'vip' || m.act === 'top') ? m.act : 'extend';
+    const id = String((m && m.id) || '');
+    if (!HEX24.test(id)) return;
+    const d = await (t === 'sv' ? services : ads).findOne({ _id: new ObjectId(id) });
+    if (!d) return;
+    const admin = isAdmin(null, s.user);
+    if (d.uid !== uid && !admin) return s.emit('err', 'Нест кардан мумкин нест');
+    const list = PLANX[act];
+    const plan = list.find((x) => x.d === Number(m.days)) || list[0];
+    if (ADS_PAID && !admin) {
+      if (!m.paid) return;
+      if (await payreqs.findOne({ t, ref: id, act, status: 'new' })) return s.emit('adreq', { dup: true });
+      await payreqs.insertOne({ t, ref: id, act, days: plan.d, price: plan.p, uid, name: s.user.name, title: d.title, time: Date.now(), status: 'new' });
+      const ad = await users.find({ $or: [{ admin: true }, { phone: { $in: ADMIN_PHONES } }] }, { projection: { _id: 1 } }).toArray();
+      pushTo(ad.map((x) => String(x._id)).filter((x) => x !== uid), (l) => ({
+        title: 'Деҳа · ' + (l === 'ru' ? 'платная услуга' : 'дархости пулакӣ'),
+        body: s.user.name + ': ' + actLabel(act, l) + ' ' + plan.d + ' — ' + String(d.title).slice(0, 40),
+        tag: 'preq', type: 'msg',
+      })).catch(() => {});
+      return s.emit('adreq', { ok: true });
+    }
+    await applyDays(t, d, act, plan.d);
+    s.emit('adreq', { done: true, act });
+  };
+
+  const doPreqdo = async (m) => {
+    if (!isAdmin(m, s.user)) return s.emit('err', 'Парол нодуруст');
+    const id = String((m && m.id) || '');
+    if (!HEX24.test(id)) return;
+    const r = await payreqs.findOne({ _id: new ObjectId(id), status: 'new' });
+    if (!r) return;
+    let ok = !!m.ok;
+    if (ok) {
+      const d = await (r.t === 'sv' ? services : ads).findOne({ _id: new ObjectId(r.ref) });
+      if (d) await applyDays(r.t, d, r.act, r.days || defDaysX(r.act));
+      else ok = false;
+    }
+    await payreqs.updateOne({ _id: r._id }, { $set: { status: ok ? 'done' : 'rejected' } });
+    pushTo([r.uid], (l) => ({
+      title: 'Деҳа',
+      body: ok ? (l === 'ru' ? 'Готово: ' : 'Иҷро шуд: ') + actLabel(r.act, l) + ' — ' + String(r.title).slice(0, 40)
+               : (l === 'ru' ? 'Запрос отклонён' : 'Дархост рад шуд') + ' — ' + String(r.title).slice(0, 40),
+      tag: 'preq-' + id, type: 'msg',
+    })).catch(() => {});
+    await sendPreqs();
+  };
+
+  s.use((pk, next) => {
+    const ev = pk[0], m = pk[1];
+    if (ev === 'adact') { doAct(m).catch(console.error); return; }
+    if (ev === 'preqdo') { doPreqdo(m).catch(console.error); return; }
+    if (ev === 'preqlist') {
+      if (!isAdmin(m, s.user)) { s.emit('err', 'Парол нодуруст'); return; }
+      sendPreqs().catch(console.error);
+      return;
+    }
+    next();
+  });
+});
