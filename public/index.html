@@ -3499,5 +3499,322 @@ const saved = localStorage.getItem('token');
 if (saved) start(saved);
 else toggleMode();
 </script>
+  <script>
+/* ===== Профил ва таҳрир ===== */
+(function () {
+  Object.assign(RU, {
+    'Таҳрир': 'Изменить', 'Таҳрири эълон': 'Изменение объявления', 'Таҳрири хизматрасонӣ': 'Изменение услуги',
+    'Таҳрири хабар': 'Изменение новости', 'Таҳрири рӯйдод': 'Изменение события', 'Таҳрири расм': 'Изменение подписи',
+    'Таҳрири паём': 'Изменение сообщения', 'Профил': 'Профиль', 'Профили ман': 'Мой профиль',
+    'Дар бораи ман': 'Обо мне', 'Дар бораи ман (биография)': 'Обо мне (биография)',
+    'Ҳоло маълумот нест': 'Информации пока нет', 'Телефон': 'Телефон',
+    'Рақам танҳо барои дӯстон намоён аст': 'Номер виден только друзьям',
+    'Корбар рақамро пинҳон кардааст': 'Пользователь скрыл номер',
+    'Рақамро ба дӯстон нишон диҳам': 'Показывать номер друзьям',
+    'Корбар ёфт нашуд': 'Пользователь не найден', 'Таҳрир кардан мумкин нест': 'Изменить нельзя',
+    'Нарх': 'Цена', 'Матн': 'Текст', 'Вақт': 'Время'
+  });
+  let myBio = { bio: '', showphone: true }, edCur = null, hooked = null;
+
+  /* ---- экрани профил ---- */
+  const pv = document.createElement('div');
+  pv.id = 'profov';
+  pv.style.cssText = 'display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#e9f2e5;z-index:13;flex-direction:column';
+  pv.innerHTML = '<div style="background:#2f6b3a;color:#fff;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;display:flex;align-items:center;gap:10px;font-size:18px;font-weight:600;flex:none"><button class="ic g" id="profback" style="width:36px;height:36px;font-size:16px">←</button><span id="proft"></span></div><div id="profb" style="flex:1;overflow-y:auto;padding:18px;text-align:center"></div>';
+  document.body.append(pv);
+
+  /* ---- экрани таҳрир ---- */
+  const edv = document.createElement('div');
+  edv.id = 'edov';
+  edv.style.cssText = 'display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#efece3;z-index:13;flex-direction:column';
+  edv.innerHTML = '<div style="background:#2f6b3a;color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;font-size:18px;font-weight:600;flex:none"><span id="edt"></span></div><div id="edb" style="flex:1;overflow-y:auto;padding:14px"></div><div class="gfoot"><button class="btn g" id="edcancel">Бекор кардан</button><button class="btn" id="edok">Сабт кардан</button></div>';
+  document.body.append(edv);
+
+  function closeProf() { pv.style.display = 'none'; }
+  function closeEd() { edv.style.display = 'none'; edCur = null; }
+  $('profback').onclick = closeProf;
+  $('edcancel').onclick = closeEd;
+
+  function mk(css) { const d = document.createElement('div'); d.style.cssText = css; return d; }
+
+  function openProfile(id) {
+    if (!socket || !id) return;
+    $('proft').textContent = 'Профил';
+    $('profb').innerHTML = '<div style="color:#777;margin-top:40px;font-size:28px">⏳</div>';
+    pv.style.display = 'flex';
+    socket.emit('profq', id);
+  }
+
+  function renderProf(d) {
+    if (d.none) { closeProf(); return; }
+    $('proft').textContent = d.me ? 'Профили ман' : 'Профил';
+    const b = $('profb');
+    b.innerHTML = '';
+    const w = mk('display:flex;justify-content:center');
+    w.append(avEl(d.av, d.name, 170));
+    b.append(w);
+    const n = mk('font-size:24px;font-weight:700;margin-top:12px;color:#1b3d22;word-break:break-word');
+    n.textContent = d.name;
+    b.append(n);
+    if (d.on) { const o = mk('font-size:14px;color:#1fa855;margin-top:2px'); o.textContent = '🟢 онлайн'; b.append(o); }
+    if (d.mood || d.about) {
+      const st = mk('font-size:15px;color:#667781;margin-top:4px');
+      st.textContent = (d.mood ? d.mood + ' ' : '') + (d.about || '');
+      b.append(st);
+    }
+    const loc = [d.village, d.district].filter(Boolean).join(', ');
+    if (loc) { const l = mk('font-size:15px;color:#444;margin-top:6px'); l.textContent = '📍 ' + loc; b.append(l); }
+    const card = (title, inner) => {
+      const c = mk('background:#fff;border-radius:14px;padding:12px 14px;margin-top:12px;text-align:left');
+      const h = mk('font-size:13px;color:#2f6b3a;font-weight:600;margin-bottom:4px');
+      h.textContent = title;
+      c.append(h, inner);
+      b.append(c);
+    };
+    const bt = mk('font-size:16px;white-space:pre-wrap;word-break:break-word');
+    bt.textContent = d.bio || 'Ҳоло маълумот нест';
+    if (!d.bio) bt.style.color = '#999';
+    card('Дар бораи ман', bt);
+    if (d.phone) {
+      const a = document.createElement('a');
+      a.href = 'tel:' + d.phone;
+      a.textContent = '📞 ' + d.phone;
+      a.style.cssText = 'font-size:18px;color:#2f6b3a;font-weight:600;text-decoration:none';
+      card('Телефон', a);
+    } else if (d.phoneHidden) {
+      const t = mk('font-size:14px;color:#999');
+      t.textContent = d.friend ? 'Корбар рақамро пинҳон кардааст' : 'Рақам танҳо барои дӯстон намоён аст';
+      card('Телефон', t);
+    }
+    const bx = mk('display:flex;gap:8px;margin-top:16px');
+    if (d.me) {
+      const e = document.createElement('button');
+      e.className = 'btn'; e.style.flex = '1'; e.textContent = '✏️ Таҳрир';
+      e.onclick = () => { closeProf(); openSettings(); };
+      bx.append(e);
+    } else {
+      const c = document.createElement('button');
+      c.className = 'btn'; c.style.flex = '1'; c.textContent = '💬 Чат';
+      c.onclick = () => { closeProf(); startDM(d.uid, d.name); };
+      bx.append(c);
+      if (d.phone) {
+        const a = document.createElement('a');
+        a.href = 'tel:' + d.phone; a.className = 'btn';
+        a.style.cssText = 'flex:1;text-decoration:none;text-align:center;box-sizing:border-box';
+        a.textContent = '📞 Занг задан';
+        bx.append(a);
+      }
+    }
+    b.append(bx);
+  }
+
+  /* ---- пайвастани номҳо ба профил ---- */
+  function bindRows(rows, uids) {
+    const arr = [...rows];
+    const off = arr.length - uids.length;
+    if (off < 0) return;
+    uids.forEach((u, i) => {
+      const r = arr[off + i];
+      if (!r) return;
+      const t = r.querySelector(':scope > span:not(.avt)');
+      if (!t) return;
+      t.style.cursor = 'pointer';
+      t.onclick = (e) => { e.stopPropagation(); openProfile(u); };
+    });
+  }
+  const _renderMembers = renderMembers;
+  renderMembers = function () {
+    _renderMembers();
+    if (!vinfo) return;
+    bindRows($('memlist').querySelectorAll(':scope > .item'), vinfo.list.filter((u) => !blocked.has(u.uid)).map((u) => u.uid));
+  };
+  const _renderHome = renderHome;
+  renderHome = function () {
+    _renderHome();
+    if (nav.v === 'members') {
+      const list = (members.village === nav.id ? members.list : []).filter((x) => !blocked.has(x.uid));
+      bindRows($('hbody').querySelectorAll(':scope > .item'), list.map((x) => x.uid));
+    }
+  };
+  const _renderGInfo = renderGInfo;
+  renderGInfo = function () {
+    _renderGInfo();
+    const g = gById(gInfoId);
+    if (g) bindRows($('gilist').querySelectorAll(':scope > .item'), g.members.map((m) => m.uid));
+  };
+  const _personRow = personRow;
+  personRow = function (m) {
+    const r = _personRow(m);
+    bindRows([r], [m.uid]);
+    return r;
+  };
+  const _openMembers = openMembers;
+  openMembers = function () {
+    if (room.startsWith('dm:')) {
+      const p = room.split(':');
+      openProfile(p[1] === myUid ? p[2] : p[1]);
+      return;
+    }
+    _openMembers();
+  };
+  const _msgEl = msgEl;
+  msgEl = function (m) {
+    const d = _msgEl(m);
+    const nt = d.querySelector('.nm > span:not(.avt)');
+    if (nt && m.uid) {
+      nt.style.cursor = 'pointer';
+      nt.onclick = (e) => { e.stopPropagation(); openProfile(m.uid); };
+    }
+    if (m.ed) { const tm = d.querySelector('.tm'); if (tm) tm.prepend(document.createTextNode('✏️ ')); }
+    return d;
+  };
+
+  /* ---- таҳрир ---- */
+  function opts(o) { return Object.keys(o).map((k) => [k, o[k]]); }
+  function edFields(t) {
+    if (t === 'ad') return { t: 'Таҳрири эълон', req: ['title'], f: [['cat', 'sel', 'Навъ', opts(CATS)], ['title', 'tx', 'Сарлавҳа'], ['price', 'tx', 'Нарх'], ['desc', 'ar', 'Тавсиф']] };
+    if (t === 'sv') return { t: 'Таҳрири хизматрасонӣ', req: ['title'], f: [['cat', 'sel', 'Навъ', opts(SV_CAT)], ['title', 'tx', 'Сарлавҳа'], ['price', 'tx', 'Нарх'], ['desc', 'ar', 'Тавсиф']] };
+    if (t === 'news') return { t: 'Таҳрири хабар', any: ['title', 'text'], f: [['title', 'tx', 'Сарлавҳа'], ['text', 'ar', 'Матни хабар']] };
+    if (t === 'ev') return { t: 'Таҳрири рӯйдод', req: ['title', 'date'], f: [['kind', 'sel', 'Навъ', opts(EV_KIND)], ['title', 'tx', 'Сарлавҳа'], ['date', 'dt', 'Сана'], ['tm', 'tx', 'Вақт'], ['place', 'tx', 'Ҷой'], ['desc', 'ar', 'Тавсиф']] };
+    if (t === 'alb') return { t: 'Таҳрири расм', f: [['cap', 'tx', 'Тавсиф']] };
+    if (t === 'msg') return { t: 'Таҳрири паём', req: ['text'], f: [['text', 'ar', 'Матн']] };
+    return null;
+  }
+  function openEdit(t, o) {
+    const cfg = edFields(t);
+    if (!cfg || !o) return;
+    edCur = { t, id: o.id };
+    $('edt').textContent = cfg.t;
+    const b = $('edb');
+    b.innerHTML = '';
+    cfg.f.forEach(([k, ty, label, op]) => {
+      const l = mk('font-size:13px;color:#777;margin:8px 2px 0');
+      l.textContent = label;
+      b.append(l);
+      let el;
+      if (ty === 'sel') { el = document.createElement('select'); op.forEach(([v, x]) => el.add(new Option(x, v))); }
+      else if (ty === 'ar') { el = document.createElement('textarea'); el.rows = 4; }
+      else if (ty === 'dt') { el = document.createElement('input'); el.type = 'date'; }
+      else { el = document.createElement('input'); }
+      el.id = 'ed_' + k;
+      el.value = o[k] == null ? '' : o[k];
+      b.append(el);
+    });
+    edv.style.display = 'flex';
+  }
+  $('edok').onclick = () => {
+    if (!edCur || !socket) return;
+    const cfg = edFields(edCur.t), f = {};
+    cfg.f.forEach(([k]) => { f[k] = $('ed_' + k).value.trim(); });
+    if ((cfg.req && cfg.req.some((k) => !f[k])) || (cfg.any && !cfg.any.some((k) => f[k]))) {
+      alert('Ҳамаи майдонҳои заруриро пур кунед');
+      return;
+    }
+    socket.emit('edit', { t: edCur.t, id: edCur.id, f });
+    closeEd();
+  };
+
+  /* тугмаи ✏️ дар корти эълон, хабар, рӯйдод, хизматрасонӣ ва албом */
+  function decorate(box, t, list) {
+    box.querySelectorAll('.rx[data-rx^="' + t + ':"]').forEach((rx) => {
+      const id = rx.dataset.rx.slice(t.length + 1);
+      const o = list.find((x) => x.id === id);
+      if (!o || !canDel(o)) return;
+      const acts = rx.parentElement.querySelector('.acts');
+      if (!acts || acts.querySelector('.edbtn')) return;
+      const b = btn('✏️ Таҳрир', () => openEdit(t, o), 'background:#e1edf7;color:#0d3b66');
+      b.className = 'edbtn';
+      acts.append(b);
+    });
+  }
+  const _renderAds = renderAds;
+  renderAds = function () { _renderAds(); decorate($('ads'), 'ad', adsData); };
+  const _renderNews = renderNews;
+  renderNews = function () { _renderNews(); decorate($('news'), 'news', newsData); };
+  const _renderPg = renderPg;
+  renderPg = function () {
+    _renderPg();
+    if (!pgState) return;
+    if (pgState.sec === 'sv' || pgState.sec === 'ev') decorate($('pgb'), pgState.sec, pgState.items);
+    if (pgState.sec === 'alb') {
+      const cells = $('pgb').querySelectorAll('.alg .cell');
+      pgState.items.forEach((x, i) => {
+        const cb = cells[i] && cells[i].querySelector('.cb');
+        if (!cb || !canDel(x) || cb.querySelector('.edbtn')) return;
+        const bt = btn('✏️', () => openEdit('alb', x));
+        bt.className = 'edbtn';
+        cb.append(bt);
+      });
+    }
+  };
+
+  /* тугмаи ✏️ дар менюи паём (зер кардани дароз) */
+  const medBtn = document.createElement('button');
+  medBtn.className = 'btn'; medBtn.id = 'medit'; medBtn.textContent = '✏️ Таҳрир'; medBtn.style.display = 'none';
+  $('mrep').after(medBtn);
+  medBtn.onclick = () => { const m = menuMsg; closeMenu(); if (m) openEdit('msg', m); };
+  const _openMenu = openMenu;
+  openMenu = function (m) {
+    _openMenu(m);
+    medBtn.style.display = (m.uid === myUid && m.kind === 'text' && m.id) ? 'block' : 'none';
+  };
+
+  /* биография ва рақам дар Танзимот */
+  const sb = [...document.querySelectorAll('#sform .gbox .btn')].find((x) => (x.getAttribute('onclick') || '').indexOf('saveSettings') === 0);
+  if (sb) {
+    const w = document.createElement('div');
+    w.style.textAlign = 'left';
+    w.innerHTML = '<div class="sh">Дар бораи ман (биография)</div><textarea id="sbio" rows="3" maxlength="300" placeholder="Дар бораи ман (биография)"></textarea><label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:6px 0"><input type="checkbox" id="sshowph" style="width:auto;margin:0"> Рақамро ба дӯстон нишон диҳам</label>';
+    sb.before(w);
+  }
+  const _openSettings = openSettings;
+  openSettings = function () {
+    _openSettings();
+    if ($('sbio')) { $('sbio').value = myBio.bio; $('sshowph').checked = myBio.showphone; }
+  };
+  const _saveSettings = saveSettings;
+  saveSettings = function () {
+    if (socket && $('sbio')) socket.emit('setbio', { bio: $('sbio').value, showphone: $('sshowph').checked });
+    _saveSettings();
+  };
+
+  /* тугмаи бозгашти телефон */
+  const _atRoot = atRoot;
+  atRoot = function () { return !(isOpen('profov') || isOpen('edov')) && _atRoot(); };
+  const _appBack = appBack;
+  appBack = function () {
+    if (isOpen('edov')) { closeEd(); return true; }
+    if (isOpen('profov')) { closeProf(); return true; }
+    return _appBack();
+  };
+  const _swCanOpen = swCanOpen;
+  swCanOpen = function (el) { return !(isOpen('profov') || isOpen('edov')) && _swCanOpen(el); };
+
+  /* гирифтани ҷавобҳои сервер */
+  function hook() {
+    if (!socket || hooked === socket) return;
+    hooked = socket;
+    socket.on('mybio', (d) => { if (d) myBio = d; });
+    socket.on('prof', (d) => { if (pv.style.display === 'flex') renderProf(d || {}); });
+    socket.on('edited', (d) => {
+      if (d.t === 'ad') { const a = adsData.find((x) => x.id === d.id); if (a) { Object.assign(a, d.f); renderAds(); } }
+      else if (d.t === 'news') { const n = newsData.find((x) => x.id === d.id); if (n) { Object.assign(n, d.f); renderNews(); } }
+    });
+    socket.on('msgedited', (d) => {
+      const el = document.querySelector('#msgs [data-id="' + d.id + '"]');
+      if (!el) return;
+      if (el._m) el._m.text = d.text;
+      const tx = [...el.children].find((c) => c.tagName === 'DIV' && !c.className);
+      if (tx) tx.textContent = d.text;
+      const tm = el.querySelector('.tm');
+      if (tm && tm.textContent.indexOf('✏️') !== 0) tm.prepend(document.createTextNode('✏️ '));
+    });
+    socket.emit('mybioq');
+  }
+  hook();
+  const _start = start;
+  start = function (t) { _start(t); hook(); };
+})();
+</script>
 </body>
 </html>
