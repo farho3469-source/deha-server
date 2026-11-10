@@ -3085,3 +3085,4 @@ io.on('connection', async (s) => {
     } catch (e) { console.error(e); }
   });
 });
+require('./banner-server')({ io, isAdmin, HEX24, ObjectId, db: () => ({ config, media }) });
