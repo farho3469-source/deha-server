@@ -3062,3 +3062,26 @@ io.on('connection', (s) => {
     next();
   });
 });
+/* ===== Баннери боло (админ иваз мекунад) ===== */
+io.on('connection', async (s) => {
+  try {
+    const b = await config.findOne({ _id: 'banner' });
+    s.emit('banner', { media: (b && b.media) || '' });
+  } catch (e) { console.error(e); }
+
+  s.on('setbanner', async (m) => {
+    try {
+      if (!isAdmin(null, s.user)) return s.emit('err', 'Танҳо админ метавонад');
+      const id = String((m && m.media) || '');
+      if (id && !(HEX24.test(id) && (await media.findOne({ _id: new ObjectId(id) }, { projection: { _id: 1 } })))) {
+        return s.emit('err', 'Файл нодуруст аст');
+      }
+      const old = await config.findOne({ _id: 'banner' });
+      await config.updateOne({ _id: 'banner' }, { $set: { media: id } }, { upsert: true });
+      if (old && old.media && old.media !== id && HEX24.test(old.media)) {
+        await media.deleteOne({ _id: new ObjectId(old.media) }).catch(() => {});
+      }
+      io.emit('banner', { media: id });
+    } catch (e) { console.error(e); }
+  });
+});
